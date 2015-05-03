@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2015 Tomas Flouri
+    Copyright (C) 2015 Tomas Flouri, Diego Darriba
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -79,6 +79,22 @@ void pll_update_partials(pll_partition_t * partition,
   }
 }
 
+static double pll_compute_invariant_likelihood (pll_partition_t * partition,
+						int freqs_index,
+						int site)
+{
+  double inv_site_lk = 0.0;
+
+  if ((partition->prop_invar > 0.0)
+      && (partition->invariant[site] != PLL_INVALID_STATE))
+    {
+      inv_site_lk =
+	partition->
+	  frequencies[freqs_index][(size_t)partition->invariant[site]];
+    }
+  return inv_site_lk;
+}
+
 double pll_compute_root_loglikelihood(pll_partition_t * partition, 
                                       int clv_index, 
                                       int freqs_index)
@@ -91,6 +107,7 @@ double pll_compute_root_loglikelihood(pll_partition_t * partition,
   int rates = partition->rate_cats;
   int states = partition->states;
   double * freqs = partition->frequencies[freqs_index];
+  double site_lk, inv_site_lk;
 
   for (i = 0; i < partition->sites; ++i)
   {
@@ -103,8 +120,21 @@ double pll_compute_root_loglikelihood(pll_partition_t * partition,
       }
       clv += states;
     }
-    logl += log(term / rates);
+
+    site_lk = term / rates;
+
+    if (partition->prop_invar > 0.0)
+    {
+      inv_site_lk = pll_compute_invariant_likelihood (partition,
+						      freqs_index,
+						      i);
+      site_lk = site_lk * (1. - partition->prop_invar)
+	  + inv_site_lk * partition->prop_invar;
+    }
+
+    logl += log (site_lk);
   }
+
 
   return logl;
 }
@@ -118,6 +148,7 @@ double pll_compute_edge_loglikelihood(pll_partition_t * partition,
   int n,i,j,k;
   double logl = 0;
   double terma, termb;
+  double site_lk, inv_site_lk;
 
   double * clvp = partition->clv[parent_clv_index];
   double * clvc = partition->clv[child_clv_index];
@@ -143,7 +174,18 @@ double pll_compute_edge_loglikelihood(pll_partition_t * partition,
       clvp += states;
       clvc += states;
     }
-    logl += log(terma / rates);
+
+    site_lk = terma / rates;
+
+    if (partition->prop_invar > 0.0) {
+      inv_site_lk = pll_compute_invariant_likelihood(partition,
+						     freqs_index,
+						     n);
+      site_lk = site_lk * (1. - partition->prop_invar) + inv_site_lk * partition->prop_invar;
+    }
+
+    logl += log(site_lk);
   }
+
   return logl;
 }

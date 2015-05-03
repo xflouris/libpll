@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2015 Tomas Flouri
+    Copyright (C) 2015 Tomas Flouri, Diego Darriba
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -308,7 +308,7 @@ void pll_update_prob_matrices(pll_partition_t * partition,
 
       /* exponentiate eigenvalues */
       for (j = 0; j < states; ++j)
-        expd[j] = exp(eigenvals[j] * rates[n] * branch_lengths[i]);
+        expd[j] = exp(eigenvals[j] * rates[n] * branch_lengths[i] / (1.0 - partition->prop_invar));
 
       for (j = 0; j < states; ++j)
         for (k = 0; k < states; ++k)
@@ -350,4 +350,11 @@ void pll_set_subst_params(pll_partition_t * partition,
                           int count)
 {
   memcpy(partition->subst_params[params_index], params, count*sizeof(double));
+}
+
+void pll_set_proportion_of_invariant_sites(pll_partition_t * partition,
+					   double prop_invar)
+{
+  assert(prop_invar >= 0.0 && prop_invar < 1.0);
+  partition->prop_invar = prop_invar;
 }

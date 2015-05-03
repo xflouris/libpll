@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2015 Tomas Flouri
+    Copyright (C) 2015 Tomas Flouri, Diego Darriba
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -50,6 +50,8 @@
 #define PLL_ALIGNMENT_SSE  16
 #define PLL_ALIGNMENT_AVX  32
 
+#define PLL_INVALID_STATE (-1)
+
 /* error codes */
 
 #define PLL_ERROR_UNKNOWN_PARTITION   1
@@ -67,6 +69,7 @@ typedef struct
   int rate_cats;
   int scale_buffers;
   int attributes;
+  double prop_invar;
 
   /* multiple to which memory is aligned */
   size_t alignment;
@@ -77,6 +80,7 @@ typedef struct
   double ** subst_params;
   double * scale_buffer;
   double ** frequencies;
+  char * invariant;
 
   /* eigen decomposition */
   int * eigen_decomp_valid;
@@ -155,6 +159,8 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
 PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition, 
                                   int tip_index, 
                                   const char * sequence);
+
+PLL_EXPORT void pll_set_proportion_of_invariant_sites(pll_partition_t * partition, double prop_invar);
 
 /* functions in likelihood.c */
 

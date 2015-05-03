@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2015 Tomas Flouri
+    Copyright (C) 2015 Tomas Flouri, Diego Darriba
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -120,6 +120,9 @@ pll_partition_t * pll_create_partition(int tips,
   partition->prob_matrices = prob_matrices;
   partition->rate_cats = rate_cats;
   partition->scale_buffers = scale_buffers;
+
+  partition->prop_invar = 0.0;
+  partition->invariant = NULL;
 
   partition->eigenvecs = NULL;
   partition->inv_eigenvecs = NULL;
@@ -297,14 +300,35 @@ int pll_destroy_partition(pll_partition_t * partition)
   return rc;
 }
 
+static int ambiguous_nt(int n) {
+  /*
+  assert (n>0 && n<=16);
+  n = n - ((n>>1)&5);
+  n = (n&3) + ((n>>2)&3);
+  return (n==1);
+  */
+  return !(n==1 || n==2 || n==4 || n==8);
+}
+
 int pll_set_tip_states(pll_partition_t * partition, 
                        int tip_index, 
                        const char * sequence)
 {
+  int set_invariant;
   const char * map;
   char c;
   int i,j;
   double * tipclv = partition->clv[tip_index];
+
+  //TODO: Decide whether the invariant sites array is initialized here or not
+
+  set_invariant = 0;
+  if (!partition->invariant) {
+      partition->invariant = (char *) calloc(partition->sites, sizeof(char));
+      for (i = 0; i < partition->sites; ++i)
+	partition->invariant[i] = PLL_INVALID_STATE;
+      set_invariant = 1;
+  }
 
   switch (partition->states)
   {
@@ -318,24 +342,58 @@ int pll_set_tip_states(pll_partition_t * partition,
         assert(0);
   }
 
-
   for (i = 0; i < partition->sites; ++i)
   {
-    if ((c = map[(int)sequence[i]]) == -1)
+    if ((c = map[(int) sequence[i]]) == -1)
       return PLL_FAILURE;
+
+    switch (partition->states)
+      {
+      case 4:
+	if (set_invariant)
+	{
+	  if (!ambiguous_nt(c))
+	    partition->invariant[i] = (char) ((log (c) / log (2)));
+	}
+	else
+	{
+	  if (ambiguous_nt(c) ||
+	      ((partition->invariant[i] != PLL_INVALID_STATE)
+	      && partition->invariant[i] != (char) (log (c) / log (2))))
+	  {
+	    partition->invariant[i] = PLL_INVALID_STATE;
+	  }
+	}
+	break;
+      case 20:
+	if (set_invariant)
+	{
+	  partition->invariant[i] = (char) (c);
+	}
+	else
+	{
+	  if (partition->invariant[i] && partition->invariant[i] != (char) c)
+	  {
+	    partition->invariant[i] = PLL_INVALID_STATE;
+	  }
+	}
+	break;
+      default:
+	assert(0);
+      }
+
     for (j = 0; j < partition->states; ++j)
     {
       tipclv[j] = c & 1;
       c >>= 1;
     }
 
-
     /* fill in the entries for the other gamma values */
     tipclv += partition->states;
     for (j = 0; j < partition->rate_cats - 1; ++j)
     {
-      memcpy(tipclv, tipclv - partition->states, 
-                        partition->states * sizeof(double));
+      memcpy (tipclv, tipclv - partition->states,
+	      partition->states * sizeof(double));
       tipclv += partition->states;
     }
   }
