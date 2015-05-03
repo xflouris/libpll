@@ -25,7 +25,7 @@ void pll_show_pmatrix(pll_partition_t * partition, int index)
 {
   int i,j,k;
   double * pmatrix;
-  int states = states; 
+  int states = partition->states; 
 
   for (k = 0; k < partition->rate_cats; ++k)
   {
