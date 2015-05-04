@@ -79,19 +79,19 @@ void pll_update_partials(pll_partition_t * partition,
   }
 }
 
-static double pll_compute_invariant_likelihood (pll_partition_t * partition,
-						int freqs_index,
-						int site)
+static double compute_invariant_likelihood (pll_partition_t * partition,
+                                            int freqs_index,
+                                            int site)
 {
   double inv_site_lk = 0.0;
 
   if ((partition->prop_invar > 0.0)
       && (partition->invariant[site] != PLL_INVALID_STATE))
-    {
+  {
       inv_site_lk =
-	partition->
-	  frequencies[freqs_index][(size_t)partition->invariant[site]];
-    }
+        partition->
+          frequencies[freqs_index][(size_t)partition->invariant[site]];
+  }
   return inv_site_lk;
 }
 
@@ -125,11 +125,11 @@ double pll_compute_root_loglikelihood(pll_partition_t * partition,
 
     if (partition->prop_invar > 0.0)
     {
-      inv_site_lk = pll_compute_invariant_likelihood (partition,
-						      freqs_index,
-						      i);
+      inv_site_lk = compute_invariant_likelihood (partition,
+                                                  freqs_index,
+                                                  i);
       site_lk = site_lk * (1. - partition->prop_invar)
-	  + inv_site_lk * partition->prop_invar;
+          + inv_site_lk * partition->prop_invar;
     }
 
     logl += log (site_lk);
@@ -178,9 +178,9 @@ double pll_compute_edge_loglikelihood(pll_partition_t * partition,
     site_lk = terma / rates;
 
     if (partition->prop_invar > 0.0) {
-      inv_site_lk = pll_compute_invariant_likelihood(partition,
-						     freqs_index,
-						     n);
+      inv_site_lk = compute_invariant_likelihood(partition,
+                                                 freqs_index,
+                                                 n);
       site_lk = site_lk * (1. - partition->prop_invar) + inv_site_lk * partition->prop_invar;
     }
 

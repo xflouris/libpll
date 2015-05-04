@@ -326,7 +326,7 @@ int pll_set_tip_states(pll_partition_t * partition,
   if (!partition->invariant) {
       partition->invariant = (char *) calloc(partition->sites, sizeof(char));
       for (i = 0; i < partition->sites; ++i)
-	partition->invariant[i] = PLL_INVALID_STATE;
+        partition->invariant[i] = PLL_INVALID_STATE;
       set_invariant = 1;
   }
 
@@ -350,36 +350,36 @@ int pll_set_tip_states(pll_partition_t * partition,
     switch (partition->states)
       {
       case 4:
-	if (set_invariant)
-	{
-	  if (!ambiguous_nt(c))
-	    partition->invariant[i] = (char) ((log (c) / log (2)));
-	}
-	else
-	{
-	  if (ambiguous_nt(c) ||
-	      ((partition->invariant[i] != PLL_INVALID_STATE)
-	      && partition->invariant[i] != (char) (log (c) / log (2))))
-	  {
-	    partition->invariant[i] = PLL_INVALID_STATE;
-	  }
-	}
-	break;
+        if (set_invariant)
+        {
+          if (!ambiguous_nt(c))
+            partition->invariant[i] = (char) log2(c);
+        }
+        else
+        {
+          if (ambiguous_nt(c) ||
+              ((partition->invariant[i] != PLL_INVALID_STATE)
+              && partition->invariant[i] != (char)log2(c)))
+          {
+            partition->invariant[i] = PLL_INVALID_STATE;
+          }
+        }
+        break;
       case 20:
-	if (set_invariant)
-	{
-	  partition->invariant[i] = (char) (c);
-	}
-	else
-	{
-	  if (partition->invariant[i] && partition->invariant[i] != (char) c)
-	  {
-	    partition->invariant[i] = PLL_INVALID_STATE;
-	  }
-	}
-	break;
+        if (set_invariant)
+        {
+          partition->invariant[i] = (char) (c);
+        }
+        else
+        {
+          if (partition->invariant[i] && partition->invariant[i] != (char)c)
+          {
+            partition->invariant[i] = PLL_INVALID_STATE;
+          }
+        }
+        break;
       default:
-	assert(0);
+        assert(0);
       }
 
     for (j = 0; j < partition->states; ++j)
@@ -392,8 +392,8 @@ int pll_set_tip_states(pll_partition_t * partition,
     tipclv += partition->states;
     for (j = 0; j < partition->rate_cats - 1; ++j)
     {
-      memcpy (tipclv, tipclv - partition->states,
-	      partition->states * sizeof(double));
+      memcpy(tipclv, tipclv - partition->states,
+             partition->states * sizeof(double));
       tipclv += partition->states;
     }
   }
