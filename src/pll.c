@@ -37,6 +37,7 @@ static void dealloc_partition_data(pll_partition_t * partition)
   free(partition->rates);
   free(partition->scale_buffer);
   free(partition->eigen_decomp_valid);
+  free(partition->invariant);
 
 /*
   if (partition->tip_clv)

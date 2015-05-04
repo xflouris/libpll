@@ -160,7 +160,8 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
                                   int tip_index, 
                                   const char * sequence);
 
-PLL_EXPORT void pll_set_proportion_of_invariant_sites(pll_partition_t * partition, double prop_invar);
+PLL_EXPORT void pll_set_invariant_sites_proportion(pll_partition_t * partition, 
+                                                   double prop_invar);
 
 /* functions in likelihood.c */
 

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2015 Tomas Flouri, Diego Darriba
+    Copyright (C) 2015 Tomas Flouri, Diego Darriba, Alexandros Stamatakis
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -180,7 +180,9 @@ static void mytred2(double **a, const int n, double *d, double *e)
 
 /* TODO: Add code for SSE/AVX. Perhaps allocate qmatrix in one chunk to avoid the
 complex checking when to dealloc */
-static double ** create_ratematrix(double * params, double * frequencies, int states)
+static double ** create_ratematrix(double * params, 
+                                   double * frequencies, 
+                                   int states)
 {
   int i,j,k,success;
 
@@ -191,9 +193,10 @@ static double ** create_ratematrix(double * params, double * frequencies, int st
   double * params_normalized = (double *)malloc(sizeof(double) * params_count);
   if (!params_normalized) return NULL;
   memcpy(params_normalized,params,params_count*sizeof(double));
-  for(i = 0; i < params_count; ++i) params_normalized[i] /= params_normalized[params_count - 1];
+  for (i = 0; i < params_count; ++i) 
+    params_normalized[i] /= params_normalized[params_count - 1];
 
-
+  /* allocate qmatrix */
   qmatrix = (double **)malloc(states*sizeof(double *));
   if (!qmatrix) 
   {
@@ -212,36 +215,35 @@ static double ** create_ratematrix(double * params, double * frequencies, int st
     free(params_normalized);
     return NULL;
   }
+  printf("Here!\n");
+
+  /* construct a matrix equal to sqrt(pi) * Q sqrt(pi)^-1 in order to ensure
+     it is symmetric */
+
+  for (i = 0; i < states; ++i) qmatrix[i][i] = 0;
 
   k = 0;
-  for(i = 0; i < states; ++i)
-    for (j = i+1; j < states; ++j)
-      qmatrix[i][j] = qmatrix[j][i] = params_normalized[k++];
-
-
-  for (i = 0; i < states; ++i)
-    for (j = i+1; j < states; ++j)
-    {
-      qmatrix[i][j] *= frequencies[j];
-      qmatrix[j][i] = qmatrix[i][j];
-    }
-
   for (i = 0; i < states; ++i)
   {
-    qmatrix[i][i] = 0;
-    for (j = 0; j < states; ++j)
-      if (j != i) qmatrix[i][i] -= qmatrix[i][j];
+    for (j = i+1; j < states; ++j)
+    {
+      double factor = params_normalized[k++];
+      qmatrix[i][j] = qmatrix[j][i] = factor * sqrt(frequencies[i] * frequencies[j]);
+      qmatrix[i][i] -= factor * frequencies[j];
+      qmatrix[j][j] -= factor * frequencies[i];
+    }
   }
+
 
   double mean = 0;
   for (i = 0; i < states; ++i) mean += frequencies[i] * (-qmatrix[i][i]);
   for (i = 0; i < states; ++i) 
-    for (j = 0; j < states; ++j) qmatrix[i][j] /= mean;
+    for (j = 0; j < states; ++j) 
+      qmatrix[i][j] /= mean;
     
   free(params_normalized);
   
   return qmatrix;
-      
 }
 
 void pll_update_prob_matrices(pll_partition_t * partition, 
@@ -260,11 +262,13 @@ void pll_update_prob_matrices(pll_partition_t * partition,
   double * inv_eigenvecs = partition->inv_eigenvecs[params_index];
   double * eigenvals = partition->eigenvals[params_index];
   double * rates = partition->rates;
+  double * freqs = partition->frequencies[params_index];
 
   double * pmatrix;
 
   int states = partition->states;
 
+  /* check whether we have cached an eigen decomposition. If not, compute it */
   if (!partition->eigen_decomp_valid[params_index]) 
   {
     a = create_ratematrix(partition->subst_params[params_index],
@@ -288,6 +292,16 @@ void pll_update_prob_matrices(pll_partition_t * partition,
     for (k = 0, i = 0; i < states; ++i)
       for (j = i; j < states*states; j += states)
         inv_eigenvecs[k++] = eigenvecs[j];
+
+    /* multiply the inverse eigen vectors from the left with sqrt(pi)^-1 */
+    for (i = 0; i < states; ++i)
+      for (j = 0; j < states; ++j)
+        inv_eigenvecs[i*states+j] /= sqrt(freqs[i]);
+
+    /* multiply the eigen vectors from the right with sqrt(pi) */
+    for (i = 0; i < states; ++i)
+      for (j = 0; j < states; ++j)
+        eigenvecs[i*states+j] *= sqrt(freqs[j]);
   
     partition->eigen_decomp_valid[params_index] = 1;
     free(d);
@@ -352,8 +366,8 @@ void pll_set_subst_params(pll_partition_t * partition,
   memcpy(partition->subst_params[params_index], params, count*sizeof(double));
 }
 
-void pll_set_proportion_of_invariant_sites(pll_partition_t * partition,
-					   double prop_invar)
+void pll_set_invariant_sites_proportion(pll_partition_t * partition,
+                                        double prop_invar)
 {
   assert(prop_invar >= 0.0 && prop_invar < 1.0);
   partition->prop_invar = prop_invar;
