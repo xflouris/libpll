@@ -172,8 +172,10 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
                                          double * branch_lengths, 
                                          int count);
 
-PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition, 
-                                          double prop_invar);
+PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition);
+
+PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition, 
+                                                     double prop_invar);
 
 /* functions in likelihood.c */
 

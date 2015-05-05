@@ -47,9 +47,10 @@ Below is list of available functions in the current version.
 * `void pll_set_frequencies(pll_partition_t * partition, pll_partition_t * partition, int params_index, double * frequencies);`
 * `void pll_set_category_rates(pll_partition_t * partition, double * rates);`
 * `void pll_update_prob_matrices(pll_partition_t * partition, int params_index, int * matrix_indices, double * branch_lenghts);`
-* `void pll_set_tip_states(pll_partition_t * partition, int tip_index, const unsigned int * map, const char * sequence);`
+* `int pll_set_tip_states(pll_partition_t * partition, int tip_index, const unsigned int * map, const char * sequence);`
 * `void pll_set_tip_clv(pll_partition_t * partition, int tip_index, const double * clv);`
-* `void pll_update_invariant_sites(pll_partition_t * partition, double prop_invar);`
+* `int pll_update_invariant_sites_proportion(pll_partition_t * partition, double prop_invar);`
+* `int pll_update_invariant_sites(pll_partition_t * partition);`
 
 ### Likelihood computation
 

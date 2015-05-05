@@ -366,23 +366,36 @@ void pll_set_subst_params(pll_partition_t * partition,
   memcpy(partition->subst_params[params_index], params, count*sizeof(double));
 }
 
-PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition, 
-                                          double prop_invar)
+PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition, 
+                                                     double prop_invar) 
+{
+  if (prop_invar < 0 || prop_invar >= 1) 
+  {
+    return PLL_FAILURE;
+  }
+
+  if (prop_invar > 0.0 && !partition->invariant)
+  {
+      pll_update_invariant_sites(partition);
+  }
+
+  partition->prop_invar = prop_invar;
+
+  return PLL_SUCCESS;
+}
+
+PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition) 
 {
   int i,j,k;
   double * tipclv;
   int state;
 
-  if (prop_invar < 0 || prop_invar >= 1) 
-    return PLL_FAILURE;
-
-  partition->prop_invar = prop_invar;
-
-  if (!partition->invariant)
+  if (!partition->invariant) 
   {
-    partition->invariant = (int *)calloc(partition->sites, sizeof(int));
-    if (!partition->invariant) return PLL_FAILURE;
+    partition->invariant = (int *)malloc(partition->sites * sizeof(int));
   }
+
+  memset(partition->invariant, 0, partition->sites*sizeof(int));
   for (i = 0; i < partition->tips; ++i)
   {
     tipclv = partition->clv[i];
