@@ -215,7 +215,6 @@ static double ** create_ratematrix(double * params,
     free(params_normalized);
     return NULL;
   }
-  printf("Here!\n");
 
   /* construct a matrix equal to sqrt(pi) * Q sqrt(pi)^-1 in order to ensure
      it is symmetric */
@@ -393,7 +392,7 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition,
       for (k = 0; k < partition->states; ++k)
         state |= ((int)tipclv[k] << k);
       partition->invariant[j] |= state;
-      tipclv += (partition->rate_cats * partition->sites);
+      tipclv += (partition->rate_cats * partition->states);
     }
   }
 
