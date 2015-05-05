@@ -39,7 +39,7 @@ Below is list of available functions in the current version.
 
 * `int pll_dlist_append(pll_dlist_t ** dlist, void * data);`
 * `int pll_dlist_prepend(pll_dlist_t ** dlist, void * data);`
-* `int pll_dlist_remove(pll_dlist_t ** dlist, void * data);
+* `int pll_dlist_remove(pll_dlist_t ** dlist, void * data);`
 
 ### Models setup
 
@@ -47,8 +47,10 @@ Below is list of available functions in the current version.
 * `void pll_set_frequencies(pll_partition_t * partition, pll_partition_t * partition, int params_index, double * frequencies);`
 * `void pll_set_category_rates(pll_partition_t * partition, double * rates);`
 * `void pll_update_prob_matrices(pll_partition_t * partition, int params_index, int * matrix_indices, double * branch_lenghts);`
-* `void pll_set_tip_states(pll_partition_t * partition, int tip_index, const char * sequence);`
-* `void pll_set_invariant_sites_proportion(pll_partition_t * partition, double prop_invar);
+* `void pll_set_tip_states(pll_partition_t * partition, int tip_index, const unsigned int * map, const char * sequence);`
+* `void pll_set_tip_clv(pll_partition_t * partition, int tip_index, const double * clv);`
+* `void pll_update_invariant_sites(pll_partition_t * partition, double prop_invar);`
+
 ### Likelihood computation
 
 * `void pll_update_partials(pll_partition_t * partition, pll_operation_t * operations, int count);`

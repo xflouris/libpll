@@ -50,7 +50,12 @@
 #define PLL_ALIGNMENT_SSE  16
 #define PLL_ALIGNMENT_AVX  32
 
-#define PLL_INVALID_STATE (-1)
+/* attribute flags */
+
+#define PLL_ATTRIB_ARCH_SSE       1 << 0
+#define PLL_ATTRIB_ARCH_AVX       1 << 1
+#define PLL_ATTRIB_ARCH_AVX2      1 << 2
+#define PLL_ATTRIB_ARCH_AVX512    1 << 3
 
 /* error codes */
 
@@ -80,7 +85,7 @@ typedef struct
   double ** subst_params;
   double * scale_buffer;
   double ** frequencies;
-  char * invariant;
+  int * invariant;
 
   /* eigen decomposition */
   int * eigen_decomp_valid;
@@ -109,8 +114,9 @@ typedef struct pll_dlist
 /* common data */
 
 extern int pll_errno;
-extern char map_nt[256];
-extern char map_aa[256];
+extern unsigned int pll_map_bin[256];
+extern unsigned int pll_map_nt[256];
+extern unsigned int pll_map_aa[256];
 
 #ifdef __cplusplus
 extern "C" {
@@ -129,6 +135,16 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
                                                   int attributes);
 
 PLL_EXPORT int pll_destroy_partition(pll_partition_t * partition);
+
+PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition, 
+                                  int tip_index, 
+                                  const unsigned int * map,
+                                  const char * sequence);
+
+PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
+                                int tip_index,
+                                const double * clv);
+
 
 /* functions in dlist.c */
 
@@ -156,12 +172,8 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
                                          double * branch_lengths, 
                                          int count);
 
-PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition, 
-                                  int tip_index, 
-                                  const char * sequence);
-
-PLL_EXPORT void pll_set_invariant_sites_proportion(pll_partition_t * partition, 
-                                                   double prop_invar);
+PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition, 
+                                          double prop_invar);
 
 /* functions in likelihood.c */
 

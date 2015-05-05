@@ -322,7 +322,8 @@ void pll_update_prob_matrices(pll_partition_t * partition,
 
       /* exponentiate eigenvalues */
       for (j = 0; j < states; ++j)
-        expd[j] = exp(eigenvals[j] * rates[n] * branch_lengths[i] / (1.0 - partition->prop_invar));
+        expd[j] = exp(eigenvals[j] * rates[n] * branch_lengths[i] 
+                                   / (1.0 - partition->prop_invar));
 
       for (j = 0; j < states; ++j)
         for (k = 0; k < states; ++k)
@@ -366,9 +367,45 @@ void pll_set_subst_params(pll_partition_t * partition,
   memcpy(partition->subst_params[params_index], params, count*sizeof(double));
 }
 
-void pll_set_invariant_sites_proportion(pll_partition_t * partition,
-                                        double prop_invar)
+PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition, 
+                                          double prop_invar)
 {
-  assert(prop_invar >= 0.0 && prop_invar < 1.0);
+  int i,j,k;
+  double * tipclv;
+  int state;
+
+  if (prop_invar < 0 || prop_invar >= 1) 
+    return PLL_FAILURE;
+
   partition->prop_invar = prop_invar;
+
+  if (!partition->invariant)
+  {
+    partition->invariant = (int *)calloc(partition->sites, sizeof(int));
+    if (!partition->invariant) return PLL_FAILURE;
+  }
+  for (i = 0; i < partition->tips; ++i)
+  {
+    tipclv = partition->clv[i];
+    for (j = 0; j < partition->sites; ++j)
+    {
+      state = 0;
+      for (k = 0; k < partition->states; ++k)
+        state |= ((int)tipclv[k] << k);
+      partition->invariant[j] |= state;
+      tipclv += (partition->rate_cats * partition->sites);
+    }
+  }
+
+  /* if all basecalls at current site are the same and not degenerate set the 
+     index in invariant to the frequency index of the basecall, otherwise -1 */
+  for (i = 0; i < partition->sites; ++i)
+    if (__builtin_popcount(partition->invariant[i]) > 1)
+      partition->invariant[i] = -1;
+    else
+      partition->invariant[i] = __builtin_ctz(partition->invariant[i]);
+  
+  return PLL_SUCCESS;
 }
+
+

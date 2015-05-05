@@ -88,15 +88,15 @@ static void dealloc_partition_data(pll_partition_t * partition)
   free(partition);
 }
 
-pll_partition_t * pll_create_partition(int tips,
-                                       int clv_buffers,
-                                       int states,
-                                       int sites,
-                                       int rate_matrices,
-                                       int prob_matrices,
-                                       int rate_cats,
-                                       int scale_buffers,
-                                       int attributes)
+PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
+                                                  int clv_buffers,
+                                                  int states,
+                                                  int sites,
+                                                  int rate_matrices,
+                                                  int prob_matrices,
+                                                  int rate_cats,
+                                                  int scale_buffers,
+                                                  int attributes)
 {
   int i;
 
@@ -282,7 +282,6 @@ pll_partition_t * pll_create_partition(int tips,
     dealloc_partition_data(partition);
     return PLL_FAILURE;
   }
-  
 
   if (!pll_dlist_append(&partition_list, (void *)partition))
   {
@@ -293,7 +292,7 @@ pll_partition_t * pll_create_partition(int tips,
   return partition;
 }
 
-int pll_destroy_partition(pll_partition_t * partition)
+PLL_EXPORT int pll_destroy_partition(pll_partition_t * partition)
 {
   int rc;
   rc = pll_dlist_remove(&partition_list, (void *)partition);
@@ -301,88 +300,23 @@ int pll_destroy_partition(pll_partition_t * partition)
   return rc;
 }
 
-static int ambiguous_nt(int n) {
-  /*
-  assert (n>0 && n<=16);
-  n = n - ((n>>1)&5);
-  n = (n&3) + ((n>>2)&3);
-  return (n==1);
-  */
-  return !(n==1 || n==2 || n==4 || n==8);
-}
-
-int pll_set_tip_states(pll_partition_t * partition, 
-                       int tip_index, 
-                       const char * sequence)
+PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition, 
+                                  int tip_index,
+                                  const unsigned int * map,
+                                  const char * sequence)
 {
-  int set_invariant;
-  const char * map;
-  char c;
+  unsigned int c;
   int i,j;
   double * tipclv = partition->clv[tip_index];
 
-  //TODO: Decide whether the invariant sites array is initialized here or not
-
-  set_invariant = 0;
-  if (!partition->invariant) {
-      partition->invariant = (char *) calloc(partition->sites, sizeof(char));
-      for (i = 0; i < partition->sites; ++i)
-        partition->invariant[i] = PLL_INVALID_STATE;
-      set_invariant = 1;
-  }
-
-  switch (partition->states)
-  {
-    case 4:
-        map = map_nt;
-        break;
-    case 20:
-        map = map_aa;
-        assert(0);
-    default:
-        assert(0);
-  }
-
+  /* iterate through sites */
   for (i = 0; i < partition->sites; ++i)
   {
-    if ((c = map[(int) sequence[i]]) == -1)
+    if ((c = map[(int)sequence[i]]) == 0)
       return PLL_FAILURE;
 
-    switch (partition->states)
-      {
-      case 4:
-        if (set_invariant)
-        {
-          if (!ambiguous_nt(c))
-            partition->invariant[i] = (char) log2(c);
-        }
-        else
-        {
-          if (ambiguous_nt(c) ||
-              ((partition->invariant[i] != PLL_INVALID_STATE)
-              && partition->invariant[i] != (char)log2(c)))
-          {
-            partition->invariant[i] = PLL_INVALID_STATE;
-          }
-        }
-        break;
-      case 20:
-        if (set_invariant)
-        {
-          partition->invariant[i] = (char) (c);
-        }
-        else
-        {
-          if (partition->invariant[i] && partition->invariant[i] != (char)c)
-          {
-            partition->invariant[i] = PLL_INVALID_STATE;
-          }
-        }
-        break;
-      default:
-        assert(0);
-      }
-
+    /* decompose basecall into the encoded residues and set the appropriate
+       positions in the tip vector */
     for (j = 0; j < partition->states; ++j)
     {
       tipclv[j] = c & 1;
@@ -401,3 +335,20 @@ int pll_set_tip_states(pll_partition_t * partition,
   return PLL_SUCCESS;
 }
 
+PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
+                                int tip_index,
+                                const double * clv)
+{
+  int i,j;
+  double * tipclv = partition->clv[tip_index];
+
+  for (i = 0; i < partition->sites; ++i)
+  {
+    for (j = 0; j < partition->rate_cats; ++j)
+    {
+      memcpy(tipclv, clv, partition->states*sizeof(double));
+      tipclv += partition->states;
+    }
+    clv += partition->states;
+  }
+}
