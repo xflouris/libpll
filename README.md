@@ -63,6 +63,10 @@ Below is list of available functions in the current version.
 * `void pll_show_pmatrix(pll_partition_t * partition, int index);`
 * `void pll_show_clv(pll_partition_t * partition, int index);`
 
+### Auxiliary functions
+
+* `int pll_compute_gamma_cats(double alpha, int categories, double * output_rates);`
+
 ## Usage examples
 
 Please refer to our wiki page.
