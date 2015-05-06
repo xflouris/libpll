@@ -420,4 +420,20 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
   return PLL_SUCCESS;
 }
 
+PLL_EXPORT int pll_set_protein_model(pll_partition_t * partition, int params_index, int model)
+{
 
+  if (!pll_fill_aa_matrix(partition->subst_params[params_index], model))
+  {
+    return PLL_FAILURE;
+  }
+
+  if (!pll_fill_aa_frequencies(partition->frequencies[params_index], model))
+  {
+    return PLL_FAILURE;
+  }
+
+  return PLL_SUCCESS;
+
+  //NOTE: PLL/RAxML do a rate scaling by 10.0/max_rate
+}
