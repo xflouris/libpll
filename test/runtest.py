@@ -98,6 +98,8 @@ if __name__ == "__main__":
     fancyprint("-", "{:>3}/{:<3} ".format(cur_test, num_tests) + now)
     fancyprint("cyan", " {:<18} ".format(filename))
 
+    sys.stdout.flush()
+
     # Run test case
     p1 = Popen("obj/"+filename+">tmp", shell=True)
     os.waitpid(p1.pid, 0)
