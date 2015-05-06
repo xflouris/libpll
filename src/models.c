@@ -268,7 +268,7 @@ void pll_update_prob_matrices(pll_partition_t * partition,
   int states = partition->states;
 
   /* check whether we have cached an eigen decomposition. If not, compute it */
-  if (!partition->eigen_decomp_valid[params_index]) 
+  if (!partition->eigen_decomp_valid[params_index])
   {
     a = create_ratematrix(partition->subst_params[params_index],
                           partition->frequencies[params_index],
@@ -351,6 +351,7 @@ void pll_set_frequencies(pll_partition_t * partition,
   memcpy(partition->frequencies[params_index], 
          frequencies, 
          partition->states*sizeof(double));
+  partition->eigen_decomp_valid[params_index] = 0;
 }
 
 void pll_set_category_rates(pll_partition_t * partition, double * rates)
@@ -364,6 +365,7 @@ void pll_set_subst_params(pll_partition_t * partition,
                           int count)
 {
   memcpy(partition->subst_params[params_index], params, count*sizeof(double));
+  partition->eigen_decomp_valid[params_index] = 0;
 }
 
 PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition, 
@@ -433,6 +435,7 @@ PLL_EXPORT int pll_set_protein_model(pll_partition_t * partition, int params_ind
     return PLL_FAILURE;
   }
 
+  partition->eigen_decomp_valid[params_index] = 0;
   return PLL_SUCCESS;
 
   //NOTE: PLL/RAxML do a rate scaling by 10.0/max_rate
