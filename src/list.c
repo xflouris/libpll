@@ -71,5 +71,7 @@ int pll_dlist_remove(pll_dlist_t ** dlist, void * data)
     (*dlist)->prev->next = (*dlist)->next;
 
   free(*dlist);
+  *dlist = NULL;
+
   return PLL_SUCCESS;
 }
