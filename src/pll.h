@@ -221,6 +221,13 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  int child_clv_index, 
                                                  int matrix_index,
                                                  int freqs_index);
+
+/* functions in gamma.c */
+
+PLL_EXPORT int pll_compute_gamma_cats(double alpha, 
+                                      int categories, 
+                                      double * output_rates);
+
 /* functions in output.c */
 
 PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition, int index);

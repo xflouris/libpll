@@ -24,32 +24,21 @@ PROFILING=-g
 # Compiler warnings
 WARN=-Wall -Wsign-compare
 
-AR = ar
 CC = gcc
-CFLAGS = -fPIC -g -msse3 -O3 $(WARN)
-LINKFLAGS=$(PROFILING)
-LIBS=-lm
-
-BISON = bison
-FLEX = flex
-
-PROG=libpll.so
+CFLAGS = -Wall -g -O3 $(WARN)
+LINKFLAGS = -L. $(PROFILING)
+LIBS=-lm -lpll
+PROG=rooted
 
 all: $(PROG)
 
-OBJS=gamma.o likelihood.o list.o maps.o models.o pll.o output.o
+OBJS=rooted.o
 
 $(PROG): $(OBJS)
-	$(CC) -shared -Wl,-soname,$@ -o $@ $+
+	$(CC) $(LINKFLAGS) -o $@ $+ $(LIBS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
-
-%.c: %.y
-	$(BISON) -d -o $@ $<
-
-%.c: %.l
-	$(FLEX) -o $@ $<
 
 clean:
 	rm -f *~ $(OBJS) gmon.out $(PROG)
