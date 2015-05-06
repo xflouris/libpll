@@ -229,30 +229,39 @@ PLL_EXPORT int pll_compute_gamma_cats(double alpha,
     lnga1, 
     alfa = alpha, 
     beta = alpha,
-    *gammaProbs = (double *)malloc(categories * sizeof(double));
+    *gammaProbs;
 
   /* Note that ALPHA_MIN setting is somewhat critical due to   */
   /* numerical instability caused by very small rate[0] values */
   /* induced by low alpha values around 0.01 */
 
-  if (alpha < ALPHA_MIN) return PLL_FAILURE;
+  if (alpha < ALPHA_MIN || categories < 1) return PLL_FAILURE;
 
-  lnga1 = LnGamma(alfa + 1);
+  if (categories == 1)
+  {
+    output_rates[0] = 1.0;
+  }
+  else
+  {
+    gammaProbs = (double *)malloc(categories * sizeof(double));
 
-  for (i = 0; i < categories - 1; i++)
-    gammaProbs[i] = POINT_GAMMA((i + 1.0) / categories, alfa, beta);
+    lnga1 = LnGamma(alfa + 1);
 
-  for (i = 0; i < categories - 1; i++)
-    gammaProbs[i] = IncompleteGamma(gammaProbs[i] * beta, alfa + 1, lnga1);   
+    for (i = 0; i < categories - 1; i++)
+      gammaProbs[i] = POINT_GAMMA((i + 1.0) / categories, alfa, beta);
 
-  output_rates[0] = gammaProbs[0] * factor;
+    for (i = 0; i < categories - 1; i++)
+      gammaProbs[i] = IncompleteGamma(gammaProbs[i] * beta, alfa + 1, lnga1);
+
+    output_rates[0] = gammaProbs[0] * factor;
+
+    output_rates[categories - 1] = (1 - gammaProbs[categories - 2]) * factor;
+
+    for (i= 1; i < categories - 1; i++)
+      output_rates[i] = (gammaProbs[i] - gammaProbs[i - 1]) * factor;
   
-  output_rates[categories - 1] = (1 - gammaProbs[categories - 2]) * factor;
-
-  for (i= 1; i < categories - 1; i++)  
-    output_rates[i] = (gammaProbs[i] - gammaProbs[i - 1]) * factor;      
-
-  free(gammaProbs);
+    free(gammaProbs);
+  }
 
   return PLL_SUCCESS;
 }
