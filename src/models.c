@@ -42,7 +42,6 @@ static int mytqli(double *d, double *e, const int n, double **z)
               if (fabs(e[m - 1]) + dd == dd)
                 break;
             }
-
           if (m != l)
            {
              assert(iter < 30);
@@ -102,7 +101,7 @@ static void mytred2(double **a, const int n, double *d, double *e)
 {
   int     l, k, j, i;
   double  scale, hh, h, g, f; 
- 
+
   for (i = n; i > 1; i--)
     {
       l = i - 1;
@@ -193,8 +192,10 @@ static double ** create_ratematrix(double * params,
   double * params_normalized = (double *)malloc(sizeof(double) * params_count);
   if (!params_normalized) return NULL;
   memcpy(params_normalized,params,params_count*sizeof(double));
-  for (i = 0; i < params_count; ++i) 
-    params_normalized[i] /= params_normalized[params_count - 1];
+
+  if (params_normalized[params_count - 1] > 0.0)
+    for (i = 0; i < params_count; ++i)
+      params_normalized[i] /= params_normalized[params_count - 1];
 
   /* allocate qmatrix */
   qmatrix = (double **)malloc(states*sizeof(double *));
