@@ -88,7 +88,7 @@ int main(int argc, char * argv[])
 
       printf("\n\n TEST alpha(ncats) = %6.2f(%2d)\n\n", alpha[i], n_cat_gamma[k]);
 
-      double * rate_cats = (double *) malloc(2 * n_cat_gamma[k] * sizeof(double));
+      double * rate_cats = (double *) malloc(n_cat_gamma[k] * sizeof(double));
 
       if (pll_compute_gamma_cats(alpha[i], n_cat_gamma[k], rate_cats) == PLL_FAILURE)
       {
