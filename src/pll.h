@@ -50,6 +50,8 @@
 #define PLL_ALIGNMENT_SSE  16
 #define PLL_ALIGNMENT_AVX  32
 
+#define PLL_LINEALLOC 2048
+
 /* attribute flags */
 
 #define PLL_ATTRIB_ARCH_SSE       1 << 0
@@ -59,7 +61,16 @@
 
 /* error codes */
 
-#define PLL_ERROR_UNKNOWN_PARTITION   1
+#define PLL_ERROR_FILE_OPEN              1 
+#define PLL_ERROR_FILE_SEEK              2
+#define PLL_ERROR_FILE_EOF               3
+
+#define PLL_ERROR_FASTA_ILLEGALCHAR      4
+#define PLL_ERROR_FASTA_UNPRINTABLECHAR  5
+#define PLL_ERROR_FASTA_INVALIDHEADER    6
+
+#define PLL_ERROR_MEM_ALLOC              7
+
 
 /* structures and data types */
 
@@ -110,13 +121,26 @@ typedef struct pll_dlist
   void * data;
 } pll_dlist_t;
 
+typedef struct
+{
+  FILE * fp;
+  char line[PLL_LINEALLOC];
+  unsigned int * chrstatus;
+  long no;
+  long filesize;
+  long lineno;
+  long stripped_count;
+  long stripped[256];
+} pll_fasta_t;
 
 /* common data */
 
 extern int pll_errno;
+extern char pll_errmsg[200];
 extern unsigned int pll_map_bin[256];
 extern unsigned int pll_map_nt[256];
 extern unsigned int pll_map_aa[256];
+extern unsigned int pll_map_fasta[256];
 
 extern double pll_aa_rates_dayhoff[190];
 extern double pll_aa_rates_lg[190];
@@ -243,6 +267,21 @@ PLL_EXPORT int pll_compute_gamma_cats(double alpha,
 
 PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition, int index);
 PLL_EXPORT void pll_show_clv(pll_partition_t * partition, int index);
+
+/* functions in fasta.c */
+
+PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename,
+                                        unsigned int * map);
+
+PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
+                                 long * head_len,  char ** seq,
+                                 long * seq_len, long * seqno);
+
+PLL_EXPORT void pll_fasta_close(pll_fasta_t * fd);
+
+PLL_EXPORT long pll_fasta_getfilesize(pll_fasta_t * fd);
+
+PLL_EXPORT long pll_fasta_getfilepos(pll_fasta_t * fd);
 
 #ifdef __cplusplus
 } /* extern "C" */

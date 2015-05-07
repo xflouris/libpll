@@ -22,6 +22,7 @@
 #include "pll.h"
 
 int pll_errno;
+char pll_errmsg[200] = {0};
 
 static pll_dlist_t * partition_list = NULL;
 static void dealloc_partition_data(pll_partition_t * partition);

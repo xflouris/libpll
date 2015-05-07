@@ -37,7 +37,7 @@ PROG=libpll.so
 
 all: $(PROG)
 
-OBJS=gamma.o likelihood.o list.o maps.o models.o pll.o output.o
+OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o
 
 $(PROG): $(OBJS)
 	$(CC) -shared -Wl,-soname,$@ -o $@ $+

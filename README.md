@@ -63,6 +63,14 @@ Below is list of available functions in the current version.
 * `void pll_show_pmatrix(pll_partition_t * partition, int index);`
 * `void pll_show_clv(pll_partition_t * partition, int index);`
 
+### Functions for parsing files
+
+* `pll_fasta_t * pll_fasta_open(const char * filename, unsigned int * map);`
+* `int pll_fasta_getnext(pll_fasta_t * fd, char ** head, long * head_len, char ** seq, long * seq_len, long * seqno);`
+* `void pll_fasta_close(pll_fasta_t * fd);`
+* `long pll_fasta_getfilesize(pll_fasta_t * fd);`
+* `long pll_fasta_getfilepos(pll_fasta_t * fd);`
+
 ### Auxiliary functions
 
 * `int pll_compute_gamma_cats(double alpha, int categories, double * output_rates);`
@@ -81,6 +89,8 @@ The code is written in C.
 
     File         | Description
 -----------------|----------------
+**fasta.**       | Functions for parsing FASTA files.
+**gamma.c**      | Functions related to Gamma (&Gamma;) function.
 **likelihood.c** | Likelihood computation functions.
 **list.c**       | (Doubly) Linked-list implementations.
 **Makefile**     | Makefile.
