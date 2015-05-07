@@ -392,6 +392,10 @@ double pll_aa_rates_mtmam[190] =
    614.00,   17.00,  107.00,    0.00,    0.00,    0.00,  237.00,   14.00,    0.00,    0.00
  };
 
+/*
+ * WARNING:
+ *    This matrix is different in PhyML and PAML/PLL
+ */
 double pll_aa_rates_mtart[190] =
  {
      0.20,    0.20,    1.00,  254.00,    0.20,    0.20,  200.00,    0.20,   26.00,    4.00,
@@ -676,7 +680,10 @@ double pll_aa_rates_stmtrev[190] =
 /*
  * WARNING:
  *    In PhyML/PAML the last frequency is 0.064718 instead of 064717.
- *    This makes the frequencies summing to 1.000001 instead of 1.
+ *    It makes the frequencies summing to 1.000001 instead of 1.
+ *
+ *    This happens also with other frequencies. For example, last freq
+ *    in LG is different in PhyML and in RAxML (.069147 vs .069146)
  */
 double pll_aa_freqs_dayhoff[20] =
  {
