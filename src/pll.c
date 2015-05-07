@@ -26,8 +26,6 @@ int pll_errno;
 static pll_dlist_t * partition_list = NULL;
 static void dealloc_partition_data(pll_partition_t * partition);
 
-
-
 static void dealloc_partition_data(pll_partition_t * partition)
 {
   int i;

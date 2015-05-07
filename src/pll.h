@@ -57,31 +57,6 @@
 #define PLL_ATTRIB_ARCH_AVX2      1 << 2
 #define PLL_ATTRIB_ARCH_AVX512    1 << 3
 
-/* protein models */
-#define PLL_PROTMODEL_DAYHOFF     1
-#define PLL_PROTMODEL_LG          2
-#define PLL_PROTMODEL_DCMUT       3
-#define PLL_PROTMODEL_JTT         4
-#define PLL_PROTMODEL_MTREV       5
-#define PLL_PROTMODEL_WAG         6
-#define PLL_PROTMODEL_RTREV       7
-#define PLL_PROTMODEL_CPREV       8
-#define PLL_PROTMODEL_VT          9
-#define PLL_PROTMODEL_BLOSUM62   10
-#define PLL_PROTMODEL_MTMAM      11
-#define PLL_PROTMODEL_MTART      12
-#define PLL_PROTMODEL_MTZOA      13
-#define PLL_PROTMODEL_PMB        14
-#define PLL_PROTMODEL_HIVB       15
-#define PLL_PROTMODEL_HIVW       16
-#define PLL_PROTMODEL_JTTDCMUT   17
-#define PLL_PROTMODEL_FLU        18
-#define PLL_PROTMODEL_STMTREV    19
-#define PLL_PROTMODEL_COUNT      20
-//#define PLL_LG4M                 22
-//#define PLL_LG4X                 23
-
-
 /* error codes */
 
 #define PLL_ERROR_UNKNOWN_PARTITION   1
@@ -142,8 +117,46 @@ extern int pll_errno;
 extern unsigned int pll_map_bin[256];
 extern unsigned int pll_map_nt[256];
 extern unsigned int pll_map_aa[256];
-extern int pll_fill_aa_matrix(double * mat, int aa_model);
-extern int pll_fill_aa_frequencies(double * freqs, int aa_model);
+
+extern double pll_aa_rates_dayhoff[190];
+extern double pll_aa_rates_lg[190];
+extern double pll_aa_rates_dcmut[190];
+extern double pll_aa_rates_jtt[190];
+extern double pll_aa_rates_mtrev[190];
+extern double pll_aa_rates_wag[190];
+extern double pll_aa_rates_rtrev[190];
+extern double pll_aa_rates_cprev[190];
+extern double pll_aa_rates_vt[190];
+extern double pll_aa_rates_blosum62[190];
+extern double pll_aa_rates_mtmam[190];
+extern double pll_aa_rates_mtart[190];
+extern double pll_aa_rates_mtzoa[190];
+extern double pll_aa_rates_pmb[190];
+extern double pll_aa_rates_hivb[190];
+extern double pll_aa_rates_hivw[190];
+extern double pll_aa_rates_jttdcmut[190];
+extern double pll_aa_rates_flu[190];
+extern double pll_aa_rates_stmtrev[190];
+
+extern double pll_aa_freqs_dayhoff[20];
+extern double pll_aa_freqs_lg[20];
+extern double pll_aa_freqs_dcmut[20];
+extern double pll_aa_freqs_jtt[20];
+extern double pll_aa_freqs_mtrev[20];
+extern double pll_aa_freqs_wag[20];
+extern double pll_aa_freqs_rtrev[20];
+extern double pll_aa_freqs_cprev[20];
+extern double pll_aa_freqs_vt[20];
+extern double pll_aa_freqs_blosum62[20];
+extern double pll_aa_freqs_mtmam[20];
+extern double pll_aa_freqs_mtart[20];
+extern double pll_aa_freqs_mtzoa[20];
+extern double pll_aa_freqs_pmb[20];
+extern double pll_aa_freqs_hivb[20];
+extern double pll_aa_freqs_hivw[20];
+extern double pll_aa_freqs_jttdcmut[20];
+extern double pll_aa_freqs_flu[20];
+extern double pll_aa_freqs_stmtrev[20];
 
 #ifdef __cplusplus
 extern "C" {
@@ -203,8 +216,6 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition);
 
 PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition, 
                                                      double prop_invar);
-
-PLL_EXPORT int pll_set_protein_model(pll_partition_t * partition, int params_index, int model);
 
 /* functions in likelihood.c */
 
