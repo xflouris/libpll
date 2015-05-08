@@ -158,11 +158,7 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
       fd->line[0] = 0;
       if (!fgets(fd->line, PLL_LINEALLOC, fd->fp))
       {
-        pll_errno = PLL_ERROR_FILE_EOF;
-        snprintf(pll_errmsg, 200, "End of file");
-        free(*head);
-        free(*seq);
-        return PLL_FAILURE;
+        /* do nothing */
       }
       fd->lineno++;
 
@@ -236,11 +232,7 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
           fd->line[0] = 0;
           if (!fgets(fd->line, PLL_LINEALLOC, fd->fp))
           {
-            pll_errno = PLL_ERROR_FILE_EOF;
-            snprintf(pll_errmsg, 200, "End of file");
-            free(*head);
-            free(*seq);
-            return PLL_FAILURE;
+            /* do nothing */
           }
           fd->lineno++;
         }
