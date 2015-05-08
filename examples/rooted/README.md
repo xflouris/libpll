@@ -4,7 +4,7 @@ This examples evaluates the log-likelihood of the rooted tree presented in the
 figure below, by creating a custom post-order traversal that drives the
 likelihood computation.
 
-![rooted tree](https://github.com/xflouris/asssets/raw/master/libpll/images/rooted.png)
+![rooted tree](https://github.com/xflouris/assets/raw/master/libpll/images/rooted.png)
 
 ## Explanation of the example
 

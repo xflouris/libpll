@@ -1,14 +1,23 @@
 /*
- * Test #1
- *
- * t1 WAA
- * t2 CAC
- * t3 AGG
- * t4 CGT
- * t5 CGA
- *
- * Tree: ((t1:0.2,t2:0.2):0.1,t3:0.2,(t4:0.2,t5:0.2):0.1):0.0;
- */
+    Copyright (C) 2015 Diego Darriba
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    Contact: Diego Darriba <Diego.Darriba@h-its.org>,
+    Exelixis Lab, Heidelberg Instutute for Theoretical Studies
+    Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
+*/
 #include "pll.h"
 
 #define N_CAT_GAMMA 4
@@ -151,7 +160,6 @@ int main(int argc, char * argv[])
     }
 
     pll_update_partials(partition, operations, 3);
-
     
     printf ("Tip 0: ");
     pll_show_clv(partition,0);
@@ -169,7 +177,6 @@ int main(int argc, char * argv[])
     pll_show_clv(partition,6);
     printf ("CLV 7: ");
     pll_show_clv(partition,7);
-  
 
     double logl = pll_compute_edge_loglikelihood(partition,6,7,0,0);
 

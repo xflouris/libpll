@@ -1,18 +1,23 @@
 /*
- * Test HKY
- * 
- * HKY model with ti/tv={
- *    0.175, 1, 1.5, 2.25, 2.725, 4, 7.125, 8.19283745, 9.73647382, 10
- * }
- *
- * t1 WAACTCGCTA--ATTCTAAT
- * t2 CACCATGCTA--ATTGTCTT
- * t3 AG-C-TGCAG--CTTCTACT
- * t4 CGTCTTGCAA--AT-C-AAG
- * t5 CGACTTGCCA--AT-T-AAG
- *
- * Tree: ((t1:0.2,t2:0.2):0.1,t3:0.2,(t4:0.2,t5:0.2):0.1):0.0;
- */
+    Copyright (C) 2015 Diego Darriba
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    Contact: Diego Darriba <Diego.Darriba@h-its.org>,
+    Exelixis Lab, Heidelberg Instutute for Theoretical Studies
+    Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
+*/
 #include "pll.h"
 
 #define NUM_TESTS 10
