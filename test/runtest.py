@@ -1,4 +1,25 @@
 #!/usr/bin/env python
+#
+#    Copyright (C) 2015 Diego Darriba
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#    Contact: Diego Darriba <Diego.Darriba@h-its.org>,
+#    Exelixis Lab, Heidelberg Instutute for Theoretical Studies
+#    Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
+#
+
 from subprocess import Popen, PIPE, call
 #from system import call
 
@@ -127,7 +148,7 @@ if __name__ == "__main__":
     sys.stdout.flush()
 
     # Check memory leaks
-    p3 = Popen(["./eval_valgrind.sh", "obj/"+filename], stdout=PIPE)
+    p3 = Popen(["./eval_valgrind.sh", "obj/"+filename, nowstr], stdout=PIPE)
     output = p3.communicate()[0]
     deflost   = int(output.split(' ')[0])
     indlost   = int(output.split(' ')[1])
