@@ -158,8 +158,8 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
       fd->line[0] = 0;
       if (!fgets(fd->line, PLL_LINEALLOC, fd->fp))
       {
-        pll_errno = PLL_ERROR_FILE_SEEK;
-        snprintf(pll_errmsg, 200, "Unable to read fasta file");
+        pll_errno = PLL_ERROR_FILE_EOF;
+        snprintf(pll_errmsg, 200, "End of file");
         return PLL_FAILURE;
       }
       fd->lineno++;
@@ -234,8 +234,8 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
           fd->line[0] = 0;
           if (!fgets(fd->line, PLL_LINEALLOC, fd->fp))
           {
-            pll_errno = PLL_ERROR_FILE_SEEK;
-            snprintf(pll_errmsg, 200, "Unable to read fasta file");
+            pll_errno = PLL_ERROR_FILE_EOF;
+            snprintf(pll_errmsg, 200, "End of file");
             return PLL_FAILURE;
           }
           fd->lineno++;
