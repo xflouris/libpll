@@ -264,6 +264,8 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
   
   snprintf(pll_errmsg, 200, "End of file\n");
   pll_errno = PLL_ERROR_FILE_EOF;
+  free(*head);
+  free(*seq);
   return PLL_FAILURE;
 }
 
