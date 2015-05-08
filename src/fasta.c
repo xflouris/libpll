@@ -77,7 +77,12 @@ PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename, unsigned int * ma
     fd->stripped[i] = 0;
 
   fd->line[0] = 0;
-  fgets(fd->line, PLL_LINEALLOC, fd->fp);
+  if (!fgets(fd->line, PLL_LINEALLOC, fd->fp))
+  {
+    pll_errno = PLL_ERROR_FILE_SEEK;
+    snprintf(pll_errmsg, 200, "Unable to read file (%s)", filename);
+    return PLL_FAILURE;
+  }
   fd->lineno = 1;
 
   return fd;
@@ -151,7 +156,12 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
       /* get next line */
 
       fd->line[0] = 0;
-      fgets(fd->line, PLL_LINEALLOC, fd->fp);
+      if (!fgets(fd->line, PLL_LINEALLOC, fd->fp))
+      {
+        pll_errno = PLL_ERROR_FILE_SEEK;
+        snprintf(pll_errmsg, 200, "Unable to read fasta file");
+        return PLL_FAILURE;
+      }
       fd->lineno++;
 
       /* read sequence */
@@ -166,7 +176,7 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
 
           while((c = *p++))
             {
-              m = fd->chrstatus[(int)c];
+              m = (char) fd->chrstatus[(int)c];
               switch(m)
                 {
                 case 0:
@@ -222,7 +232,12 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
             }
 
           fd->line[0] = 0;
-          fgets(fd->line, PLL_LINEALLOC, fd->fp);
+          if (!fgets(fd->line, PLL_LINEALLOC, fd->fp))
+          {
+            pll_errno = PLL_ERROR_FILE_SEEK;
+            snprintf(pll_errmsg, 200, "Unable to read fasta file");
+            return PLL_FAILURE;
+          }
           fd->lineno++;
         }
 
