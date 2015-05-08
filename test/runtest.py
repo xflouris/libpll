@@ -42,13 +42,13 @@ def fancyprint(color, text, breakline=0):
     sys.stdout.write("\n")
 
 def header():
-  fancyprint("green","\n   _                 ____        ____     _      _ \n"     
-    "  |\"|       ___   U | __\")u    U|  _\"\\ u |\"|    |\"|     \n"
-    "U | | u    |_\"_|   \\|  _ \\/    \\| |_) |U | | uU | | u   \n"
-    " \\| |/__    | |     | |_) |     |  __/  \\| |/__\\| |/__  \n"
-    "  |_____| U/| |\\u   |____/      |_|      |_____||_____| \n"
-    "  //  \\.-,_|___|_,-_|| \\\\_      ||>>_    //  \\\\ //  \\\\  \n"
-    " (_\")(\"_\\_)-' '-(_(__) (__)    (__)__)  (_\")(\"_(_\")(\"_)\n\n")
+  fancyprint("green","\n             _                 ____        ____     _      _ \n"     
+    "            |\"|       ___   U | __\")u    U|  _\"\\ u |\"|    |\"|     \n"
+    "          U | | u    |_\"_|   \\|  _ \\/    \\| |_) |U | | uU | | u   \n"
+    "           \\| |/__    | |     | |_) |     |  __/  \\| |/__\\| |/__  \n"
+    "            |_____| U/| |\\u   |____/      |_|      |_____||_____| \n"
+    "            //  \\.-,_|___|_,-_|| \\\\_      ||>>_    //  \\\\ //  \\\\  \n"
+    "           (_\")(\"_\\_)-' '-(_(__) (__)    (__)__)  (_\")(\"_(_\")(\"_)\n\n")
 
 def testOK():
   fancyprint("green", "OK!    ")
@@ -83,19 +83,21 @@ if __name__ == "__main__":
   fancyprint("yellow", "{:<7}   {:<8} {:<18} {:>11}   Result   {:<17}"
     .format(" ","Start", "File", "Time", "Memcheck"),True)
 
+
   for filename in files:
     cur_test = cur_test+1
-    try:
-      stat_info=os.lstat("obj/" + filename)
-      stat_info=os.lstat("out/" + filename + ".out")
-    except:
-      fancyprint("red", "%s: Missing test files\n" % filename)
-      continue
-
     now = time.strftime("  %H:%M:%S")
     nowstr = time.strftime("%Y%m%d%H%M%S") 
     start_time = int(time.time()*1000)
     fancyprint("-", "{:>3}/{:<3} ".format(cur_test, num_tests) + now)
+
+    try:
+      stat_info=os.lstat("obj/" + filename)
+      stat_info=os.lstat("out/" + filename + ".out")
+    except:
+      fancyprint("red", " {:<18} Missing test files\n".format(filename))
+      continue
+
     fancyprint("cyan", " {:<18} ".format(filename))
 
     sys.stdout.flush()
@@ -141,6 +143,9 @@ if __name__ == "__main__":
       else:
         # Everything is fine
         fancyprint("green", "OK!\n")
+
+  fancyprint("yellow", "{:<78}"
+    .format(" "),True)
 
   # Final summary
   print
