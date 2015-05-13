@@ -27,6 +27,8 @@
 #define N_STATES 20
 #define N_PROT_RATES 190
 
+#define FLOAT_PRECISION 5
+
   static double * prot_matrices[N_PROT_MODELS] =
       {
       pll_aa_rates_dayhoff,  pll_aa_rates_lg,
@@ -155,28 +157,28 @@ int main(int argc, char * argv[])
     for (i = 0; i < 4; ++i)
     {
       printf ("P-matrix for branch length %f\n", branch_lengths[i]);
-      pll_show_pmatrix(partition, i);
+      pll_show_pmatrix(partition, i, FLOAT_PRECISION);
       printf ("\n");
     }
 
     pll_update_partials(partition, operations, 3);
     
     printf ("Tip 0: ");
-    pll_show_clv(partition,0);
+    pll_show_clv(partition,0,FLOAT_PRECISION+1);
     printf ("Tip 1: ");
-    pll_show_clv(partition,1);
+    pll_show_clv(partition,1,FLOAT_PRECISION+1);
     printf ("Tip 2: ");
-    pll_show_clv(partition,2);
+    pll_show_clv(partition,2,FLOAT_PRECISION+1);
     printf ("Tip 3: ");
-    pll_show_clv(partition,3);
+    pll_show_clv(partition,3,FLOAT_PRECISION+1);
     printf ("Tip 4: ");
-    pll_show_clv(partition,4);
+    pll_show_clv(partition,4,FLOAT_PRECISION+1);
     printf ("CLV 5: ");
-    pll_show_clv(partition,5);
+    pll_show_clv(partition,5,FLOAT_PRECISION+1);
     printf ("CLV 6: ");
-    pll_show_clv(partition,6);
+    pll_show_clv(partition,6,FLOAT_PRECISION+1);
     printf ("CLV 7: ");
-    pll_show_clv(partition,7);
+    pll_show_clv(partition,7,FLOAT_PRECISION+1);
 
     double logl = pll_compute_edge_loglikelihood(partition,6,7,0,0);
 

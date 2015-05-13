@@ -16,7 +16,19 @@ properties:
 
 ## Compilation instructions
 
-Currently, libpll can be compiled using the included Makefile:
+
+Currently, `libpll` requires that [GNU Bison](http://www.gnu.org/software/bison/)
+and [Flex](http://flex.sourceforge.net/) are installed on the target system. On
+a Debian-based Linux system, the two packages can be installed using the command
+
+`apt-get install flex bison`
+
+The library also requires that a GNU system is available as it uses several
+functions (e.g. `asprintf`) which are not present in the POSIX standard.
+This, however might change in the future in order to have a more portable
+and cross-platform library.
+
+The library can be compiled using the included Makefile:
 
 `make`
 
@@ -28,7 +40,7 @@ of variable rates among sites, the Inv+&Gamma; (Gu et al. 1995) and has
 functions for computing the discretized rate categories for the gamma model
 (Yang 1994).
 
-Below is list of available functions in the current version.
+Below is a list of available functions in the current version.
 
 ### Partition (instance) manipulation
 
@@ -60,8 +72,8 @@ Below is list of available functions in the current version.
 
 ### Output functions
 
-* `void pll_show_pmatrix(pll_partition_t * partition, int index);`
-* `void pll_show_clv(pll_partition_t * partition, int index);`
+* `void pll_show_pmatrix(pll_partition_t * partition, int index, int float_precision);`
+* `void pll_show_clv(pll_partition_t * partition, int index, int float_precision);`
 
 ### Functions for parsing files
 
@@ -70,6 +82,15 @@ Below is list of available functions in the current version.
 * `void pll_fasta_close(pll_fasta_t * fd);`
 * `long pll_fasta_getfilesize(pll_fasta_t * fd);`
 * `long pll_fasta_getfilepos(pll_fasta_t * fd);`
+* `pll_utree_t * pll_parse_newick_utree(const char * filename, int * tip_count);`
+* `void pll_destroy_utree(pll_utree_t * root);`
+
+### Tree manipulation functions
+
+* `void pll_show_ascii_utree(pll_utree_t * tree);`
+* `char * pll_write_newick_utree(pll_utree_t * root);`
+* `char ** pll_query_utree_tipnames(pll_utree_t * tree, int tips);`
+* `void pll_traverse_utree(pll_utree_t * tree, int tips, double ** branch_lengths, int ** indices, pll_operation_t ** ops, int * edge_pmatrix_index, int * edge_node1_clv_index, int * edge_node2_clv_index);`
 
 ### Auxiliary functions
 
@@ -91,6 +112,7 @@ The code is written in C.
 -----------------|----------------
 **fasta.**       | Functions for parsing FASTA files.
 **gamma.c**      | Functions related to Gamma (&Gamma;) function.
+**lex.l**        | Lexical analyzer for newick parsing.
 **likelihood.c** | Likelihood computation functions.
 **list.c**       | (Doubly) Linked-list implementations.
 **Makefile**     | Makefile.
@@ -98,6 +120,8 @@ The code is written in C.
 **models.c**     | Model parameters related functions.
 **output.c**     | Functions for output in terminal (i.e. conditional likelihood arrays, probability matrices).
 **pll.c**        | Functions for setting PLL partitions (instances).
+**tree.c**       | Rooted/Unrooted tree manipulation functions.
+**unrooted.y**   | Functions for parsing unrooted trees in newick format.
 
 ## Bugs
 

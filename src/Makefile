@@ -26,7 +26,7 @@ WARN=-Wall -Wsign-compare
 
 AR = ar
 CC = gcc
-CFLAGS = -fPIC -g -msse3 -O3 $(WARN)
+CFLAGS = -D_GNU_SOURCE -fPIC -g -msse3 -O3 $(WARN)
 LINKFLAGS=$(PROFILING)
 LIBS=-lm
 
@@ -37,7 +37,7 @@ PROG=libpll.so
 
 all: $(PROG)
 
-OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o
+OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o unrooted.o lex.o tree.o
 
 $(PROG): $(OBJS)
 	$(CC) -shared -Wl,-soname,$@ -o $@ $+

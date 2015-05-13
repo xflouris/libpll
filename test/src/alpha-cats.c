@@ -24,6 +24,8 @@
 #define NUM_CATS   5
 #define N_STATES_NT 4
 
+#define FLOAT_PRECISION 5
+
 double titv = 2.5;
 
   double alpha[NUM_ALPHAS] = {0.1, 0.5, 0.75, 1, 1.5, 5, 10, 50, 100};
@@ -114,26 +116,26 @@ int main(int argc, char * argv[])
       for (j = 0; j < 4; ++j)
       {
         printf ("[%d] P-matrix for branch length %f\n", i, branch_lengths[j]);
-        pll_show_pmatrix(partition, j);
+        pll_show_pmatrix(partition, j, FLOAT_PRECISION);
         printf ("\n");
       }
 
       printf ("[%d] Tip 0: ", i);
-      pll_show_clv(partition,0);
+      pll_show_clv(partition,0,FLOAT_PRECISION+1);
       printf ("[%d] Tip 1: ", i);
-      pll_show_clv(partition,1);
+      pll_show_clv(partition,1,FLOAT_PRECISION+1);
       printf ("[%d] Tip 2: ", i);
-      pll_show_clv(partition,2);
+      pll_show_clv(partition,2,FLOAT_PRECISION+1);
       printf ("[%d] Tip 3: ", i);
-      pll_show_clv(partition,3);
+      pll_show_clv(partition,3,FLOAT_PRECISION+1);
       printf ("[%d] Tip 4: ", i);
-      pll_show_clv(partition,4);
+      pll_show_clv(partition,4,FLOAT_PRECISION+1);
       printf ("[%d] CLV 5: ", i);
-      pll_show_clv(partition,5);
+      pll_show_clv(partition,5,FLOAT_PRECISION+1);
       printf ("[%d] CLV 6: ", i);
-      pll_show_clv(partition,6);
+      pll_show_clv(partition,6,FLOAT_PRECISION+1);
       printf ("[%d] CLV 7: ", i);
-      pll_show_clv(partition,7);
+      pll_show_clv(partition,7,FLOAT_PRECISION+1);
 
       lk_scores[k*NUM_ALPHAS + i] = pll_compute_edge_loglikelihood(partition,6,7,0,0);
     }

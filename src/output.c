@@ -21,7 +21,9 @@
 
 #include "pll.h"
 
-void pll_show_pmatrix(pll_partition_t * partition, int index)
+void pll_show_pmatrix(pll_partition_t * partition, 
+                      int index, 
+                      int float_precision)
 {
   int i,j,k;
   double * pmatrix;
@@ -33,14 +35,14 @@ void pll_show_pmatrix(pll_partition_t * partition, int index)
     for (i = 0; i < partition->states; ++i)
     {
       for (j = 0; j < states; ++j)
-        printf("%+2.5f   ", pmatrix[i*states+j]);
+        printf("%+2.*f   ", float_precision, pmatrix[i*states+j]);
       printf("\n");
     }
     printf("\n");
   }
 }
 
-void pll_show_clv(pll_partition_t * partition, int index)
+void pll_show_clv(pll_partition_t * partition, int index, int float_precision)
 {
   int i,j,k;
 
@@ -57,9 +59,9 @@ void pll_show_clv(pll_partition_t * partition, int index)
       printf("(");
       for (k = 0; k < partition->states-1; ++k)
       {
-        printf("%f,", clv[i*rates*states + j*states + k]);
+        printf("%.*f,", float_precision, clv[i*rates*states + j*states + k]);
       }
-      printf("%f)", clv[i*rates*states + j*states + k]);
+      printf("%.*f)", float_precision, clv[i*rates*states + j*states + k]);
       if (j < rates - 1) printf(",");
     }
     printf("} ");

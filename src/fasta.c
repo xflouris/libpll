@@ -57,6 +57,7 @@ PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename, unsigned int * ma
   {
     pll_errno = PLL_ERROR_FILE_OPEN;
     snprintf(pll_errmsg, 200, "Unable to open file (%s)", filename);
+    free(fd);
     return PLL_FAILURE;
   }
 
@@ -65,6 +66,7 @@ PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename, unsigned int * ma
   {
     pll_errno = PLL_ERROR_FILE_SEEK;
     snprintf(pll_errmsg, 200, "Unable to seek in file (%s)", filename);
+    free(fd);
     return PLL_FAILURE;
   }
   fd->filesize = ftell(fd->fp);
@@ -81,6 +83,7 @@ PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename, unsigned int * ma
   {
     pll_errno = PLL_ERROR_FILE_SEEK;
     snprintf(pll_errmsg, 200, "Unable to read file (%s)", filename);
+    free(fd);
     return PLL_FAILURE;
   }
   fd->lineno = 1;

@@ -41,6 +41,11 @@
 #define PLL_EXPORT
 #endif
 
+/* macros */
+
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+#define MAX(a,b) ((a) > (b) ? (a) : (b))
+
 /* constants */
 
 #define PLL_FAILURE  0
@@ -64,12 +69,11 @@
 #define PLL_ERROR_FILE_OPEN              1 
 #define PLL_ERROR_FILE_SEEK              2
 #define PLL_ERROR_FILE_EOF               3
-
 #define PLL_ERROR_FASTA_ILLEGALCHAR      4
 #define PLL_ERROR_FASTA_UNPRINTABLECHAR  5
 #define PLL_ERROR_FASTA_INVALIDHEADER    6
-
 #define PLL_ERROR_MEM_ALLOC              7
+#define PLL_ERROR_NEWICK_SYNTAX          8
 
 
 /* structures and data types */
@@ -87,7 +91,6 @@ typedef struct
   int attributes;
   double prop_invar;
 
-  /* multiple to which memory is aligned */
   size_t alignment;
 
   double ** clv;
@@ -98,12 +101,14 @@ typedef struct
   double ** frequencies;
   int * invariant;
 
-  /* eigen decomposition */
   int * eigen_decomp_valid;
   double ** eigenvecs;
   double ** inv_eigenvecs;
   double ** eigenvals;
 } pll_partition_t;
+
+
+/* Structure for driving likelihood operations */
 
 typedef struct
 {
@@ -114,12 +119,17 @@ typedef struct
   int child2_matrix_index;
 } pll_operation_t;
 
+
+/* Doubly-linked list */
+
 typedef struct pll_dlist
 {
   struct pll_dlist * next;
   struct pll_dlist * prev;
   void * data;
 } pll_dlist_t;
+
+/* Simple structure for handling FASTA parsing */
 
 typedef struct
 {
@@ -132,6 +142,18 @@ typedef struct
   long stripped_count;
   long stripped[256];
 } pll_fasta_t;
+
+/* Simple unrooted tree structure for parsing newick */
+
+typedef struct tree_noderec
+{
+  char * label;
+  double length;
+  struct tree_noderec * next;
+  struct tree_noderec * back;
+
+  void * data;
+} pll_utree_t;
 
 /* common data */
 
@@ -265,8 +287,13 @@ PLL_EXPORT int pll_compute_gamma_cats(double alpha,
 
 /* functions in output.c */
 
-PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition, int index);
-PLL_EXPORT void pll_show_clv(pll_partition_t * partition, int index);
+PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition, 
+                                 int index, 
+                                 int float_precision);
+
+PLL_EXPORT void pll_show_clv(pll_partition_t * partition, 
+                             int index, 
+                             int float_precision);
 
 /* functions in fasta.c */
 
@@ -282,6 +309,31 @@ PLL_EXPORT void pll_fasta_close(pll_fasta_t * fd);
 PLL_EXPORT long pll_fasta_getfilesize(pll_fasta_t * fd);
 
 PLL_EXPORT long pll_fasta_getfilepos(pll_fasta_t * fd);
+
+/* functions in unrooted.y */
+
+PLL_EXPORT pll_utree_t * pll_parse_newick_utree(const char * filename, 
+                                                int * tip_count);
+
+PLL_EXPORT void pll_destroy_utree(pll_utree_t * root);
+
+/* functions in tree.c */
+
+PLL_EXPORT void pll_show_ascii_utree(pll_utree_t * tree);
+
+PLL_EXPORT char * pll_write_newick_utree(pll_utree_t * root);
+
+PLL_EXPORT void pll_traverse_utree(pll_utree_t * tree, 
+                                   int tips, 
+                                   double ** branch_lengths, 
+                                   int ** indices,
+                                   pll_operation_t ** ops,
+                                   int * edge_pmatrix_index,
+                                   int * edge_node1_clv_index,
+                                   int * edge_node2_clv_index);
+
+PLL_EXPORT char ** pll_query_utree_tipnames(pll_utree_t * tree,
+                                            int tips);
 
 #ifdef __cplusplus
 } /* extern "C" */
