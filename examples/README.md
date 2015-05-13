@@ -18,6 +18,27 @@ The example covers the following:
 * creating a tree traversal for driving the likelihood function,
 * computing the CLVs at inner nodes,
 * evaluating the log-likelihood at the root,
-* considering the Inv+&Gamma; model.
+* considering the Inv+&Gamma; model,
 * displaying the CLVs and probability matrices on the console,
 * deallocating the partition instance.
+
+## [`newick-fasta-unrooted`](https://github.com/xflouris/libpll/tree/master/examples/newick-fasta-unrooted)
+
+This examples shows how to evaluate the log-likelihood of an 
+[unrooted binary tree](http://en.wikipedia.org/wiki/Unrooted_binary_tree) tree
+which is loadded from a [newick](http://en.wikipedia.org/wiki/Newick_format)
+file using the `libpll` newick parser. The alignment is loaded from a FASTA
+file using the `libpll` fasta parser, and each sequence is associated to the
+corresponding tree taxon via the use of the standard
+[GNU C Library (glibc)](http://www.gnu.org/software/libc/) hash table. The
+parsed newick tree is stored in an intermediate structure which may be used to
+automagically and conveniently create the `libpll` operations structure.
+
+The example covers the following:
+
+* loading a newick tree file using the `libpll` parser into an intermediate unrooted binary tree structure,
+* loading sequences from a FASTA file,
+* querying the intermediate tree structure for a list of tip names
+* associating sequences to taxa using the `glibc` hash table functions,
+* getting a filled operations structure by using library functions to iterate over the parsed tree structure,
+* setting default branch lengths to branches which did not have an associated length in the newick format,
