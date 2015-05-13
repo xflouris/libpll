@@ -30,16 +30,18 @@ valgrind --tool=memcheck --leak-check=full ${file} > /dev/null 2> ${outfile}
 deflost=`fgrep "definitely lost:" ${outfile} | xargs | cut -d' ' -f4 | sed "s/,//g"`
 indlost=`fgrep "indirectly lost:" ${outfile} | xargs | cut -d' ' -f4 | sed "s/,//g"`
 reachable=`fgrep "still reachable:" ${outfile} | xargs | cut -d' ' -f4 | sed "s/,//g"`
+errors=`fgrep "Invalid" ${outfile}`
 
 if [ -z "${deflost}" ]; then deflost=0; fi
 if [ -z "${indlost}" ]; then indlost=0; fi
 if [ -z "${reachable}" ]; then reachable=0; fi
+if [ -z "${errors}" ]; then errors=0; else errors=1; fi
 
-echo ${deflost} ${indlost} ${reachable}
+echo ${deflost} ${indlost} ${reachable} ${errors}
 
-if [ "$((deflost+indlost+reachable))" -gt "0" ]; then
+if [ "$((errors+deflost+indlost+reachable))" -gt "0" ]; then
   filename="${file##*/}"
-  mv ${outfile} result/valgrind_${timestamp}-${filename}
+  mv ${outfile} result/valgrind_${filename}_${timestamp}
 else
   rm ${outfile}
 fi
