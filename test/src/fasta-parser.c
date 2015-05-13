@@ -161,7 +161,7 @@ int smalltest ()
   operations[2].child2_matrix_index = 1;
 
   pll_compute_gamma_cats (ALPHA, N_CAT_GAMMA, rate_cats);
-  pll_set_subst_params (partition, 0, subst_params, 6);
+  pll_set_subst_params (partition, 0, subst_params);
   pll_set_frequencies (partition, 0, frequencies);
   pll_set_category_rates (partition, rate_cats);
   pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths, 4);

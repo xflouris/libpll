@@ -139,7 +139,7 @@ int main(int argc, char * argv[])
 
     printf ("\nSetting model %s...\n", prot_model_names[cur_model]);
 
-    pll_set_subst_params(partition, 0, prot_matrices[cur_model], N_PROT_RATES);
+    pll_set_subst_params(partition, 0, prot_matrices[cur_model]);
     pll_set_frequencies(partition, 0, prot_freqs[cur_model]);
 
     double sum_freqs = 0.0;

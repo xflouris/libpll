@@ -40,7 +40,7 @@ int main(int argc, char * argv[])
   pll_set_frequencies(partition, 0, frequencies);
 
   /* set substitution parameters */
-  pll_set_subst_params(partition, 0, subst_params, 6);
+  pll_set_subst_params(partition, 0, subst_params);
 
   /* set rate categories */
   pll_set_category_rates(partition, rate_cats);
@@ -60,7 +60,7 @@ int main(int argc, char * argv[])
   for (i = 0; i < 5; ++i)
   {
     printf ("P-matrix for branch length %f\n", branch_lengths[i]);
-    pll_show_pmatrix(partition, i);
+    pll_show_pmatrix(partition, i, 7);
     printf ("\n");
   }
 
@@ -99,23 +99,23 @@ int main(int argc, char * argv[])
 
   /* print out the CLVs at tip and inner nodes*/
   printf ("Tip 0: ");
-  pll_show_clv(partition,0);
+  pll_show_clv(partition,0,7);
   printf ("Tip 1: ");
-  pll_show_clv(partition,1);
+  pll_show_clv(partition,1,7);
   printf ("Tip 2: ");
-  pll_show_clv(partition,2);
+  pll_show_clv(partition,2,7);
   printf ("Tip 3: ");
-  pll_show_clv(partition,3);
+  pll_show_clv(partition,3,7);
   printf ("Tip 4: ");
-  pll_show_clv(partition,4);
+  pll_show_clv(partition,4,7);
   printf ("CLV 5: ");
-  pll_show_clv(partition,5);
+  pll_show_clv(partition,5,7);
   printf ("CLV 6: ");
-  pll_show_clv(partition,6);
+  pll_show_clv(partition,6,7);
   printf ("CLV 7: ");
-  pll_show_clv(partition,7);
+  pll_show_clv(partition,7,7);
   printf ("CLV 8: ");
-  pll_show_clv(partition,8);
+  pll_show_clv(partition,8,7);
 
   /* compute the likelihood at the root of the rooted tree by specifying the CLV
      index of the root CLV and the index of the frequency vector to be used */
@@ -129,7 +129,7 @@ int main(int argc, char * argv[])
 
   /* Now let's set the log-likelihood proportion that 
      invariant sites affect to 0.5 */
-  pll_update_invariant_sites_proportion(partition, 0.5);
+  pll_update_invariant_sites_proportion(partition, 0, 0.5);
 
   /* we need to update the probability matrices after stating that we want 
      to use invariant sites */
@@ -146,7 +146,7 @@ int main(int argc, char * argv[])
   /* Let's assume now we want to use a proportion of 0.75 for invariants. Since
      tip states haven't changed, we should only update the proportion and
      then update the probability matrices */
-  pll_update_invariant_sites_proportion(partition, 0.75);
+  pll_update_invariant_sites_proportion(partition, 0, 0.75);
   pll_update_prob_matrices(partition, 0, matrix_indices, branch_lengths, 5);
   
   /* recompute the CLVs using the same traversal */

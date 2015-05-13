@@ -246,7 +246,7 @@ int main(int argc, char * argv[])
   pll_set_frequencies(partition, 0, frequencies);
 
   /* set 6 substitution parameters at model with index 0 */
-  pll_set_subst_params(partition, 0, subst_params, 6);
+  pll_set_subst_params(partition, 0, subst_params);
 
   /* set rate categories */
   pll_set_category_rates(partition, rate_cats);

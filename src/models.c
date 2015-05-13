@@ -266,6 +266,8 @@ void pll_update_prob_matrices(pll_partition_t * partition,
 
   double * pmatrix;
 
+  double prop_invar = partition->prop_invar[params_index];
+
   int states = partition->states;
 
   /* check whether we have cached an eigen decomposition. If not, compute it */
@@ -323,7 +325,7 @@ void pll_update_prob_matrices(pll_partition_t * partition,
       /* exponentiate eigenvalues */
       for (j = 0; j < states; ++j)
         expd[j] = exp(eigenvals[j] * rates[n] * branch_lengths[i] 
-                                   / (1.0 - partition->prop_invar));
+                                   / (1.0 - prop_invar));
 
       for (j = 0; j < states; ++j)
         for (k = 0; k < states; ++k)
@@ -355,23 +357,25 @@ void pll_set_frequencies(pll_partition_t * partition,
   partition->eigen_decomp_valid[params_index] = 0;
 }
 
-void pll_set_category_rates(pll_partition_t * partition, double * rates)
+void pll_set_category_rates(pll_partition_t * partition,
+                            double * rates)
 {
   memcpy(partition->rates, rates, partition->rate_cats*sizeof(double));
 }
 
 void pll_set_subst_params(pll_partition_t * partition, 
                           int params_index, 
-                          double * params, 
-                          int count)
+                          double * params)
 {
+  int count = partition->states * (partition->states-1) / 2;
   memcpy(partition->subst_params[params_index], params, count*sizeof(double));
   partition->eigen_decomp_valid[params_index] = 0;
 
   /* NOTE: For protein models PLL/RAxML do a rate scaling by 10.0/max_rate */
 }
 
-PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition, 
+PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition,
+                                                     int params_index,
                                                      double prop_invar) 
 {
   if (prop_invar < 0 || prop_invar >= 1) 
@@ -384,7 +388,7 @@ PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition
       pll_update_invariant_sites(partition);
   }
 
-  partition->prop_invar = prop_invar;
+  partition->prop_invar[params_index] = prop_invar;
 
   return PLL_SUCCESS;
 }

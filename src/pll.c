@@ -36,7 +36,10 @@ static void dealloc_partition_data(pll_partition_t * partition)
   free(partition->rates);
   free(partition->scale_buffer);
   free(partition->eigen_decomp_valid);
-  free(partition->invariant);
+  if (partition->prop_invar)
+    free(partition->prop_invar);
+  if (partition->invariant)
+    free(partition->invariant);
 
 /*
   if (partition->tip_clv)
@@ -121,7 +124,7 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   partition->rate_cats = rate_cats;
   partition->scale_buffers = scale_buffers;
 
-  partition->prop_invar = 0.0;
+  partition->prop_invar = NULL;
   partition->invariant = NULL;
 
   partition->eigenvecs = NULL;
@@ -281,6 +284,10 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
     dealloc_partition_data(partition);
     return PLL_FAILURE;
   }
+
+  /* proportion of invariant sites */
+  partition->prop_invar = (double *)calloc(partition->rate_matrices,
+                                             sizeof(double));
 
   if (!pll_dlist_append(&partition_list, (void *)partition))
   {

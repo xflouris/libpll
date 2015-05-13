@@ -91,7 +91,7 @@ int main(int argc, char * argv[])
   for (i = 0; i < NUM_TESTS; ++i) 
   {
     subst_params[1] = subst_params[4] = titv[i];
-    pll_set_subst_params(partition, 0, subst_params, 6);
+    pll_set_subst_params(partition, 0, subst_params);
 
     pll_update_prob_matrices(partition, 0, matrix_indices, branch_lengths, 4);
     pll_update_partials(partition, operations, 3);

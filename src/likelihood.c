@@ -91,6 +91,7 @@ double pll_compute_root_loglikelihood(pll_partition_t * partition,
   int rates = partition->rate_cats;
   int states = partition->states;
   double * freqs = partition->frequencies[freqs_index];
+  double prop_invar = partition->prop_invar[freqs_index];
   double site_lk, inv_site_lk;
 
   for (i = 0; i < partition->sites; ++i)
@@ -108,12 +109,12 @@ double pll_compute_root_loglikelihood(pll_partition_t * partition,
     site_lk = term / rates;
 
     /* account for invariant sites */
-    if (partition->prop_invar > 0)
+    if (prop_invar > 0)
     {
       inv_site_lk = (partition->invariant[i] == -1) ?
                          0 : freqs[partition->invariant[i]];
-      site_lk = site_lk * (1. - partition->prop_invar)
-          + inv_site_lk * partition->prop_invar;
+      site_lk = site_lk * (1. - prop_invar)
+          + inv_site_lk * prop_invar;
     }
 
     logl += log (site_lk);
@@ -137,6 +138,7 @@ double pll_compute_edge_loglikelihood(pll_partition_t * partition,
   double * clvc = partition->clv[child_clv_index];
   double * freqs = partition->frequencies[freqs_index];
   double * pmatrix = partition->pmatrix[matrix_index];
+  double prop_invar = partition->prop_invar[freqs_index];
   int states = partition->states;
   int rates = partition->rate_cats;
 
@@ -161,13 +163,13 @@ double pll_compute_edge_loglikelihood(pll_partition_t * partition,
     site_lk = terma / rates;
 
     /* account for invariant sites */
-    if (partition->prop_invar > 0)
+    if (prop_invar > 0)
     {
       inv_site_lk = (partition->invariant[n] == -1) ? 
                         0 : freqs[partition->invariant[n]];
 
-      site_lk = site_lk * (1. - partition->prop_invar) + 
-                inv_site_lk * partition->prop_invar;
+      site_lk = site_lk * (1. - prop_invar) +
+                inv_site_lk * prop_invar;
     }
 
     logl += log(site_lk);

@@ -89,7 +89,6 @@ typedef struct
   int rate_cats;
   int scale_buffers;
   int attributes;
-  double prop_invar;
 
   size_t alignment;
 
@@ -99,6 +98,7 @@ typedef struct
   double ** subst_params;
   double * scale_buffer;
   double ** frequencies;
+  double * prop_invar;
   int * invariant;
 
   int * eigen_decomp_valid;
@@ -242,14 +242,13 @@ PLL_EXPORT int pll_dlist_prepend(pll_dlist_t ** dlist, void * data);
 
 PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition, 
                                      int params_index, 
-                                     double * params, 
-                                     int count);
+                                     double * params);
 
 PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
                                     int params_index,
                                     double * frequencies);
 
-PLL_EXPORT void pll_set_category_rates(pll_partition_t * partition, 
+PLL_EXPORT void pll_set_category_rates(pll_partition_t * partition,
                                        double * rates);
 
 PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
@@ -261,6 +260,7 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
 PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition);
 
 PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition, 
+                                                     int params_index,
                                                      double prop_invar);
 
 /* functions in likelihood.c */
