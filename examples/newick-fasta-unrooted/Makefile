@@ -27,7 +27,7 @@ WARN=-Wall -Wsign-compare
 CC = gcc
 CFLAGS = -Wall -g -O3 $(WARN)
 LINKFLAGS = -L. $(PROFILING)
-LIBS=-lm -lpll
+LIBS=-lpll -lm
 PROG=nfu
 
 all: $(PROG)
