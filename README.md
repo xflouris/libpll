@@ -1,5 +1,7 @@
 # libpll
 
+[![Build Status](https://magnum.travis-ci.com/xflouris/libpll.svg?token=rjft2y6GBHow4SDyjuoy&branch=master)](https://magnum.travis-ci.com/xflouris/libpll)
+
 ## Introduction
 
 The aim of this project is to implement a versatile high-performance software
