@@ -53,15 +53,13 @@ static void dealloc_tree_recursive(pll_utree_t * node)
 void pll_destroy_utree(pll_utree_t * root)
 {
   if (!root) return;
-  if (!root->next)
-  if (!root->next)
+  if (!(root->next))
   {
     free(root->label);
     free(root);
     return;
   }
 
-  free(root->label);
   if (root->next)
     dealloc_tree_recursive(root->next->back);
   if (root->next->next)
