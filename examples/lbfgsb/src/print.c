@@ -4,6 +4,7 @@ int prn1lb(integer *n, integer *m, double *l,
 	double *u, double *x, integer *iprint, fileType itfile, 
 	double *epsmch)
 {
+  return 0;
     /*
     ************ 
 
@@ -77,6 +78,7 @@ int prn1lb(integer *n, integer *m, double *l,
 	*word, integer *iword, integer *iback, double *stp, double *
 	xstep, ftnlen word_len)
 {
+  return 0;
     /*
     ************ 
 
@@ -160,6 +162,7 @@ int prn3lb(integer *n, double *x, double *f, integer *
 	double *cachyt, double *sbtime, double *lnscht, ftnlen 
 	task_len, ftnlen word_len)
 {
+  return 0;
     /*
     ************ 
 

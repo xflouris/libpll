@@ -28,7 +28,8 @@ enum
   PARAM_SUBST_RATES = 1,
   PARAM_PINV = 2,
   PARAM_ALPHA = 4,
-  PARAM_FREQUENCIES = 8
+  PARAM_FREQUENCIES = 8,
+  PARAM_BRANCH_LENGTHS = 16
 };
 
 typedef struct
@@ -43,6 +44,7 @@ typedef struct
   int edge_pmatrix_index;
   int num_gamma_cats;
   int params_index;
+  double alpha_value;
 
   /* optimization parameters */
   unsigned int which_parameters;
