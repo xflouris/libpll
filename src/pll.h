@@ -220,7 +220,7 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
                                                   int scale_buffers,
                                                   int attributes);
 
-PLL_EXPORT int pll_destroy_partition(pll_partition_t * partition);
+PLL_EXPORT void pll_destroy_partition(pll_partition_t * partition);
 
 PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition, 
                                   int tip_index, 

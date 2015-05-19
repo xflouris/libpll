@@ -24,7 +24,6 @@
 int pll_errno;
 char pll_errmsg[200] = {0};
 
-static pll_dlist_t * partition_list = NULL;
 static void dealloc_partition_data(pll_partition_t * partition);
 
 static void dealloc_partition_data(pll_partition_t * partition)
@@ -289,21 +288,12 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   partition->prop_invar = (double *)calloc(partition->rate_matrices,
                                              sizeof(double));
 
-  if (!pll_dlist_append(&partition_list, (void *)partition))
-  {
-    dealloc_partition_data(partition);
-    return PLL_FAILURE;
-  }
-
   return partition;
 }
 
-PLL_EXPORT int pll_destroy_partition(pll_partition_t * partition)
+PLL_EXPORT void pll_destroy_partition(pll_partition_t * partition)
 {
-  int rc;
-  rc = pll_dlist_remove(&partition_list, (void *)partition);
   dealloc_partition_data(partition);
-  return rc;
 }
 
 PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition, 

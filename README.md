@@ -1,6 +1,7 @@
 # libpll
 
 [![Build Status](https://magnum.travis-ci.com/xflouris/libpll.svg?token=rjft2y6GBHow4SDyjuoy&branch=master)](https://magnum.travis-ci.com/xflouris/libpll)
+[![License](https://img.shields.io/badge/license-AGPL-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html)
 
 ## Introduction
 
@@ -112,7 +113,7 @@ The code is written in C.
 
     File         | Description
 -----------------|----------------
-**fasta.**       | Functions for parsing FASTA files.
+**fasta.c**      | Functions for parsing FASTA files.
 **gamma.c**      | Functions related to Gamma (&Gamma;) function.
 **lex.l**        | Lexical analyzer for newick parsing.
 **likelihood.c** | Likelihood computation functions.
