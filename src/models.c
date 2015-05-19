@@ -413,7 +413,8 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
       state = 0;
       for (k = 0; k < partition->states; ++k)
         state |= ((int)tipclv[k] << k);
-      partition->invariant[j] |= state;
+      if (__builtin_popcount(state) < partition->states)
+        partition->invariant[j] |= state;
       tipclv += (partition->rate_cats * partition->states);
     }
   }
