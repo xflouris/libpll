@@ -104,7 +104,7 @@ int main (int argc, char * argv[])
   pll_operation_t * operations = NULL;
   double * branch_lengths = NULL;
   int * matrix_indices = NULL;
-  pll_optimize_options params;
+  pll_optimize_options_t params;
   time_t start_time, end_time;
   int parameters_to_optimize;
   int edge_pmatrix_index;

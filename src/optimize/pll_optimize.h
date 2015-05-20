@@ -18,8 +18,8 @@
     Exelixis Lab, Heidelberg Instutute for Theoretical Studies
     Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 */
-#ifndef OPTIMIZE_H_
-#define OPTIMIZE_H_
+#ifndef PLL_OPTIMIZE_H_
+#define PLL_OPTIMIZE_H_
 
 #include <pll.h>
 
@@ -45,9 +45,10 @@ typedef struct
   int clv1;
   int clv2;
   int edge_pmatrix_index;
-  int num_gamma_cats;
-  int params_index;
   double alpha_value;
+  int num_gamma_cats;
+
+  int params_index;
 
   /* optimization parameters */
   unsigned int which_parameters;
@@ -58,10 +59,10 @@ typedef struct
   /* tolerances / stopping criteria. */
   double factr;
   double pgtol;
-} pll_optimize_options;
+} pll_optimize_options_t;
 
 /* functions in pll_optimize.c */
 
-PLL_EXPORT double pll_optimize_parameters_lbfgsb(pll_optimize_options * params);
+PLL_EXPORT double pll_optimize_parameters_lbfgsb(pll_optimize_options_t * p);
 
-#endif /* OPTIMIZE_H_ */
+#endif /* PLL_OPTIMIZE_H_ */

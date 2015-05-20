@@ -23,7 +23,7 @@
 
 #define MAX_VARIABLES 1024
 
-static int v_int_max(int * v, int n)
+static int v_int_max (int * v, int n)
 {
   int i, max = v[0];
   for (i = 1; i < n; i++)
@@ -32,7 +32,8 @@ static int v_int_max(int * v, int n)
   return max;
 }
 
-static double compute_lnl_unrooted (pll_optimize_options * params, double *x)
+static double compute_lnl_unrooted (pll_optimize_options_t * params,
+                                    double *x)
 {
   pll_partition_t * partition = params->partition;
   pll_operation_t * operations = params->operations;
@@ -55,8 +56,8 @@ static double compute_lnl_unrooted (pll_optimize_options * params, double *x)
     double * subst_rates;
 
     symm = params->subst_params_symmetries;
-    n_subst_rates = partition->states * (partition->states-1) / 2;
-    subst_rates = (double *) malloc((size_t)n_subst_rates * sizeof(double));
+    n_subst_rates = partition->states * (partition->states - 1) / 2;
+    subst_rates = (double *) malloc ((size_t) n_subst_rates * sizeof(double));
 
     assert(subst_rates);
 
@@ -66,13 +67,12 @@ static double compute_lnl_unrooted (pll_optimize_options * params, double *x)
       int n_subst_free_params = 0;
 
       /* compute the number of free parameters */
-      n_subst_free_params = v_int_max(symm, n_subst_rates);
+      n_subst_free_params = v_int_max (symm, n_subst_rates);
 
       /* assign x values to the substitution rates */
       for (i = 0; i <= n_subst_free_params; i++)
       {
-        double next_value =
-            (i == symm[n_subst_rates - 1]) ? 1.0 : xptr[i];
+        double next_value = (i == symm[n_subst_rates - 1]) ? 1.0 : xptr[i];
         for (j = 0; j < n_subst_rates; j++)
           if (symm[j] == i)
             subst_rates[j] = next_value;
@@ -82,7 +82,7 @@ static double compute_lnl_unrooted (pll_optimize_options * params, double *x)
     }
     else
     {
-      memcpy (subst_rates, xptr, (n_subst_rates-1) * sizeof(double));
+      memcpy (subst_rates, xptr, (n_subst_rates - 1) * sizeof(double));
       subst_rates[n_subst_rates - 1] = 1.0;
     }
     free (subst_rates);
@@ -120,7 +120,7 @@ static double compute_lnl_unrooted (pll_optimize_options * params, double *x)
   return score;
 }
 
-PLL_EXPORT double pll_optimize_parameters_lbfgsb (pll_optimize_options * params)
+PLL_EXPORT double pll_optimize_parameters_lbfgsb (pll_optimize_options_t * params)
 {
   int i;
 
@@ -163,9 +163,11 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (pll_optimize_options * params)
     int n_subst_rates;
     int n_subst_free_params;
 
-    n_subst_rates = params->partition->states * (params->partition->states-1) / 2;
+    n_subst_rates = params->partition->states * (params->partition->states - 1)
+        / 2;
     if (params->subst_params_symmetries)
-      n_subst_free_params = v_int_max(params->subst_params_symmetries, n_subst_rates);
+      n_subst_free_params = v_int_max (params->subst_params_symmetries,
+                                       n_subst_rates);
     else
       n_subst_free_params = n_subst_rates;
 
@@ -203,8 +205,8 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (pll_optimize_options * params)
     l_ptr++;
     u_ptr++;
   }
-  if (params->which_parameters &
-      (PLL_PARAMETER_FREQUENCIES | PLL_PARAMETER_TOPOLOGY))
+  if (params->which_parameters
+      & (PLL_PARAMETER_FREQUENCIES | PLL_PARAMETER_TOPOLOGY))
   {
     return PLL_FAILURE;
   }
