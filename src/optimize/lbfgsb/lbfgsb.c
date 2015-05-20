@@ -1,69 +1,56 @@
-#include "lbfgsb.h"
-#include "time.h"
-
-static integer c__1 = 1;
-
-static time_t start_time;
-
 /*
- L-BFGS-B is released under the "New BSD License" (aka "Modified BSD License" 
- or "3-clause license") 
- Please read attached file License.txt 
+ * L-BFGS-B is released under the "New BSD License" (aka "Modified BSD License"
+ * or "3-clause license")
+ * Please read attached file License.txt
+ *
+ * ===========   L-BFGS-B (version 3.0.  April 25, 2011  ===================
+ *
+ *    This is a modified version of L-BFGS-B. Minor changes in the updated
+ *    code appear preceded by a line comment as follows
+ *
+ *    c-jlm-jn
+ *
+ *    Major changes are described in the accompanying paper:
+ *
+ *        Jorge Nocedal and Jose Luis Morales, Remark on "Algorithm 778:
+ *        L-BFGS-B: Fortran Subroutines for Large-Scale Bound Constrained
+ *        Optimization"  (2011). To appear in  ACM Transactions on
+ *        Mathematical Software,
+ */
+#include "lbfgsb.h"
+#include <time.h>
 
-===========   L-BFGS-B (version 3.0.  April 25, 2011  ===================
+static int c__1 = 1;
 
-    This is a modified version of L-BFGS-B. Minor changes in the updated
-    code appear preceded by a line comment as follows
+#ifdef DEBG
+static int prn1lb (int *n, int *m, double *l, double *u, double *x, int *iprint,
+                   double *epsmch);
+static int prn2lb (int *n, double *x, double *f, double *g, int *iprint,
+                   int *iter, int *nfgv, int *nact, double *sbgnrm,
+                   int *nseg, int *word, int *iword, int *iback, double *stp,
+                   double * xstep, ftnlen word_len);
+static int prn3lb (int *n, double *x, double *f, int * task, int *iprint, int *info,
+                   int *iter, int *nfgv, int *nintol, int *nskip,
+                   int *nact, double *sbgnrm, double *time, int *nseg, int *word,
+                   int *iback, double *stp, double *xstep, int *k, double *cachyt,
+                   double *sbtime, double *lnscht, ftnlen task_len, ftnlen word_len);
+#endif
+static int errclb (int *n, int *m, double *factr, double *l, double *u, int *nbd,
+                   int *task, int *info, int *k, ftnlen task_len);
+static int timer(double *ttime);
 
-    c-jlm-jn
-
-    Major changes are described in the accompanying paper:
-
-        Jorge Nocedal and Jose Luis Morales, Remark on "Algorithm 778:
-        L-BFGS-B: Fortran Subroutines for Large-Scale Bound Constrained
-        Optimization"  (2011). To appear in  ACM Transactions on
-        Mathematical Software,
-
-    The paper describes an improvement and a correction to Algorithm 778.
-    It is shown that the performance of the algorithm can be improved
-    significantly by making a relatively simple modication to the subspace
-    minimization phase. The correction concerns an error caused by the use
-    of routine dpmeps to estimate machine precision.
-
-    The total work space **wa** required by the new version is
-
-                 2*m*n + 11m*m + 5*n + 8*m
-
-    the old version required
-
-                 2*m*n + 12m*m + 4*n + 12*m
-
-
-           J. Nocedal  Department of Electrical Engineering and
-                       Computer Science.
-                       Northwestern University. Evanston, IL. USA
-
-
-          J.L Morales  Departamento de Matematicas,
-                       Instituto Tecnologico Autonomo de Mexico
-                       Mexico D.F. Mexico.
-
-                       March  2011
-   */
-
-/* ============================================================================= */
-/* Subroutine */ int setulb(integer *n, integer *m, double *x,
-	double *l, double *u, integer *nbd, double *f, double
-	*g, double *factr, double *pgtol, double *wa, integer *
-	iwa, integer *task, integer *iprint, integer *csave, logical *lsave,
-	integer *isave, double *dsave) /* ftnlen task_len, ftnlen csave_len) */
+int setulb(int *n, int *m, double *x,
+	double *l, double *u, int *nbd, double *f, double
+	*g, double *factr, double *pgtol, double *wa, int *
+	iwa, int *task, int *iprint, int *csave, logical *lsave,
+	int *isave, double *dsave) /* ftnlen task_len, ftnlen csave_len) */
 {
     /* System generated locals */
-    integer i__1;
+    int i__1;
 
 
     /* Local variables */
-    static integer ld, lr, lt, lz, lwa, lwn, lss, lxp, lws, lwt, lsy, lwy,
+    int ld, lr, lt, lz, lwa, lwn, lss, lxp, lws, lwt, lsy, lwy,
 	    lsnd;
 
 /* -jlm-jn */
@@ -77,11 +64,11 @@ static time_t start_time;
       constrained optimization problem by calling mainlb.
       (The direct method will be used in the subspace minimization.)
 
-    n is an integer variable.
+    n is an int variable.
       On entry n is the dimension of the problem.
       On exit n is unchanged.
 
-    m is an integer variable.
+    m is an int variable.
       On entry m is the maximum number of variable metric corrections
         used to define the limited memory matrix.
       On exit m is unchanged.
@@ -98,7 +85,7 @@ static time_t start_time;
       On entry u is the upper bound on x.
       On exit u is unchanged.
 
-    nbd is an integer array of dimension n.
+    nbd is an int array of dimension n.
       On entry nbd represents the type of bounds imposed on the
         variables, and must be specified as follows:
         nbd(i)=0 if x(i) is unbounded,
@@ -139,7 +126,7 @@ static time_t start_time;
     wa is a double precision working array of length
       (2mmax + 5)nmax + 12mmax^2 + 12mmax.
 
-    iwa is an integer working array of length 3nmax.
+    iwa is an int working array of length 3nmax.
 
     task is a working string of characters of length 60 indicating
       the current job when entering and quitting this subroutine.
@@ -155,7 +142,7 @@ static time_t start_time;
         If lsave(3) = .true.  then  each variable has upper and lower
                                     bounds;
 
-    isave is an integer working array of dimension 44.
+    isave is an int working array of dimension 44.
       On exit with 'task' = NEW_X, the following information is
                                                             available:
         isave(22) = the total number of intervals explored in the
@@ -307,71 +294,67 @@ static time_t start_time;
     return 0;
 } /* setulb_ */
 
-/* Table of constant values */
-
-static double c_b7 = 0.;
 /* SRB: note that task_len is no longer used since task
- * is now integer* not char*.
- * Similarly for csave (now integer*) and so csave_len not used */
+ * is now int* not char*.
+ * Similarly for csave (now int*) and so csave_len not used */
 
-/* Subroutine */ int mainlb(integer *n, integer *m, double *x,
-	double *l, double *u, integer *nbd, double *f, double
+int mainlb(int *n, int *m, double *x,
+	double *l, double *u, int *nbd, double *f, double
 	*g, double *factr, double *pgtol, double *ws, double *
 	wy, double *sy, double *ss, double *wt, double *wn,
 	double *snd, double *z__, double *r__, double *d__,
-	double *t, double *xp, double *wa, integer *index,
-	integer *iwhere, integer *indx2, integer *task, integer *iprint,
-    integer *csave, logical *lsave, integer *isave, double *dsave) /*(ftnlen ) */
+	double *t, double *xp, double *wa, int *index,
+	int *iwhere, int *indx2, int *task, int *iprint,
+    int *csave, logical *lsave, int *isave, double *dsave) /*(ftnlen ) */
 /* 	task_len, ftnlen csave_len) */
 {
-    start_time = time(NULL);
-
     /* System generated locals */
-    integer ws_dim1, ws_offset, wy_dim1, wy_offset, sy_dim1, sy_offset,
+    int ws_dim1, ws_offset, wy_dim1, wy_offset, sy_dim1, sy_offset,
 	    ss_dim1, ss_offset, wt_dim1, wt_offset, wn_dim1, wn_offset,
 	    snd_dim1, snd_offset, i__1=0;
     double d__1, d__2;
-    fileType o__1=NULL;
 
     /* Local variables */
-    static integer i__, k;
-    static double gd, dr, rr, dtd;
-    static integer col;
-    static double tol;
-    static logical wrk;
-    static double stp, cpu1, cpu2;
-    static integer head;
-    static double fold;
-    static integer nact;
-    static double ddum;
-    static integer info, nseg;
-    static double cur_time;
-    static integer nfgv, ifun, iter;
-    static integer wordTemp;
-    static integer *word=&wordTemp;
-    static double time1, time2;
-    static integer iback;
-    static double gdold;
-    static integer nfree;
-    static logical boxed;
-    static integer itail;
-    static double theta;
-    static double dnorm;
-    static integer nskip, iword;
-    static double xstep, stpmx;
-    static integer ileave;
-    static double cachyt;
-    static integer itfile;
-    static double epsmch;
-    static logical updatd;
-    static double sbtime;
-    static logical prjctd;
-    static integer iupdat;
-    static double sbgnrm;
-    static logical cnstnd;
-    static integer nenter;
-    static double lnscht;
-    static integer nintol;
+    int i__, k;
+    double gd, dr, rr, dtd;
+    int col;
+    double tol;
+    logical wrk;
+    double stp, cpu1, cpu2;
+    int head;
+    double fold;
+    int nact;
+    double ddum;
+    int info, nseg;
+    int nfgv, ifun, iter;
+    int wordTemp;
+    int *word=&wordTemp;
+    double time1, time2;
+    int iback;
+    double gdold;
+    int nfree;
+    logical boxed;
+    int itail;
+    double theta;
+    double dnorm;
+    int nskip, iword;
+    double xstep, stpmx;
+    int ileave;
+    double cachyt;
+    int itfile;
+    double epsmch;
+    logical updatd;
+    double sbtime;
+    logical prjctd;
+    int iupdat;
+    double sbgnrm;
+    logical cnstnd;
+    int nenter;
+    double lnscht;
+    int nintol;
+#ifdef DEBUG
+    double cur_time;
+#endif
 
 /* -jlm-jn */
 /* ************ */
@@ -382,11 +365,11 @@ static double c_b7 = 0.;
     This subroutine solves bound constrained optimization problems by
       using the compact formula of the limited memory BFGS updates.
 
-    n is an integer variable.
+    n is an int variable.
       On entry n is the number of variables.
       On exit n is unchanged.
 
-    m is an integer variable.
+    m is an int variable.
       On entry m is the maximum number of variable metric
          corrections allowed in the limited memory matrix.
       On exit m is unchanged.
@@ -403,7 +386,7 @@ static double c_b7 = 0.;
       On entry u is the upper bound of x.
       On exit u is unchanged.
 
-    nbd is an integer array of dimension n.
+    nbd is an int array of dimension n.
       On entry nbd represents the type of bounds imposed on the
         variables, and must be specified as follows:
         nbd(i)=0 if x(i) is unbounded,
@@ -471,11 +454,11 @@ static double c_b7 = 0.;
 
     sg(m),sgo(m),yg(m),ygo(m) are double precision working arrays.
 
-    index is an integer working array of dimension n.
+    index is an int working array of dimension n.
       In subroutine freev, index is used to store the free and fixed
          variables at the Generalized Cauchy Point (GCP).
 
-    iwhere is an integer working array of dimension n used to record
+    iwhere is an int working array of dimension n used to record
       the status of the vector x for GCP computation.
       iwhere(i)=0 or -3 if x(i) is free and has bounds,
                 1       if x(i) is fixed at l(i), and l(i) .ne. u(i)
@@ -483,7 +466,7 @@ static double c_b7 = 0.;
                 3       if x(i) is always fixed, i.e.,  u(i)=x(i)=l(i)
                -1       if x(i) is always free, i.e., no bounds on it.
 
-    indx2 is an integer working array of dimension n.
+    indx2 is an int working array of dimension n.
       Within subroutine cauchy, indx2 corresponds to the array iorder.
       In subroutine freev, a list of variables entering and leaving
       the free set is stored in indx2, and it is passed on to
@@ -496,7 +479,7 @@ static double c_b7 = 0.;
 
     lsave is a logical working array of dimension 4.
 
-    isave is an integer working array of dimension 23.
+    isave is an int working array of dimension 23.
 
     dsave is a double precision working array of dimension 29.
 
@@ -586,7 +569,7 @@ static double c_b7 = 0.;
 
     /* Function Body */
     if ( *task == START ) {
-        epsmch = DBL_EPSILON;
+        epsmch = PLL_LBFGSB_DBL_EPSILON;
         timer(&time1);
         /* Initialize counters and scalars when task='START'. */
         /* for the limited memory BFGS matrices: */
@@ -635,13 +618,18 @@ static double c_b7 = 0.;
         errclb(n, m, factr, &l[1], &u[1], &nbd[1], task, &info, &k, (ftnlen)
                 60);
         if ( IS_ERROR(*task) ){
-            prn3lb(n, &x[1], f, task, iprint, &info, o__1, &iter, &nfgv, &
+#ifdef DEBUG
+            double c_b7 = 0.;
+            prn3lb(n, &x[1], f, task, iprint, &info, &iter, &nfgv, &
                     nintol, &nskip, &nact, &sbgnrm, &c_b7, &nseg, word, &
                     iback, &stp, &xstep, &k, &cachyt, &sbtime, &lnscht, (
                         ftnlen)60, (ftnlen)3);
+#endif
             return 0;
         }
-        prn1lb(n, m, &l[1], &u[1], &x[1], iprint, o__1, &epsmch);
+#ifdef DEBUG
+        prn1lb(n, m, &l[1], &u[1], &x[1], iprint, &epsmch);
+#endif
         active(n, &l[1], &u[1], &nbd[1], &x[1], &iwhere[1], iprint, &prjctd,
                 &cnstnd, &boxed);
         /* The end of the initialization. */
@@ -714,11 +702,7 @@ L111:
     nfgv = 1;
     /* Compute the infinity norm of the (-) projected gradient. */
     projgr(n, &l[1], &u[1], &nbd[1], &x[1], &g[1], &sbgnrm);
-    if (*iprint >= 1) {
-        //printf("At iterate %5ld, f(x)= %15.8f, ||proj grad||_infty = %.2e\n",iter,*f,sbgnrm );
-        time_t elapsed_time = time(NULL);
-        printf("At iterate %5ld, f(x)= %15.8f, %ld seconds\n",iter,*f,elapsed_time - start_time );
-    }
+    DBG("[L-BFGS-B] At iterate %5d, f(x)= %15.8f, ||proj grad||_infty = %.2e\n",iter,*f,sbgnrm );
     if (sbgnrm <= *pgtol) {
         /* terminate the algorithm. */
         *task = CONV_GRAD;
@@ -726,9 +710,7 @@ L111:
     }
     /* ----------------- the beginning of the loop -------------------------- */
 L222:
-    if (*iprint >= 99) {
-        printf("ITERATION %5ld\n", i__1 );
-    }
+    DBG("[L-BFGS-B] ITERATION %5d\n", i__1 );
     iword = -1;
 
     if (! cnstnd && col > 0) {
@@ -773,76 +755,74 @@ L222:
 L333:
     /* If there are no free variables or B=theta*I, then */
     /* skip the subspace minimization. */
-    if (nfree == 0 || col == 0) {
-        goto L555;
-    }
-    /* ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc */
+    if (nfree && col) {
 
-    /* Subspace minimization. */
+      /* ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc */
 
-    /* ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc */
-    timer(&cpu1);
-    /* Form  the LEL^T factorization of the indefinite */
-    /* matrix    K = [-D -Y'ZZ'Y/theta     L_a'-R_z'  ] */
-    /* [L_a -R_z           theta*S'AA'S ] */
-    /* where     E = [-I  0] */
-    /* [ 0  I] */
-    if (wrk) {
-        formk(n, &nfree, &index[1], &nenter, &ileave, &indx2[1], &iupdat, &
-                updatd, &wn[wn_offset], &snd[snd_offset], m, &ws[ws_offset], &
-                wy[wy_offset], &sy[sy_offset], &theta, &col, &head, &info);
+      /* Subspace minimization. */
+
+      /* ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc */
+      timer(&cpu1);
+      /* Form  the LEL^T factorization of the indefinite */
+      /* matrix    K = [-D -Y'ZZ'Y/theta     L_a'-R_z'  ] */
+      /* [L_a -R_z           theta*S'AA'S ] */
+      /* where     E = [-I  0] */
+      /* [ 0  I] */
+      if (wrk)
+      {
+          formk(n, &nfree, &index[1], &nenter, &ileave, &indx2[1], &iupdat, &
+                  updatd, &wn[wn_offset], &snd[snd_offset], m, &ws[ws_offset], &
+                  wy[wy_offset], &sy[sy_offset], &theta, &col, &head, &info);
+      }
+      if (info != 0) {
+          DBG("[L-BFGS-B]  Nonpositive definiteness in Cholesky factorization in formk;\n");
+          DBG("[L-BFGS-B]    refresh the lbfgs memory and restart the iteration.\n");
+          info = 0;
+          col = 0;
+          head = 1;
+          theta = 1.;
+          iupdat = 0;
+          updatd = FALSE_;
+          timer(&cpu2);
+          sbtime = sbtime + cpu2 - cpu1;
+          goto L222;
+      }
+      /* compute r=-Z'B(xcp-xk)-Z'g (using wa(2m+1)=W'(xcp-x) */
+      /* from 'cauchy'). */
+      cmprlb(n, m, &x[1], &g[1], &ws[ws_offset], &wy[wy_offset], &sy[sy_offset]
+              , &wt[wt_offset], &z__[1], &r__[1], &wa[1], &index[1], &theta, &
+              col, &head, &nfree, &cnstnd, &info);
+
+      if (info == 0)
+      {
+        /* -jlm-jn   call the direct method. */
+        subsm (n, m, &nfree, &index[1], &l[1], &u[1], &nbd[1], &z__[1], &r__[1],
+             &xp[1], &ws[ws_offset], &wy[wy_offset], &theta, &x[1], &g[1], &col,
+             &head, &iword, &wa[1], &wn[wn_offset], iprint, &info);
+      }
+      if (info != 0) {
+          /* singular triangular system detected; */
+          /* refresh the lbfgs memory and restart the iteration. */
+          DBG("[L-BFGS-B]  Singular triangular system detected;\n");
+          DBG("[L-BFGS-B]    refresh the lbfgs memory and restart the iteration.\n");
+          info = 0;
+          col = 0;
+          head = 1;
+          theta = 1.;
+          iupdat = 0;
+          updatd = FALSE_;
+          timer(&cpu2);
+          sbtime = sbtime + cpu2 - cpu1;
+          goto L222;
+      }
+      timer(&cpu2);
+      sbtime = sbtime + cpu2 - cpu1;
     }
-    if (info != 0) {
-        printf(" Nonpositive definiteness in Cholesky factorization in formk;\n");
-        printf("   refresh the lbfgs memory and restart the iteration.\n");
-        info = 0;
-        col = 0;
-        head = 1;
-        theta = 1.;
-        iupdat = 0;
-        updatd = FALSE_;
-        timer(&cpu2);
-        sbtime = sbtime + cpu2 - cpu1;
-        goto L222;
-    }
-    /* compute r=-Z'B(xcp-xk)-Z'g (using wa(2m+1)=W'(xcp-x) */
-    /* from 'cauchy'). */
-    cmprlb(n, m, &x[1], &g[1], &ws[ws_offset], &wy[wy_offset], &sy[sy_offset]
-            , &wt[wt_offset], &z__[1], &r__[1], &wa[1], &index[1], &theta, &
-            col, &head, &nfree, &cnstnd, &info);
-    if (info != 0) {
-        goto L444;
-    }
-    /* -jlm-jn   call the direct method. */
-    subsm(n, m, &nfree, &index[1], &l[1], &u[1], &nbd[1], &z__[1], &r__[1], &
-            xp[1], &ws[ws_offset], &wy[wy_offset], &theta, &x[1], &g[1], &col,
-            &head, &iword, &wa[1], &wn[wn_offset], iprint, &info);
-L444:
-    if (info != 0) {
-        /* singular triangular system detected; */
-        /* refresh the lbfgs memory and restart the iteration. */
-        printf(" Singular triangular system detected;\n");
-        printf("   refresh the lbfgs memory and restart the iteration.\n");
-        info = 0;
-        col = 0;
-        head = 1;
-        theta = 1.;
-        iupdat = 0;
-        updatd = FALSE_;
-        timer(&cpu2);
-        sbtime = sbtime + cpu2 - cpu1;
-        goto L222;
-    }
-    timer(&cpu2);
-    sbtime = sbtime + cpu2 - cpu1;
-L555:
     /* Line search and optimality tests. */
     /* Generate the search direction d:=z-x. */
     i__1 = *n;
-    for (i__ = 1; i__ <= i__1; ++i__) {
+    for (i__ = 1; i__ <= i__1; ++i__)
         d__[i__] = z__[i__] - x[i__];
-        /* L40: */
-    }
     timer(&cpu1);
 L666:
     lnsrlb(n, &l[1], &u[1], &nbd[1], &x[1], f, &fold, &gd, &gdold, &g[1], &
@@ -868,8 +848,8 @@ L666:
             goto L999;
         } else {
             /* refresh the lbfgs memory and restart the iteration. */
-            printf(" Bad direction in the line search;\n");
-            printf("   refresh the lbfgs memory and restart the iteration.\n");
+            DBG("[L-BFGS-B]  Bad direction in the line search;\n");
+            DBG("[L-BFGS-B]    refresh the lbfgs memory and restart the iteration.\n");
             if (info == 0) {
                 --nfgv;
             }
@@ -894,9 +874,11 @@ L666:
         ++iter;
         /* Compute the infinity norm of the projected (-)gradient. */
         projgr(n, &l[1], &u[1], &nbd[1], &x[1], &g[1], &sbgnrm);
+#ifdef DEBUG
         /* Print iteration information. */
-        prn2lb(n, &x[1], f, &g[1], iprint, o__1, &iter, &nfgv, &nact, &
+        prn2lb(n, &x[1], f, &g[1], iprint, &iter, &nfgv, &nact, &
                 sbgnrm, &nseg, word, &iword, &iback, &stp, &xstep, (ftnlen)3);
+#endif
         goto L1000;
     }
 L777:
@@ -937,9 +919,7 @@ L777:
         /* skip the L-BFGS update. */
         ++nskip;
         updatd = FALSE_;
-        if (*iprint >= 1) {
-            printf("  ys=%10.3e  -gs=%10.3e BFGS update SKIPPED\n", dr, ddum );
-        }
+        DBG("[L-BFGS-B]   ys=%10.3e  -gs=%10.3e BFGS update SKIPPED\n", dr, ddum );
         goto L888;
     }
     /* ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc */
@@ -962,10 +942,8 @@ L777:
     if (info != 0) {
         /* nonpositive definiteness in Cholesky factorization; */
         /* refresh the lbfgs memory and restart the iteration. */
-        if (*iprint >= 1) {
-            printf(" Nonpositive definiteness in Cholesky factorization in formt;\n");
-            printf("   refresh the lbfgs memory and restart the iteration.\n");
-        }
+        DBG("[L-BFGS-B]  Nonpositive definiteness in Cholesky factorization in formt;\n");
+        DBG("[L-BFGS-B]    refresh the lbfgs memory and restart the iteration.\n");
         info = 0;
         col = 0;
         head = 1;
@@ -982,10 +960,12 @@ L888:
     goto L222;
 L999:
     timer(&time2);
+#ifdef DEBUG
     cur_time = time2 - time1;
-    prn3lb(n, &x[1], f, task, iprint, &info, o__1, &iter, &nfgv, &nintol,
+    prn3lb(n, &x[1], f, task, iprint, &info, &iter, &nfgv, &nintol,
             &nskip, &nact, &sbgnrm, &cur_time, &nseg, word, &iback, &stp, &xstep,
             &k, &cachyt, &sbtime, &lnscht, (ftnlen)60, (ftnlen)3);
+#endif
 L1000:
     /* Save local variables. */
     lsave[1] = prjctd;
@@ -1029,3 +1009,233 @@ L1000:
     return 0;
 } /* mainlb */
 
+#ifdef DEBG
+/*
+ * prints the input data, initial point, upper and lower bounds of
+ * each variable, machine precision, as well as the headings of the output.
+ */
+int prn1lb (int *n, int *m, double *l, double *u, double *x, int *iprint,
+            double *epsmch)
+{
+  int i;
+
+  if (*iprint >= 0)
+  {
+    printf ("           * * *\n");
+    printf ("        RUNNING THE L-BFGS-B CODE\n");
+    printf ("           * * *\n");
+    printf ("Machine precision = %.2e\n", *epsmch);
+    printf (" N = %10d\n M = %10d\n", *n, *m);
+    if (*iprint >= 1)
+    {
+      if (*iprint > 100)
+      {
+        printf ("L  =");
+        for (i = 0; i < *n; ++i)
+          printf ("%.2e ", l[i]);
+        printf ("\n");
+        printf ("X0 =");
+        for (i = 0; i < *n; ++i)
+          printf ("%.2e ", x[i]);
+        printf ("\n");
+        printf ("U  =");
+        for (i = 0; i < *n; ++i)
+          printf ("%.2e ", u[i]);
+        printf ("\n");
+      }
+    }
+  }
+  return 0;
+} /* prn1lb */
+
+/*
+ * prints out new information after a successful line search.
+ */
+int prn2lb (int *n, double *x, double *f, double *g, int *iprint,
+            int *iter, int *nfgv, int *nact, double *sbgnrm,
+            int *nseg, int *word, int *iword, int *iback, double *stp,
+            double * xstep, ftnlen word_len)
+{
+  int i;
+
+  if (*iword == 0)
+    *word = WORD_CON;
+  else if (*iword == 1)
+    *word = WORD_BND;
+  else if (*iword == 5)
+    *word = WORD_TNT;
+  else
+    *word = WORD_DEFAULT;
+
+  if (*iprint >= 99)
+  {
+    printf ("LINE SEARCH %d times; norm of step = %.2e\n", *iback, *xstep);
+    printf ("At iterate %5d, f(x)= %15.8f, ||proj grad||_infty = %.2e\n",
+            *iter, *f, *sbgnrm);
+    if (*iprint > 100)
+    {
+      printf ("X =");
+      for (i = 0; i < *n; ++i)
+        printf ("%.2e ", x[i]);
+      printf ("\n");
+      printf ("G =");
+      for (i = 0; i < *n; ++i)
+        printf ("%.2e ", g[i]);
+      printf ("\n");
+    }
+  }
+  else if (*iprint > 0)
+  {
+    if ((*iter % *iprint) == 0)
+      printf ("At iterate %5d, f(x)= %15.8f, ||proj grad||_infty = %.2e\n",
+              *iter, *f, *sbgnrm);
+  }
+  return 0;
+} /* prn2lb */
+
+/*
+ * prints out information when either a built-in convergence test is satisfied
+ * or when an error message is generated.
+ */
+int prn3lb (int *n, double *x, double *f, int * task, int *iprint, int *info,
+            int *iter, int *nfgv, int *nintol, int *nskip,
+            int *nact, double *sbgnrm, double *time, int *nseg, int *word,
+            int *iback, double *stp, double *xstep, int *k, double *cachyt,
+            double *sbtime, double *lnscht, ftnlen task_len, ftnlen word_len)
+{
+  int i;
+
+  if (!IS_ERROR(*task))
+  {
+    if (*iprint >= 0)
+    {
+
+      printf ("           * * * \n");
+      printf ("Tit   = total number of iterations\n");
+      printf ("Tnf   = total number of function evaluations\n");
+      printf (
+          "Tnint = total number of segments explored during Cauchy searches\n");
+      printf ("Skip  = number of BFGS updates skipped\n");
+      printf (
+          "Nact  = number of active bounds at final generalized Cauchy point\n");
+      printf ("Projg = norm of the final projected gradient\n");
+      printf ("F     = final function value\n");
+      printf ("           * * * \n");
+
+      printf ("   N    Tit   Tnf  Tnint  Skip  Nact      Projg        F\n");
+      printf ("%5d %5d %5d %5d %5d %5d\t%6.2e %9.5e\n", *n, *iter, *nfgv,
+              *nintol, *nskip, *nact, *sbgnrm, *f);
+      if (*iprint >= 100)
+      {
+        printf ("X = ");
+        for (i = 0; i < *n; ++i)
+          printf (" %.2e", x[i]);
+        printf ("\n");
+      }
+      if (*iprint >= 1)
+        printf ("F(x) = %.9e\n", *f);
+    }
+  }
+  if (*iprint >= 0)
+  {
+    printf ("%d\n", *task);
+    if (*info != 0)
+    {
+      if (*info == -1)
+        printf (
+            " Matrix in 1st Cholesky factorization in formk is not Pos. Def.\n");
+      if (*info == -2)
+        printf (
+            " Matrix in 2nd Cholesky factorization in formk is not Pos. Def.\n");
+      if (*info == -3)
+        printf (
+            " Matrix in the Cholesky factorization in formt is not Pos. Def.\n");
+      if (*info == -4)
+      {
+        printf (" Derivative >= 0, backtracking line search impossible.\n");
+        printf ("  Previous x, f and g restored.\n");
+        printf (
+            " Possible causes: 1 error in function or gradient evaluation;\n");
+        printf ("                  2 rounding errors dominate computation.\n");
+      }
+      if (*info == -5)
+      {
+        printf (" Warning:  more than 10 function and gradient\n");
+        printf ("   evaluations in the last line search.  Termination\n");
+        printf ("   may possibly be caused by a bad search direction.\n");
+      }
+      if (*info == -6)
+        printf (" Input nbd(%d) is invalid\n", *k);
+      if (*info == -7)
+        printf (" l(%d) > u(%d). No feasible solution.\n", *k, *k);
+      if (*info == -8)
+        printf (" The triangular system is singular.\n");
+      if (*info == -9)
+      {
+        printf (
+            " Line search cannot locate an adequate point after 20 function\n");
+        printf ("  and gradient evaluations.  Previous x, f and g restored.\n");
+        printf (
+            " Possible causes: 1 error in function or gradient evaluation;\n");
+        printf ("                  2 rounding error dominate computation.\n");
+      }
+    }
+
+    if (*iprint >= 1)
+    {
+      printf ("Cauchy                time %.3e seconds.\n", *cachyt);
+      printf ("Subspace minimization time %.3e seconds.\n", *sbtime);
+      printf ("Line search           time %.3e seconds.\n", *lnscht);
+    }
+    printf (" Total User time %.3e seconds.\n", *time);
+  }
+  return 0;
+} /* prn3lb */
+#endif
+
+/*
+ * checks the validity of the input data
+ */
+int errclb (int *n, int *m, double *factr, double *l, double *u, int *nbd,
+            int *task, int *info, int *k, ftnlen task_len)
+{
+  int i;
+
+  /* Function Body */
+  if (*n <= 0)
+    *task = ERROR_N0;
+  if (*m <= 0)
+    *task = ERROR_M0;
+  if (*factr < 0.)
+    *task = ERROR_FACTR;
+  /*     Check the validity of the arrays nbd(i), u(i), and l(i). */
+  for (i = 0; i < *n; ++i)
+  {
+    if (nbd[i] < 0 || nbd[i] > 3)
+    {
+      /*   return */
+      *task = ERROR_NBD;
+      *info = -6;
+      *k = i;
+    }
+    if (nbd[i] == 2)
+    {
+      if (l[i] > u[i])
+      {
+        /* return */
+        *task = ERROR_FEAS;
+        *info = -7;
+        *k = i;
+      }
+    }
+  }
+  return 0;
+} /* errclb */
+
+int timer(double *ttime)
+{
+    clock_t temp;
+    temp    = clock();
+    *ttime  = ((double) temp)/CLOCKS_PER_SEC;
+    return 0;
+} /* timer */

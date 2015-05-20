@@ -1,15 +1,15 @@
 #include "lbfgsb.h"
-static integer c__1 = 1;
+static int c__1 = 1;
 
 
- int lnsrlb(integer *n, double *l, double *u, 
-	integer *nbd, double *x, double *f, double *fold, 
+ int lnsrlb(int *n, double *l, double *u,
+	int *nbd, double *x, double *f, double *fold,
 	double *gd, double *gdold, double *g, double *d__, 
 	double *r__, double *t, double *z__, double *stp, 
 	double *dnorm, double *dtd, double *xstep, double *
-	stpmx, integer *iter, integer *ifun, integer *iback, integer *nfgv, 
-	integer *info, integer *task, logical *boxed, logical *cnstnd, integer *
-	csave, integer *isave, double *dsave) /* ftnlen task_len, ftnlen 
+	stpmx, int *iter, int *ifun, int *iback, int *nfgv,
+	int *info, int *task, logical *boxed, logical *cnstnd, int *
+	csave, int *isave, double *dsave) /* ftnlen task_len, ftnlen
 	csave_len) */
 {
     /*
@@ -43,17 +43,17 @@ static integer c__1 = 1;
 
 
     /* Table of constant values */
-    static double c_b14 = FTOL;
-    static double c_b15 = GTOL;
-    static double c_b16 = XTOL;
-    static double c_b17 = STEPMIN;
+    static double c_b14 = PLL_LBFGSB_DEFAULT_FTOL;
+    static double c_b15 = PLL_LBFGSB_DEFAULT_GTOL;
+    static double c_b16 = PLL_LBFGSB_DEFAULT_XTOL;
+    static double c_b17 = PLL_LBFGSB_DEFAULT_STEPMIN;
     /* System generated locals */
-    integer i__1;
+    int i__1;
     double d__1;
 
 
     /* Local variables */
-    static integer i__;
+    static int i__;
     static double a1, a2;
 
     /* Parameter adjustments */
@@ -125,7 +125,7 @@ L556:
         if (*gd >= 0.) {
             /*  the directional derivative >=0. */
             /*  Line search is impossible. */
-            printf("ascend direction in projection gd = %.2e\n", *gd ); 
+            DBG("[L-BFGS-B] ascend direction in projection gd = %.2e\n", *gd );
             *info = -4;
             return 0;
         }
@@ -160,7 +160,7 @@ L556:
 /* ======================= The end of lnsrlb ============================= */
 int dcsrch(double *f, double *g, double *stp, 
         double *ftol, double *gtol, double *xtol, double *
-        stpmin, double *stpmax, integer *task, integer *isave, double *
+        stpmin, double *stpmax, int *task, int *isave, double *
         dsave) /* ftnlen task_len) */
 {
     /* System generated locals */
@@ -169,7 +169,7 @@ int dcsrch(double *f, double *g, double *stp,
 
     /* Local variables */
     static double fm, gm, fx, fy, gx, gy, fxm, fym, gxm, gym, stx, sty;
-    static integer stage;
+    static int stage;
     static double finit, ginit, width, ftest, gtest, stmin, stmax, width1;
     static logical brackt;
 
@@ -289,7 +289,7 @@ the sufficient decrease and curvature condition.
                 On exit with convergence, a warning or an error, the 
                 variable task contains additional information. 
 
-                isave is an integer work array of dimension 2. 
+                isave is an int work array of dimension 2.
 
                 dsave is a double precision work array of dimension 13. 
 
@@ -482,16 +482,13 @@ L1000:
 } /* dcsrch */
 
 /* ====================== The end of dcsrch ============================== */
-/* Subroutine */ int dcstep(double *stx, double *fx, double *dx, 
+int dcstep(double *stx, double *fx, double *dx,
         double *sty, double *fy, double *dy, double *stp, 
         double *fp, double *dp, logical *brackt, double *stpmin, 
         double *stpmax)
 {
     /* System generated locals */
     double d__1, d__2, d__3;
-
-    /* Builtin functions */
-    double sqrt(double);
 
     /* Local variables */
     static double p, q, r__, s, sgnd, stpc, stpf, stpq, gamma, theta;

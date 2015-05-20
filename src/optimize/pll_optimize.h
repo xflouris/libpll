@@ -21,16 +21,19 @@
 #ifndef OPTIMIZE_H_
 #define OPTIMIZE_H_
 
-#include "pll.h"
+#include <pll.h>
 
-enum
-{
-  PARAM_SUBST_RATES = 1,
-  PARAM_PINV = 2,
-  PARAM_ALPHA = 4,
-  PARAM_FREQUENCIES = 8,
-  PARAM_BRANCH_LENGTHS = 16
-};
+#define PLL_PARAMETER_SUBST_RATES      1
+#define PLL_PARAMETER_ALPHA            2
+#define PLL_PARAMETER_PINV             4
+#define PLL_PARAMETER_FREQUENCIES      8
+#define PLL_PARAMETER_BRANCH_LENGTHS  16
+#define PLL_PARAMETER_TOPOLOGY        32
+
+#define PLL_LBFGSB_BOUND_NONE  0
+#define PLL_LBFGSB_BOUND_LOWER 1
+#define PLL_LBFGSB_BOUND_BOTH  2
+#define PLL_LBFGSB_BOUND_UPPER 3
 
 typedef struct
 {
@@ -48,11 +51,17 @@ typedef struct
 
   /* optimization parameters */
   unsigned int which_parameters;
-  /* tolerances in the stopping criteria. */
+
+  /* substitution matrix symmetries and parameters */
+  int * subst_params_symmetries;
+
+  /* tolerances / stopping criteria. */
   double factr;
   double pgtol;
-} opt_params;
+} pll_optimize_options;
 
-double optimize_parameters(opt_params * params);
+/* functions in pll_optimize.c */
+
+PLL_EXPORT double pll_optimize_parameters_lbfgsb(pll_optimize_options * params);
 
 #endif /* OPTIMIZE_H_ */

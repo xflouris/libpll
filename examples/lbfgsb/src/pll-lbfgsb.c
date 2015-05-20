@@ -18,14 +18,16 @@
  Exelixis Lab, Heidelberg Instutute for Theoretical Studies
  Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
  */
-#include "optimize.h"
+#include "pll_optimize.h"
 
+#include <assert.h>
 #include <stdarg.h>
 #include <search.h>
 #include <time.h>
 
 #define STATES    4
 #define RATE_CATS 4
+#define SUBST_PARAMS (STATES*(STATES-1)/2)
 
 #define OPT_EPSILON 1e-2
 
@@ -69,6 +71,31 @@ static void fatal (const char * format, ...)
   exit (EXIT_FAILURE);
 }
 
+int * build_model_simmetries (const char * modelmatrix)
+{
+  int i, next_index;
+  assert(strlen(modelmatrix) == SUBST_PARAMS);
+
+  next_index = 0;
+  int * subst_matrix_symmetries = (int *) calloc (SUBST_PARAMS, sizeof(int));
+  int * t = (int *) alloca(10 * sizeof(int));
+  for (i = 0; i < 10; i++)
+    t[i] = -1;
+  for (i = 0; i < SUBST_PARAMS; i++)
+  {
+    int v = (int) modelmatrix[i] - '0';
+    if (v < 0 || v > 9)
+      fatal ("Error in the model symmetries matrix");
+    if (t[v] == -1)
+    {
+      t[v] = next_index;
+      next_index++;
+    }
+    subst_matrix_symmetries[i] = t[v];
+  }
+  return subst_matrix_symmetries;
+}
+
 int main (int argc, char * argv[])
 {
 
@@ -77,16 +104,20 @@ int main (int argc, char * argv[])
   pll_operation_t * operations = NULL;
   double * branch_lengths = NULL;
   int * matrix_indices = NULL;
-  opt_params params;
+  pll_optimize_options params;
   time_t start_time, end_time;
   int parameters_to_optimize;
+  int edge_pmatrix_index;
+  int clv1;
+  int clv2;
 
   pll_utree_t * tree;
   char ** tipnames;
   int * data;
+  int * subst_params_symmetries;
 
-  if (argc != 3)
-    fatal (" syntax: %s [newick] [fasta]", argv[0]);
+  if (argc != 4)
+    fatal (" syntax: %s [newick] [fasta] [model]", argv[0]);
 
   tree = pll_parse_newick_utree (argv[1], &tip_count);
 
@@ -162,20 +193,6 @@ int main (int argc, char * argv[])
     if (i != tip_count)
       fatal ("Some taxa are missing from FASTA file");
 
-    /* create the PLL partition instance
-
-     tip_count : the number of tip sequences we want to have
-     tip_count-2 : the number of CLV buffers to be allocated for inner nodes
-     STATES : the number of states that our data have
-     1 : number of different substitution models (or eigen decomposition)
-     to use concurrently (i.e. 4 for LG4)
-     2*tip_count - 3: number of probability matrices to be allocated
-     RATE_CATS : number of rate categories we will use
-     tip_count-2 : how many scale buffers to use (not yet implemented)
-     PLL_ATTRIB_ARCH_SSE : list of flags for hardware acceleration
-
-     */
-
     partition = pll_create_partition (tip_count, tip_count - 2,
     STATES,
                                       sites, 1, 2 * tip_count - 3,
@@ -217,9 +234,12 @@ int main (int argc, char * argv[])
     free (seqdata);
     free (headers);
   }
-  int edge_pmatrix_index;
-  int clv1;
-  int clv2;
+
+  subst_params_symmetries = build_model_simmetries(argv[3]);
+  printf("Model: ");
+  for (i=0; i<SUBST_PARAMS; i++)
+    printf("%d", subst_params_symmetries[i]);
+  printf("\n");
 
   pll_traverse_utree (tree, tip_count, &branch_lengths, &matrix_indices,
                       &operations, &edge_pmatrix_index, &clv1, &clv2);
@@ -274,11 +294,17 @@ int main (int argc, char * argv[])
   params.params_index = 0;
   params.alpha_value = 1.0;
 
+  params.subst_params_symmetries = subst_params_symmetries;
+
   /* optimization parameters */
   params.factr = 1e8;
   params.pgtol = 0.1;
 
-  parameters_to_optimize = PARAM_SUBST_RATES | PARAM_ALPHA; // | PARAM_PINV; // | PARAM_BRANCH_LENGTHS
+  parameters_to_optimize =
+      PLL_PARAMETER_SUBST_RATES |
+      PLL_PARAMETER_ALPHA;
+  // | PLL_PARAMETER_PINV;
+  // | PLL_PARAMETER_BRANCH_LENGTHS
 
   start_time = time (NULL);
   logl *= -1;
@@ -287,28 +313,28 @@ int main (int argc, char * argv[])
   {
     logl = cur_logl;
 
-    if (parameters_to_optimize & PARAM_BRANCH_LENGTHS)
+    if (parameters_to_optimize & PLL_PARAMETER_BRANCH_LENGTHS)
     {
-      params.which_parameters = PARAM_BRANCH_LENGTHS;
-      optimize_parameters (&params);
+      params.which_parameters = PLL_PARAMETER_BRANCH_LENGTHS;
+      pll_optimize_parameters_lbfgsb (&params);
     }
 
-    if (parameters_to_optimize & PARAM_SUBST_RATES)
+    if (parameters_to_optimize & PLL_PARAMETER_SUBST_RATES)
     {
-      params.which_parameters = PARAM_SUBST_RATES; //| PARAM_ALPHA;// | PARAM_PINV;
-      optimize_parameters (&params);
+      params.which_parameters = PLL_PARAMETER_SUBST_RATES;
+      pll_optimize_parameters_lbfgsb (&params);
     }
 
-    if (parameters_to_optimize & PARAM_ALPHA)
+    if (parameters_to_optimize & PLL_PARAMETER_ALPHA)
     {
-      params.which_parameters = PARAM_ALPHA;
-      cur_logl = optimize_parameters (&params);
+      params.which_parameters = PLL_PARAMETER_ALPHA;
+      cur_logl = pll_optimize_parameters_lbfgsb (&params);
     }
 
-    if (parameters_to_optimize & PARAM_PINV)
+    if (parameters_to_optimize & PLL_PARAMETER_PINV)
     {
-      params.which_parameters = PARAM_PINV;
-      cur_logl = optimize_parameters (&params);
+      params.which_parameters = PLL_PARAMETER_PINV;
+      cur_logl = pll_optimize_parameters_lbfgsb (&params);
     }
 
     printf ("  iter: %ld s. : %f\n", time (NULL) - start_time, cur_logl);
@@ -332,6 +358,7 @@ int main (int argc, char * argv[])
   /* destroy all structures allocated for the concrete PLL partition instance */
   pll_destroy_partition (partition);
 
+  free(subst_params_symmetries);
   free (branch_lengths);
   free (matrix_indices);
   free (operations);

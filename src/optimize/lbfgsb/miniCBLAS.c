@@ -9,8 +9,8 @@
  * is not a major reason not to use this. If for some reason
  * you think these are a bottleneck of computation,
  * then link with an optimized BLAS (gotoBLAS, ATLAS, Intel MKL).
- * But, be warned that there some BLAS expect 32-bit/4 byte integers,
- * and some expect 64-bit/8-byte integers, and they are passed by
+ * But, be warned that there some BLAS expect 32-bit/4 byte ints,
+ * and some expect 64-bit/8-byte ints, and they are passed by
  * reference, so this can cause crashes if you get it wrong!
  *
  * Feb 28 2014, Stephen Becker
@@ -47,11 +47,11 @@
 #define DY(I) dy[(I)-1]
 #define DX(I) dx[(I)-1]
 
-/* Subroutine */ int daxpyRef(integer *n, double *da, double *dx, 
-	integer *incx, double *dy, integer *incy)
+int daxpyRef(int *n, double *da, double *dx,
+	int *incx, double *dy, int *incy)
 {
   /* Local variables */
-  integer i, m, ix, iy, mp1;
+  int i, m, ix, iy, mp1;
 
   /*     constant times a vector plus a vector.
    uses unrolled loops for increments equal to one.
@@ -115,11 +115,11 @@
 } /* daxpyRef */
 
 
-/* Subroutine */ int dcopyRef(integer *n, double *dx, integer *incx, 
-        double *dy, integer *incy)
+int dcopyRef(int *n, double *dx, int *incx,
+        double *dy, int *incy)
 {
   /* Local variables */
-  integer i, m, ix, iy, mp1;
+  int i, m, ix, iy, mp1;
 
   /*     copies a vector, x, to a vector, y.
    uses unrolled loops for increments equal to one.
@@ -186,13 +186,13 @@
   return 0;
 } /* dcopyRef */
 
-double ddotRef(integer *n, double *dx, integer *incx, double *dy, 
-        integer *incy)
+double ddotRef(int *n, double *dx, int *incx, double *dy, 
+        int *incy)
 {
   /* Local variables */
-  integer i, m;
+  int i, m;
   double dtemp;
-  integer ix, iy;
+  int ix, iy;
 
   /* forms the dot product of two vectors.
    uses unrolled loops for increments equal to one.
@@ -251,12 +251,12 @@ double ddotRef(integer *n, double *dx, integer *incx, double *dy,
   return dtemp;
 } /* ddotRef */
 
-/* Subroutine */ int dscalRef(integer *n, double *da, double *dx, 
-        integer *incx)
+int dscalRef(int *n, double *da, double *dx,
+        int *incx)
 {
 
   /* Local variables */
-  integer i, m, nincx, mp1;
+  int i, m, nincx, mp1;
 
   /*     scales a vector by a constant.
    uses unrolled loops for increment equal to one.

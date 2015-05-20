@@ -1,144 +1,121 @@
+/*
+ * L-BFGS-B is released under the "New BSD License" (aka "Modified BSD License"
+ * or "3-clause license")
+ * Please read attached file License.txt
+ *
+ * ===========   L-BFGS-B (version 3.0.  April 25, 2011  ===================
+ *
+ *    This is a modified version of L-BFGS-B. Minor changes in the updated
+ *    code appear preceded by a line comment as follows
+ *
+ *    c-jlm-jn
+ *
+ *    Major changes are described in the accompanying paper:
+ *
+ *        Jorge Nocedal and Jose Luis Morales, Remark on "Algorithm 778:
+ *        L-BFGS-B: Fortran Subroutines for Large-Scale Bound Constrained
+ *        Optimization"  (2011). To appear in  ACM Transactions on
+ *        Mathematical Software,
+ */
 #include "lbfgsb.h"
-static integer c__1 = 1;
 
-/* Table of constant values */
-static integer c__11 = 11;
+static int c__1 = 1;
+static int c__11 = 11;
 
-/* Subroutine */ int active(integer *n, double *l, double *u, 
-	integer *nbd, double *x, integer *iwhere, integer *iprint, 
-	logical *prjctd, logical *cnstnd, logical *boxed)
-{
-    /* System generated locals */
-    integer i__1;
-
-    /* Local variables */
-    static integer i__, nbdd;
-
-
-/*     ************ */
-
-/*     Subroutine active */
+int bmv (int *m, double *sy, double *wt, int *col, double *v, double *p,
+         int *info);
+int hpsolb (int *n, double *t, int *iorder, int *iheap);
 
 /*     This subroutine initializes iwhere and projects the initial x to */
 /*       the feasible set if necessary. */
-
-/*     iwhere is an integer array of dimension n. */
+/*     iwhere is an int array of dimension n. */
 /*       On entry iwhere is unspecified. */
 /*       On exit iwhere(i)=-1  if x(i) has no bounds */
 /*                         3   if l(i)=u(i) */
 /*                         0   otherwise. */
 /*       In cauchy, iwhere is given finer gradations. */
-
-
-/*                           *  *  * */
-
-/*     NEOS, November 1994. (Latest revision June 1996.) */
-/*     Optimization Technology Center. */
-/*     Argonne National Laboratory and Northwestern University. */
-/*     Written by */
-/*                        Ciyou Zhu */
-/*     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal. */
-
-
-/*     ************ */
-/*     Initialize nbdd, prjctd, cnstnd and boxed. */
-    /* Parameter adjustments */
-    --iwhere;
-    --x;
-    --nbd;
-    --u;
-    --l;
-
-    /* Function Body */
-    nbdd = 0;
-    *prjctd = FALSE_;
-    *cnstnd = FALSE_;
-    *boxed = TRUE_;
-/*     Project the initial x to the easible set if necessary. */
-    i__1 = *n;
-    for (i__ = 1; i__ <= i__1; ++i__) {
-	if (nbd[i__] > 0) {
-	    if (nbd[i__] <= 2 && x[i__] <= l[i__]) {
-		if (x[i__] < l[i__]) {
-		    *prjctd = TRUE_;
-		    x[i__] = l[i__];
-		}
-		++nbdd;
-	    } else if (nbd[i__] >= 2 && x[i__] >= u[i__]) {
-		if (x[i__] > u[i__]) {
-		    *prjctd = TRUE_;
-		    x[i__] = u[i__];
-		}
-		++nbdd;
-	    }
-	}
-/* L10: */
-    }
-/*     Initialize iwhere and assign values to cnstnd and boxed. */
-    i__1 = *n;
-    for (i__ = 1; i__ <= i__1; ++i__) {
-	if (nbd[i__] != 2) {
-	    *boxed = FALSE_;
-	}
-	if (nbd[i__] == 0) {
-/*                                this variable is always free */
-	    iwhere[i__] = -1;
-/*           otherwise set x(i)=mid(x(i), u(i), l(i)). */
-	} else {
-	    *cnstnd = TRUE_;
-	    if (nbd[i__] == 2 && u[i__] - l[i__] <= 0.) {
-/*                   this variable is always fixed */
-		iwhere[i__] = 3;
-	    } else {
-		iwhere[i__] = 0;
-	    }
-	}
-/* L20: */
-    }
-    if (*iprint >= 0) {
-	if (*prjctd) {
-		printf("The initial X is infeasible. Restart with its projection\n");
-	}
-	if (! (*cnstnd)) {
-		printf("This problem is unconstrained\n");
-	}
-    }
-    if (*iprint > 0) {
-        printf("At X0, %ld variables are exactly at the bounds\n",nbdd);
-    }
-    return 0;
-} /* active */
-/* ======================= The end of active ============================= */
-
-
-
-
-
-
-
-
-/* Subroutine */ int bmv(integer *m, double *sy, double *wt, integer 
-	*col, double *v, double *p, integer *info)
+int active (int *n, double *l, double *u, int *nbd, double *x, int *iwhere,
+            int *iprint, logical *prjctd, logical *cnstnd, logical *boxed)
 {
-    /* System generated locals */
-    integer sy_dim1, sy_offset, wt_dim1, wt_offset, i__1, i__2;
+  int i, nbdd;
 
-    /* Builtin functions */
-    double sqrt(double);
+  nbdd = 0;
+  *prjctd = FALSE_;
+  *cnstnd = FALSE_;
+  *boxed = TRUE_;
 
-    /* Local variables */
-    static integer i__, k, i2;
-    static double sum;
+  /*     Project the initial x to the easible set if necessary. */
+  for (i = 0; i < *n; ++i)
+  {
+    if (nbd[i] > 0)
+    {
+      if (nbd[i] <= 2 && x[i] <= l[i])
+      {
+        if (x[i] < l[i])
+        {
+          *prjctd = TRUE_;
+          x[i] = l[i];
+        }
+        ++nbdd;
+      }
+      else if (nbd[i] >= 2 && x[i] >= u[i])
+      {
+        if (x[i] > u[i])
+        {
+          *prjctd = TRUE_;
+          x[i] = u[i];
+        }
+        ++nbdd;
+      }
+    }
+  }
+  /*     Initialize iwhere and assign values to cnstnd and boxed. */
+  for (i = 0; i < *n; ++i)
+  {
+    if (nbd[i] != 2)
+    {
+      *boxed = FALSE_;
+    }
+    if (nbd[i] == 0)
+    {
+      /*                                this variable is always free */
+      iwhere[i] = -1;
+      /*           otherwise set x(i)=mid(x(i), u(i), l(i)). */
+    }
+    else
+    {
+      *cnstnd = TRUE_;
+      if (nbd[i] == 2 && u[i] - l[i] <= 0.)
+      {
+        /*                   this variable is always fixed */
+        iwhere[i] = 3;
+      }
+      else
+      {
+        iwhere[i] = 0;
+      }
+    }
+  }
 
-/*     ************ */
+#ifdef DEBUG
+  if (*prjctd)
+  {
+    DBG("[L-BFGS-B] The initial X is infeasible. Restart with its projection\n");
+  }
+  if (!(*cnstnd))
+  {
+    DBG("[L-BFGS-B] This problem is unconstrained\n");
+  } DBG("[L-BFGS-B] At X0, %d variables are exactly at the bounds\n", nbdd);
+#endif
 
-/*     Subroutine bmv */
+  return 0;
+} /* active */
 
 /*     This subroutine computes the product of the 2m x 2m middle matrix */
 /*       in the compact L-BFGS formula of B and a 2m vector v; */
 /*       it returns the product in p. */
 
-/*     m is an integer variable. */
+/*     m is an int variable. */
 /*       On entry m is the maximum number of variable metric corrections */
 /*         used to define the limited memory matrix. */
 /*       On exit m is unchanged. */
@@ -152,7 +129,7 @@ static integer c__11 = 11;
 /*         the Cholesky factor of (thetaS'S+LD^(-1)L'). */
 /*       On exit wt is unchanged. */
 
-/*     col is an integer variable. */
+/*     col is an int variable. */
 /*       On entry col specifies the number of s-vectors (or y-vectors) */
 /*         stored in the compact L-BFGS formula. */
 /*       On exit col is unchanged. */
@@ -165,142 +142,85 @@ static integer c__11 = 11;
 /*       On entry p is unspecified. */
 /*       On exit p is the product Mv. */
 
-/*     info is an integer variable. */
+/*     info is an int variable. */
 /*       On entry info is unspecified. */
 /*       On exit info = 0       for normal return, */
 /*                    = nonzero for abnormal return when the system */
 /*                                to be solved by dtrsl is singular. */
+int bmv (int *m, double *sy, double *wt, int *col, double *v, double *p,
+         int *info)
+{
+  /* System generated locals */
+  int sy_dim1, sy_offset, wt_dim1, wt_offset;
 
-/*     Subprograms called: */
+  /* Local variables */
+  int i, k, i2;
+  double sum;
 
-/*       Linpack ... dtrsl. */
+  /* Parameter adjustments */
+  wt_dim1 = *m;
+  wt_offset = 1 + wt_dim1;
+  wt -= wt_offset;
+  sy_dim1 = *m;
+  sy_offset = 1 + sy_dim1;
+  sy -= sy_offset;
+  --p;
+  --v;
 
-
-/*                           *  *  * */
-
-/*     NEOS, November 1994. (Latest revision June 1996.) */
-/*     Optimization Technology Center. */
-/*     Argonne National Laboratory and Northwestern University. */
-/*     Written by */
-/*                        Ciyou Zhu */
-/*     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal. */
-
-
-/*     ************ */
-    /* Parameter adjustments */
-    wt_dim1 = *m;
-    wt_offset = 1 + wt_dim1;
-    wt -= wt_offset;
-    sy_dim1 = *m;
-    sy_offset = 1 + sy_dim1;
-    sy -= sy_offset;
-    --p;
-    --v;
-
-    /* Function Body */
-    if (*col == 0) {
-	return 0;
-    }
-/*     PART I: solve [  D^(1/2)      O ] [ p1 ] = [ v1 ] */
-/*                   [ -L*D^(-1/2)   J ] [ p2 ]   [ v2 ]. */
-/*       solve Jp2=v2+LD^(-1)v1. */
-    p[*col + 1] = v[*col + 1];
-    i__1 = *col;
-    for (i__ = 2; i__ <= i__1; ++i__) {
-	i2 = *col + i__;
-	sum = 0.;
-	i__2 = i__ - 1;
-	for (k = 1; k <= i__2; ++k) {
-	    sum += sy[i__ + k * sy_dim1] * v[k] / sy[k + k * sy_dim1];
-/* L10: */
-	}
-	p[i2] = v[i2] + sum;
-/* L20: */
-    }
-/*     Solve the triangular system */
-    dtrsl(&wt[wt_offset], m, col, &p[*col + 1], &c__11, info);
-    if (*info != 0) {
-	return 0;
-    }
-/*       solve D^(1/2)p1=v1. */
-    i__1 = *col;
-    for (i__ = 1; i__ <= i__1; ++i__) {
-	p[i__] = v[i__] / sqrt(sy[i__ + i__ * sy_dim1]);
-/* L30: */
-    }
-/*     PART II: solve [ -D^(1/2)   D^(-1/2)*L'  ] [ p1 ] = [ p1 ] */
-/*                    [  0         J'           ] [ p2 ]   [ p2 ]. */
-/*       solve J^Tp2=p2. */
-    dtrsl(&wt[wt_offset], m, col, &p[*col + 1], &c__1, info);
-    if (*info != 0) {
-	return 0;
-    }
-/*       compute p1=-D^(-1/2)(p1-D^(-1/2)L'p2) */
-/*                 =-D^(-1/2)p1+D^(-1)L'p2. */
-    i__1 = *col;
-    for (i__ = 1; i__ <= i__1; ++i__) {
-	p[i__] = -p[i__] / sqrt(sy[i__ + i__ * sy_dim1]);
-/* L40: */
-    }
-    i__1 = *col;
-    for (i__ = 1; i__ <= i__1; ++i__) {
-	sum = 0.;
-	i__2 = *col;
-	for (k = i__ + 1; k <= i__2; ++k) {
-	    sum += sy[k + i__ * sy_dim1] * p[*col + k] / sy[i__ + i__ * 
-		    sy_dim1];
-/* L50: */
-	}
-	p[i__] += sum;
-/* L60: */
-    }
+  /* Function Body */
+  if (*col == 0)
+  {
     return 0;
+  }
+  /*     PART I: solve [  D^(1/2)      O ] [ p1 ] = [ v1 ] */
+  /*                   [ -L*D^(-1/2)   J ] [ p2 ]   [ v2 ]. */
+  /*       solve Jp2=v2+LD^(-1)v1. */
+  p[*col + 1] = v[*col + 1];
+  for (i = 2; i <= *col; ++i)
+  {
+    i2 = *col + i;
+    sum = 0.;
+    for (k = 1; k <= i - 1; ++k)
+    {
+      sum += sy[i + k * sy_dim1] * v[k] / sy[k + k * sy_dim1];
+    }
+    p[i2] = v[i2] + sum;
+  }
+  /*     Solve the triangular system */
+  dtrsl (&wt[wt_offset], m, col, &p[*col + 1], &c__11, info);
+  if (*info != 0)
+  {
+    return 0;
+  }
+  /*       solve D^(1/2)p1=v1. */
+  for (i = 1; i <= *col; ++i)
+  {
+    p[i] = v[i] / sqrt (sy[i + i * sy_dim1]);
+  }
+  /*     PART II: solve [ -D^(1/2)   D^(-1/2)*L'  ] [ p1 ] = [ p1 ] */
+  /*                    [  0         J'           ] [ p2 ]   [ p2 ]. */
+  /*       solve J^Tp2=p2. */
+  dtrsl (&wt[wt_offset], m, col, &p[*col + 1], &c__1, info);
+  if (*info != 0)
+  {
+    return 0;
+  }
+  for (i = 1; i <= *col; ++i)
+  {
+    p[i] = -p[i] / sqrt (sy[i + i * sy_dim1]);
+  }
+  for (i = 1; i <= *col; ++i)
+  {
+    sum = 0.;
+    for (k = i + 1; k <= *col; ++k)
+    {
+      sum += sy[k + i * sy_dim1] * p[*col + k] / sy[i + i * sy_dim1];
+    }
+    p[i] += sum;
+  }
+  return 0;
 } /* bmv */
 
-/* ======================== The end of bmv =============================== */
-/* Subroutine */ int cauchy(integer *n, double *x, double *l, 
-	double *u, integer *nbd, double *g, integer *iorder, integer *
-	iwhere, double *t, double *d__, double *xcp, integer *m, 
-	double *wy, double *ws, double *sy, double *wt, 
-	double *theta, integer *col, integer *head, double *p, 
-	double *c__, double *wbp, double *v, integer *nseg, 
-	integer *iprint, double *sbgnrm, integer *info, double *
-	epsmch)
-{
-
-    /* System generated locals */
-    integer wy_dim1, wy_offset, ws_dim1, ws_offset, sy_dim1, sy_offset, 
-	    wt_dim1, wt_offset, i__1, i__2;
-    double d__1;
-
-
-    /* Local variables */
-    static integer i__, j;
-    static double f1, f2, dt, tj, tl, tu, tj0;
-    static integer ibp;
-    static double dtm;
-    extern /* Subroutine */ int bmv(integer *, double *, double *, 
-	    integer *, double *, double *, integer *);
-    static double wmc, wmp, wmw;
-    static integer col2;
-    static double dibp;
-    static integer iter;
-    static double zibp, tsum, dibp2;
-    static logical bnded;
-    static double neggi;
-    static integer nfree;
-    static double bkmin;
-    static integer nleft;
-    static double f2_org__;
-    static integer nbreak, ibkmin;
-    extern /* Subroutine */ int hpsolb(integer *, double *, integer *, 
-	    integer *);
-    static integer pointr;
-    static logical xlower, xupper;
-
-/*     ************ */
-
-/*     Subroutine cauchy */
 
 /*     For given x, l, u, g (with sbgnrm > 0), and a limited memory */
 /*       BFGS matrix B defined in terms of matrices WY, WS, WT, and */
@@ -312,171 +232,44 @@ static integer c__11 = 11;
 
 /*       along the projected gradient direction P(x-tg,l,u). */
 /*       The routine returns the GCP in xcp. */
+int cauchy(int *n, double *x, double *l,
+	double *u, int *nbd, double *g, int *iorder, int *
+	iwhere, double *t, double *d__, double *xcp, int *m,
+	double *wy, double *ws, double *sy, double *wt,
+	double *theta, int *col, int *head, double *p,
+	double *c__, double *wbp, double *v, int *nseg,
+	int *iprint, double *sbgnrm, int *info, double *
+	epsmch)
+{
 
-/*     n is an integer variable. */
-/*       On entry n is the dimension of the problem. */
-/*       On exit n is unchanged. */
-
-/*     x is a double precision array of dimension n. */
-/*       On entry x is the starting point for the GCP computation. */
-/*       On exit x is unchanged. */
-
-/*     l is a double precision array of dimension n. */
-/*       On entry l is the lower bound of x. */
-/*       On exit l is unchanged. */
-
-/*     u is a double precision array of dimension n. */
-/*       On entry u is the upper bound of x. */
-/*       On exit u is unchanged. */
-
-/*     nbd is an integer array of dimension n. */
-/*       On entry nbd represents the type of bounds imposed on the */
-/*         variables, and must be specified as follows: */
-/*         nbd(i)=0 if x(i) is unbounded, */
-/*                1 if x(i) has only a lower bound, */
-/*                2 if x(i) has both lower and upper bounds, and */
-/*                3 if x(i) has only an upper bound. */
-/*       On exit nbd is unchanged. */
-
-/*     g is a double precision array of dimension n. */
-/*       On entry g is the gradient of f(x).  g must be a nonzero vector. */
-/*       On exit g is unchanged. */
-
-/*     iorder is an integer working array of dimension n. */
-/*       iorder will be used to store the breakpoints in the piecewise */
-/*       linear path and free variables encountered. On exit, */
-/*         iorder(1),...,iorder(nleft) are indices of breakpoints */
-/*                                which have not been encountered; */
-/*         iorder(nleft+1),...,iorder(nbreak) are indices of */
-/*                                     encountered breakpoints; and */
-/*         iorder(nfree),...,iorder(n) are indices of variables which */
-/*                 have no bound constraits along the search direction. */
-
-/*     iwhere is an integer array of dimension n. */
-/*       On entry iwhere indicates only the permanently fixed (iwhere=3) */
-/*       or free (iwhere= -1) components of x. */
-/*       On exit iwhere records the status of the current x variables. */
-/*       iwhere(i)=-3  if x(i) is free and has bounds, but is not moved */
-/*                 0   if x(i) is free and has bounds, and is moved */
-/*                 1   if x(i) is fixed at l(i), and l(i) .ne. u(i) */
-/*                 2   if x(i) is fixed at u(i), and u(i) .ne. l(i) */
-/*                 3   if x(i) is always fixed, i.e.,  u(i)=x(i)=l(i) */
-/*                 -1  if x(i) is always free, i.e., it has no bounds. */
-
-/*     t is a double precision working array of dimension n. */
-/*       t will be used to store the break points. */
-
-/*     d is a double precision array of dimension n used to store */
-/*       the Cauchy direction P(x-tg)-x. */
-
-/*     xcp is a double precision array of dimension n used to return the */
-/*       GCP on exit. */
-
-/*     m is an integer variable. */
-/*       On entry m is the maximum number of variable metric corrections */
-/*         used to define the limited memory matrix. */
-/*       On exit m is unchanged. */
-
-/*     ws, wy, sy, and wt are double precision arrays. */
-/*       On entry they store information that defines the */
-/*                             limited memory BFGS matrix: */
-/*         ws(n,m) stores S, a set of s-vectors; */
-/*         wy(n,m) stores Y, a set of y-vectors; */
-/*         sy(m,m) stores S'Y; */
-/*         wt(m,m) stores the */
-/*                 Cholesky factorization of (theta*S'S+LD^(-1)L'). */
-/*       On exit these arrays are unchanged. */
-
-/*     theta is a double precision variable. */
-/*       On entry theta is the scaling factor specifying B_0 = theta I. */
-/*       On exit theta is unchanged. */
-
-/*     col is an integer variable. */
-/*       On entry col is the actual number of variable metric */
-/*         corrections stored so far. */
-/*       On exit col is unchanged. */
-
-/*     head is an integer variable. */
-/*       On entry head is the location of the first s-vector (or y-vector) */
-/*         in S (or Y). */
-/*       On exit col is unchanged. */
-
-/*     p is a double precision working array of dimension 2m. */
-/*       p will be used to store the vector p = W^(T)d. */
-
-/*     c is a double precision working array of dimension 2m. */
-/*       c will be used to store the vector c = W^(T)(xcp-x). */
-
-/*     wbp is a double precision working array of dimension 2m. */
-/*       wbp will be used to store the row of W corresponding */
-/*         to a breakpoint. */
-
-/*     v is a double precision working array of dimension 2m. */
-
-/*     nseg is an integer variable. */
-/*       On exit nseg records the number of quadratic segments explored */
-/*         in searching for the GCP. */
-
-/*     sg and yg are double precision arrays of dimension m. */
-/*       On entry sg  and yg store S'g and Y'g correspondingly. */
-/*       On exit they are unchanged. */
-
-/*     iprint is an INTEGER variable that must be set by the user. */
-/*       It controls the frequency and type of output generated: */
-/*        iprint<0    no output is generated; */
-/*        iprint=0    print only one line at the last iteration; */
-/*        0<iprint<99 print also f and |proj g| every iprint iterations; */
-/*        iprint=99   print details of every iteration except n-vectors; */
-/*        iprint=100  print also the changes of active set and final x; */
-/*        iprint>100  print details of every iteration including x and g; */
-/*       When iprint > 0, the file iterate.dat will be created to */
-/*                        summarize the iteration. */
-
-/*     sbgnrm is a double precision variable. */
-/*       On entry sbgnrm is the norm of the projected gradient at x. */
-/*       On exit sbgnrm is unchanged. */
-
-/*     info is an integer variable. */
-/*       On entry info is 0. */
-/*       On exit info = 0       for normal return, */
-/*                    = nonzero for abnormal return when the the system */
-/*                              used in routine bmv is singular. */
-
-/*     Subprograms called: */
-
-/*       L-BFGS-B Library ... hpsolb, bmv. */
-
-/*       Linpack ... dscal dcopy, daxpy. */
+    /* System generated locals */
+    int wy_dim1, wy_offset, ws_dim1, ws_offset, sy_dim1, sy_offset,
+	    wt_dim1, wt_offset, i__1, i__2;
+    double d__1;
 
 
-/*     References: */
+    /* Local variables */
+    int i, j;
+    double f1, f2, dt, tj, tl, tu, tj0;
+    int ibp;
+    double dtm;
+    double wmc, wmp, wmw;
+    int col2;
+    double dibp;
+    int iter;
+    double zibp, tsum, dibp2;
+    logical bnded;
+    double neggi;
+    int nfree;
+    double bkmin;
+    int nleft;
+    double f2_org__;
+    int nbreak, ibkmin;
+    int pointr;
+    logical xlower, xupper;
 
-/*       [1] R. H. Byrd, P. Lu, J. Nocedal and C. Zhu, ``A limited */
-/*       memory algorithm for bound constrained optimization'', */
-/*       SIAM J. Scientific Computing 16 (1995), no. 5, pp. 1190--1208. */
+    tu = tl = 0.0;
 
-/*       [2] C. Zhu, R.H. Byrd, P. Lu, J. Nocedal, ``L-BFGS-B: FORTRAN */
-/*       Subroutines for Large Scale Bound Constrained Optimization'' */
-/*       Tech. Report, NAM-11, EECS Department, Northwestern University, */
-/*       1994. */
-
-/*       (Postscript files of these papers are available via anonymous */
-/*        ftp to eecs.nwu.edu in the directory pub/lbfgs/lbfgs_bcm.) */
-
-/*                           *  *  * */
-
-/*     NEOS, November 1994. (Latest revision June 1996.) */
-/*     Optimization Technology Center. */
-/*     Argonne National Laboratory and Northwestern University. */
-/*     Written by */
-/*                        Ciyou Zhu */
-/*     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal. */
-
-
-/*     ************ */
-/*     Check the status of the variables, reset iwhere(i) if necessary; */
-/*       compute the Cauchy direction d and the breakpoints t; initialize */
-/*       the derivative f1 and the vector p = W'd (for theta = 1). */
     /* Parameter adjustments */
     --xcp;
     --d__;
@@ -507,9 +300,7 @@ static integer c__11 = 11;
 
     /* Function Body */
     if (*sbgnrm <= 0.) {
-        if (*iprint >= 0) {
-            printf("Subnorm = 0. GCP = X.\n");
-        }
+        DBG("[L-BFGS-B] Subnorm = 0. GCP = X.\n");
         dcopy(n, &x[1], &c__1, &xcp[1], &c__1);
         return 0;
     }
@@ -520,78 +311,76 @@ static integer c__11 = 11;
     bkmin = 0.;
     col2 = *col << 1;
     f1 = 0.;
-    if (*iprint >= 99) {
-        printf("CAUCHY entered\n");
-    }
+    DBG("[L-BFGS-B] CAUCHY entered\n");
 
     /*     We set p to zero and build it up as we determine d. */
     i__1 = col2;
-    for (i__ = 1; i__ <= i__1; ++i__) {
-        p[i__] = 0.;
+    for (i = 1; i <= i__1; ++i) {
+        p[i] = 0.;
         /* L20: */
     }
     /*     In the following loop we determine for each variable its bound */
     /*        status and its breakpoint, and update p accordingly. */
     /*        Smallest breakpoint is identified. */
     i__1 = *n;
-    for (i__ = 1; i__ <= i__1; ++i__) {
-        neggi = -g[i__];
-        if (iwhere[i__] != 3 && iwhere[i__] != -1) {
+    for (i = 1; i <= i__1; ++i) {
+        neggi = -g[i];
+        if (iwhere[i] != 3 && iwhere[i] != -1) {
             /*             if x(i) is not a constant and has bounds, */
             /*             compute the difference between x(i) and its bounds. */
-            if (nbd[i__] <= 2) {
-                tl = x[i__] - l[i__];
+            if (nbd[i] <= 2) {
+                tl = x[i] - l[i];
             }
-            if (nbd[i__] >= 2) {
-                tu = u[i__] - x[i__];
+            if (nbd[i] >= 2) {
+                tu = u[i] - x[i];
             }
             /*           If a variable is close enough to a bound */
             /*             we treat it as at bound. */
-            xlower = nbd[i__] <= 2 && tl <= 0.;
-            xupper = nbd[i__] >= 2 && tu <= 0.;
+            xlower = nbd[i] <= 2 && tl <= 0.;
+            xupper = nbd[i] >= 2 && tu <= 0.;
             /*              reset iwhere(i). */
-            iwhere[i__] = 0;
+            iwhere[i] = 0;
             if (xlower) {
                 if (neggi <= 0.) {
-                    iwhere[i__] = 1;
+                    iwhere[i] = 1;
                 }
             } else if (xupper) {
                 if (neggi >= 0.) {
-                    iwhere[i__] = 2;
+                    iwhere[i] = 2;
                 }
             } else {
                 if (abs(neggi) <= 0.) {
-                    iwhere[i__] = -3;
+                    iwhere[i] = -3;
                 }
             }
         }
         pointr = *head;
-        if (iwhere[i__] != 0 && iwhere[i__] != -1) {
-            d__[i__] = 0.;
+        if (iwhere[i] != 0 && iwhere[i] != -1) {
+            d__[i] = 0.;
         } else {
-            d__[i__] = neggi;
+            d__[i] = neggi;
             f1 -= neggi * neggi;
             /*             calculate p := p - W'e_i* (g_i). */
             i__2 = *col;
             for (j = 1; j <= i__2; ++j) {
-                p[j] += wy[i__ + pointr * wy_dim1] * neggi;
-                p[*col + j] += ws[i__ + pointr * ws_dim1] * neggi;
+                p[j] += wy[i + pointr * wy_dim1] * neggi;
+                p[*col + j] += ws[i + pointr * ws_dim1] * neggi;
                 pointr = pointr % *m + 1;
                 /* L40: */
             }
-            if (nbd[i__] <= 2 && nbd[i__] != 0 && neggi < 0.) {
+            if (nbd[i] <= 2 && nbd[i] != 0 && neggi < 0.) {
                 /*                                 x(i) + d(i) is bounded; compute t(i). */
                 ++nbreak;
-                iorder[nbreak] = i__;
+                iorder[nbreak] = i;
                 t[nbreak] = tl / (-neggi);
                 if (nbreak == 1 || t[nbreak] < bkmin) {
                     bkmin = t[nbreak];
                     ibkmin = nbreak;
                 }
-            } else if (nbd[i__] >= 2 && neggi > 0.) {
+            } else if (nbd[i] >= 2 && neggi > 0.) {
                 /*                                 x(i) + d(i) is bounded; compute t(i). */
                 ++nbreak;
-                iorder[nbreak] = i__;
+                iorder[nbreak] = i;
                 t[nbreak] = tu / neggi;
                 if (nbreak == 1 || t[nbreak] < bkmin) {
                     bkmin = t[nbreak];
@@ -600,7 +389,7 @@ static integer c__11 = 11;
             } else {
                 /*                x(i) + d(i) is not bounded. */
                 --nfree;
-                iorder[nfree] = i__;
+                iorder[nfree] = i;
                 if (abs(neggi) > 0.) {
                     bnded = FALSE_;
                 }
@@ -619,14 +408,14 @@ static integer c__11 = 11;
     dcopy(n, &x[1], &c__1, &xcp[1], &c__1);
     if (nbreak == 0 && nfree == *n + 1) {
         /*                  is a zero vector, return with the initial xcp as GCP. */
-        if (*iprint > 100) {
-            printf("Cauchy X = ");
+#ifdef DEBUG
+            DBG("[L-BFGS-B] Cauchy X = ");
             i__1 = *n;
-            for (i__ = 1; i__ <= i__1; ++i__) {
-                printf("%5.2e ", xcp[i__] );
+            for (i = 1; i <= i__1; ++i) {
+                DBG("%5.2e ", xcp[i] );
             }
-            printf("\n");
-        }
+            DBG("\n");
+#endif
         return 0;
     }
     /*     Initialize c = W'(xcp - x) = 0. */
@@ -648,9 +437,8 @@ static integer c__11 = 11;
     dtm = -f1 / f2;
     tsum = 0.;
     *nseg = 1;
-    if (*iprint >= 99) {
-        printf("There are %ld breakpoints\n", nbreak );
-    }
+    DBG("[L-BFGS-B] There are %d breakpoints\n", nbreak );
+
     /*     If there are no breakpoints, locate the GCP and return. */
     if (nbreak == 0) {
         goto L888;
@@ -686,11 +474,13 @@ L777:
         ibp = iorder[nleft];
     }
     dt = tj - tj0;
-    if (dt != 0. && *iprint >= 100) {
-        printf("Piece %ld --f1, f2 at start point %.2e %.2e\n", *nseg, f1, f2 );
-        printf("Distance to the next break point = %.2e\n", dt );
-        printf("Distance to the stationary point = %.2e\n", dtm );
+#ifdef DEBUG
+    if (dt != 0.) {
+        DBB("[L-BFGS-B] Piece %d --f1, f2 at start point %.2e %.2e\n", *nseg, f1, f2 );
+        DBG("[L-BFGS-B] Distance to the next break point = %.2e\n", dt );
+        DBG("[L-BFGS-B] Distance to the stationary point = %.2e\n", dtm );
     }
+#endif
     /*     If a minimizer is within this interval, locate the GCP and return. */
     if (dtm < dt) {
         goto L888;
@@ -711,9 +501,8 @@ L777:
         xcp[ibp] = l[ibp];
         iwhere[ibp] = 1;
     }
-    if (*iprint >= 100) {
-        printf("Variable %ld is fixed\n", ibp );
-    }
+    DBG("[L-BFGS-B] Variable %d is fixed\n", ibp );
+
     if (nleft == 0 && nbreak == *n) {
         /*                                             all n variables are fixed, */
         /*                                                return with xcp as GCP. */
@@ -773,10 +562,8 @@ L777:
     }
     /* ------------------- the end of the loop ------------------------------- */
 L888:
-    if (*iprint >= 99) {
-        printf("\nGCP found in this segment. Piece %ld --f1, f2 at start point %.2e %.2e\n", *nseg, f1, f2 );
-        printf("Distance to the stationary point = %.2e\n", dtm );
-    }
+    DBG("[L-BFGS-B] \nGCP found in this segment. Piece %d --f1, f2 at start point %.2e %.2e\n", *nseg, f1, f2 );
+    DBG("[L-BFGS-B] Distance to the stationary point = %.2e\n", dtm );
     if (dtm <= 0.) {
         dtm = 0.;
     }
@@ -790,71 +577,34 @@ L999:
     if (*col > 0) {
         daxpy(&col2, &dtm, &p[1], &c__1, &c__[1], &c__1);
     }
-    if (*iprint > 100) {
-
-        printf("Cauchy X = ");
-	    i__1 = *n;
-	    for (i__ = 1; i__ <= i__1; ++i__) {
-		    printf("%5.2e ", xcp[i__] );
-	    }
-    }
-    if (*iprint >= 99) {
-        printf("-------------- exit CAUCHY -----------\n");
-    }
+#ifdef DEBUG
+  DBG("[L-BFGS-B] Cauchy X = ");
+  i__1 = *n;
+  for (i = 1; i <= i__1; ++i)
+  {
+    DBG("%5.2e ", xcp[i] );
+  }
+  DBG("\n[L-BFGS-B] -------------- exit CAUCHY -----------\n");
+#endif
     return 0;
 } /* cauchy */
 
-/* ====================== The end of cauchy ============================== */
-
-
-
-
-
-
-
-
-
-
-
-
-/* Subroutine */ int cmprlb(integer *n, integer *m, double *x, 
-	double *g, double *ws, double *wy, double *sy, 
-	double *wt, double *z__, double *r__, double *wa, 
-	integer *index, double *theta, integer *col, integer *head, 
-	integer *nfree, logical *cnstnd, integer *info)
-{
-    /* System generated locals */
-    integer ws_dim1, ws_offset, wy_dim1, wy_offset, sy_dim1, sy_offset, 
-	    wt_dim1, wt_offset, i__1, i__2;
-
-    /* Local variables */
-    static integer i__, j, k;
-    static double a1, a2;
-    extern /* Subroutine */ int bmv(integer *, double *, double *, 
-	    integer *, double *, double *, integer *);
-    static integer pointr;
-
-/*     ************ */
-
-/*     Subroutine cmprlb */
 
 /*       This subroutine computes r=-Z'B(xcp-xk)-Z'g by using */
 /*         wa(2m+1)=W'(xcp-x) from subroutine cauchy. */
+int cmprlb(int *n, int *m, double *x,
+	double *g, double *ws, double *wy, double *sy, 
+	double *wt, double *z__, double *r__, double *wa, 
+	int *index, double *theta, int *col, int *head, 
+	int *nfree, logical *cnstnd, int *info)
+{
+    /* System generated locals */
+    int ws_dim1, ws_offset, wy_dim1, wy_offset, sy_dim1, sy_offset, 
+	    wt_dim1, wt_offset, i__1, i__2;
 
-/*     Subprograms called: */
-
-/*       L-BFGS-B Library ... bmv. */
-
-
-/*                           *  *  * */
-
-/*     NEOS, November 1994. (Latest revision June 1996.) */
-/*     Optimization Technology Center. */
-/*     Argonne National Laboratory and Northwestern University. */
-/*     Written by */
-/*                        Ciyou Zhu */
-/*     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal. */
-
+    int i, j, k;
+    double a1, a2;
+    int pointr;
 
 /*     ************ */
     /* Parameter adjustments */
@@ -880,15 +630,15 @@ L999:
     /* Function Body */
     if (! (*cnstnd) && *col > 0) {
 	i__1 = *n;
-	for (i__ = 1; i__ <= i__1; ++i__) {
-	    r__[i__] = -g[i__];
+	for (i = 1; i <= i__1; ++i) {
+	    r__[i] = -g[i];
 /* L26: */
 	}
     } else {
 	i__1 = *nfree;
-	for (i__ = 1; i__ <= i__1; ++i__) {
-	    k = index[i__];
-	    r__[i__] = -(*theta) * (z__[k] - x[k]) - g[k];
+	for (i = 1; i <= i__1; ++i) {
+	    k = index[i];
+	    r__[i] = -(*theta) * (z__[k] - x[k]) - g[k];
 /* L30: */
 	}
 	bmv(m, &sy[sy_offset], &wt[wt_offset], col, &wa[(*m << 1) + 1], &wa[
@@ -903,9 +653,9 @@ L999:
 	    a1 = wa[j];
 	    a2 = *theta * wa[*col + j];
 	    i__2 = *nfree;
-	    for (i__ = 1; i__ <= i__2; ++i__) {
-		k = index[i__];
-		r__[i__] = r__[i__] + wy[k + pointr * wy_dim1] * a1 + ws[k + 
+	    for (i = 1; i <= i__2; ++i) {
+		k = index[i];
+		r__[i] = r__[i] + wy[k + pointr * wy_dim1] * a1 + ws[k + 
 			pointr * ws_dim1] * a2;
 /* L32: */
 	    }
@@ -916,22 +666,23 @@ L999:
     return 0;
 } /* cmprlb */
 
+
 /* ======================= The end of cmprlb ============================= */
-/* Subroutine */ int formk(integer *n, integer *nsub, integer *ind, integer *
-	nenter, integer *ileave, integer *indx2, integer *iupdat, logical *
-	updatd, double *wn, double *wn1, integer *m, double *ws, 
-	double *wy, double *sy, double *theta, integer *col, 
-	integer *head, integer *info)
+int formk(int *n, int *nsub, int *ind, int *
+	nenter, int *ileave, int *indx2, int *iupdat, logical *
+	updatd, double *wn, double *wn1, int *m, double *ws, 
+	double *wy, double *sy, double *theta, int *col, 
+	int *head, int *info)
 {
     /* System generated locals */
-    integer wn_dim1, wn_offset, wn1_dim1, wn1_offset, ws_dim1, ws_offset, 
+    int wn_dim1, wn_offset, wn1_dim1, wn1_offset, ws_dim1, ws_offset, 
 	    wy_dim1, wy_offset, sy_dim1, sy_offset, i__1, i__2, i__3;
 
     /* Local variables */
-    static integer i__, k, k1, m2, is, js, iy, jy, is1, js1, col2, dend, pend;
-    static integer upcl;
+    static int i__, k, k1, m2, is, js, iy, jy, is1, js1, col2, dend, pend;
+    static int upcl;
     static double temp1, temp2, temp3, temp4;
-    static integer ipntr, jpntr, dbegin, pbegin;
+    static int ipntr, jpntr, dbegin, pbegin;
 
 /*     ************ */
 
@@ -947,35 +698,35 @@ L999:
 /*       occurring in section 5.1 of [1], as well as to the matrix */
 /*       Mbar^[-1] Nbar in section 5.3. */
 
-/*     n is an integer variable. */
+/*     n is an int variable. */
 /*       On entry n is the dimension of the problem. */
 /*       On exit n is unchanged. */
 
-/*     nsub is an integer variable */
+/*     nsub is an int variable */
 /*       On entry nsub is the number of subspace variables in free set. */
 /*       On exit nsub is not changed. */
 
-/*     ind is an integer array of dimension nsub. */
+/*     ind is an int array of dimension nsub. */
 /*       On entry ind specifies the indices of subspace variables. */
 /*       On exit ind is unchanged. */
 
-/*     nenter is an integer variable. */
+/*     nenter is an int variable. */
 /*       On entry nenter is the number of variables entering the */
 /*         free set. */
 /*       On exit nenter is unchanged. */
 
-/*     ileave is an integer variable. */
+/*     ileave is an int variable. */
 /*       On entry indx2(ileave),...,indx2(n) are the variables leaving */
 /*         the free set. */
 /*       On exit ileave is unchanged. */
 
-/*     indx2 is an integer array of dimension n. */
+/*     indx2 is an int array of dimension n. */
 /*       On entry indx2(1),...,indx2(nenter) are the variables entering */
 /*         the free set, while indx2(ileave),...,indx2(n) are the */
 /*         variables leaving the free set. */
 /*       On exit indx2 is unchanged. */
 
-/*     iupdat is an integer variable. */
+/*     iupdat is an int variable. */
 /*       On entry iupdat is the total number of BFGS updates made so far. */
 /*       On exit iupdat is unchanged. */
 
@@ -999,15 +750,15 @@ L999:
 /*       The purpose of wn1 is just to store these inner products */
 /*       so they can be easily updated and inserted into wn. */
 
-/*     m is an integer variable. */
+/*     m is an int variable. */
 /*       On entry m is the maximum number of variable metric corrections */
 /*         used to define the limited memory matrix. */
 /*       On exit m is unchanged. */
 
 /*     ws, wy, sy, and wtyy are double precision arrays; */
 /*     theta is a double precision variable; */
-/*     col is an integer variable; */
-/*     head is an integer variable. */
+/*     col is an int variable; */
+/*     head is an int variable. */
 /*       On entry they store the information defining the */
 /*                                          limited memory BFGS matrix: */
 /*         ws(n,m) stores S, a set of s-vectors; */
@@ -1020,7 +771,7 @@ L999:
 /*         head is the location of the 1st s- (or y-) vector in S (or Y). */
 /*       On exit they are unchanged. */
 
-/*     info is an integer variable. */
+/*     info is an int variable. */
 /*       On entry info is unspecified. */
 /*       On exit info =  0 for normal return; */
 /*                    = -1 when the 1st Cholesky factorization failed; */
@@ -1302,15 +1053,15 @@ L999:
 
 
 
-/* Subroutine */ int formt(integer *m, double *wt, double *sy, 
-	double *ss, integer *col, double *theta, integer *info)
+int formt(int *m, double *wt, double *sy,
+	double *ss, int *col, double *theta, int *info)
 {
     /* System generated locals */
-    integer wt_dim1, wt_offset, sy_dim1, sy_offset, ss_dim1, ss_offset, i__1, 
+    int wt_dim1, wt_offset, sy_dim1, sy_offset, ss_dim1, ss_offset, i__1, 
 	    i__2, i__3;
 
     /* Local variables */
-    static integer i__, j, k, k1;
+    static int i__, j, k, k1;
     static double ddum;
 
 /*     ************ */
@@ -1390,16 +1141,16 @@ L999:
 
 
 
-/* Subroutine */ int freev(integer *n, integer *nfree, integer *index, 
-	integer *nenter, integer *ileave, integer *indx2, integer *iwhere, 
-	logical *wrk, logical *updatd, logical *cnstnd, integer *iprint, 
-	integer *iter)
+int freev(int *n, int *nfree, int *index,
+	int *nenter, int *ileave, int *indx2, int *iwhere, 
+	logical *wrk, logical *updatd, logical *cnstnd, int *iprint, 
+	int *iter)
 {
     /* System generated locals */
-    integer i__1;
+    int i__1;
 
     /* Local variables */
-    static integer i__, k, iact;
+    static int i__, k, iact;
 
 
 /*     ************ */
@@ -1412,7 +1163,7 @@ L999:
 
 /*     cnstnd is a logical variable indicating whether bounds are present */
 
-/*     index is an integer array of dimension n */
+/*     index is an int array of dimension n */
 /*       for i=1,...,nfree, index(i) are the indices of free variables */
 /*       for i=nfree+1,...,n, index(i) are the indices of bound variables */
 /*       On entry after the first iteration, index gives */
@@ -1420,7 +1171,7 @@ L999:
 /*       On exit it gives the free variables based on the determination */
 /*         in cauchy using the array iwhere. */
 
-/*     indx2 is an integer array of dimension n */
+/*     indx2 is an int array of dimension n */
 /*       On entry indx2 is unspecified. */
 /*       On exit with iter>0, indx2 indicates which variables */
 /*          have changed status since the previous iteration. */
@@ -1457,9 +1208,7 @@ L999:
             if (iwhere[k] > 0) {
                 --(*ileave);
                 indx2[*ileave] = k;
-                if (*iprint >= 100) {
-                    printf("Variable %ld leaves the set of free variables\n", k );
-                }
+                DBG("[L-BFGS-B] Variable %d leaves the set of free variables\n", k );
             }
             /* L20: */
         }
@@ -1469,16 +1218,11 @@ L999:
             if (iwhere[k] <= 0) {
                 ++(*nenter);
                 indx2[*nenter] = k;
-                if (*iprint >= 100) {
-                    printf("Variable %ld leaves the set of free variables\n", k );
-                }
+                DBG("[L-BFGS-B] Variable %d leaves the set of free variables\n", k );
             }
             /* L22: */
         }
-        if (*iprint >= 99) {
-            i__1 = *n + 1 - *ileave;
-            printf("%ld variables leave; %ld variables enter\n", i__1, *nenter );
-        }
+        DBG("[L-BFGS-B] %d variables leave; %d variables enter\n", *n + 1 - *ileave, *nenter );
     }
     *wrk = *ileave < *n + 1 || *nenter > 0 || *updatd;
     /*     Find the index set of free and active variables at the GCP. */
@@ -1495,10 +1239,7 @@ L999:
         }
         /* L24: */
     }
-    if (*iprint >= 99) {
-        i__1 = *iter + 1;
-        printf("%ld variables are free at GCP iter %ld\n", *nfree, i__1 );
-    }
+    DBG("[L-BFGS-B] %d variables are free at GCP iter %d\n", *nfree, *iter + 1;);
     return 0;
 } /* freev */
 
@@ -1510,16 +1251,15 @@ L999:
 
 
 
-/* Subroutine */ int hpsolb(integer *n, double *t, integer *iorder, 
-        integer *iheap)
+int hpsolb (int *n, double *t, int *iorder, int *iheap)
 {
     /* System generated locals */
-    integer i__1;
+    int i__1;
 
     /* Local variables */
-    static integer i__, j, k;
+    static int i__, j, k;
     static double out, ddum;
-    static integer indxin, indxou;
+    static int indxin, indxou;
 
 /*     ************ */
 
@@ -1528,7 +1268,7 @@ L999:
 /*     This subroutine sorts out the least element of t, and puts the */
 /*       remaining elements of t in a heap. */
 
-/*     n is an integer variable. */
+/*     n is an int variable. */
 /*       On entry n is the dimension of the arrays t and iorder. */
 /*       On exit n is unchanged. */
 
@@ -1537,12 +1277,12 @@ L999:
 /*       On exit t(n) stores the least elements of t, and t(1) to t(n-1) */
 /*         stores the remaining elements in the form of a heap. */
 
-/*     iorder is an integer array of dimension n. */
+/*     iorder is an int array of dimension n. */
 /*       On entry iorder(i) is the index of t(i). */
 /*       On exit iorder(i) is still the index of t(i), but iorder may be */
 /*         permuted in accordance with t. */
 
-/*     iheap is an integer variable specifying the task. */
+/*     iheap is an int variable specifying the task. */
 /*       On entry iheap should be set as follows: */
 /*         iheap .eq. 0 if t(1) to t(n) is not in the form of a heap, */
 /*         iheap .ne. 0 if otherwise. */
@@ -1628,19 +1368,19 @@ L30:
 
 
 
-/* Subroutine */ int matupd(integer *n, integer *m, double *ws, 
+int matupd(int *n, int *m, double *ws,
 	double *wy, double *sy, double *ss, double *d__, 
-	double *r__, integer *itail, integer *iupdat, integer *col, 
-	integer *head, double *theta, double *rr, double *dr, 
+	double *r__, int *itail, int *iupdat, int *col, 
+	int *head, double *theta, double *rr, double *dr, 
 	double *stp, double *dtd)
 {
     /* System generated locals */
-    integer ws_dim1, ws_offset, wy_dim1, wy_offset, sy_dim1, sy_offset, 
+    int ws_dim1, ws_offset, wy_dim1, wy_offset, sy_dim1, sy_offset, 
 	    ss_dim1, ss_offset, i__1, i__2;
 
     /* Local variables */
-    static integer j;
-    static integer pointr;
+    static int j;
+    static int pointr;
 
 /*     ************ */
 
@@ -1738,15 +1478,15 @@ L30:
 
 
 
-/* Subroutine */ int projgr(integer *n, double *l, double *u, 
-        integer *nbd, double *x, double *g, double *sbgnrm)
+int projgr(int *n, double *l, double *u,
+        int *nbd, double *x, double *g, double *sbgnrm)
 {
     /* System generated locals */
-    integer i__1;
+    int i__1;
     double d__1, d__2;
 
     /* Local variables */
-    static integer i__;
+    static int i__;
     static double gi;
 
 /*     ************ */
@@ -1813,27 +1553,27 @@ L30:
 
 
 
-/* Subroutine */ int subsm(integer *n, integer *m, integer *nsub, integer *
-	ind, double *l, double *u, integer *nbd, double *x, 
+int subsm(int *n, int *m, int *nsub, int *
+	ind, double *l, double *u, int *nbd, double *x, 
 	double *d__, double *xp, double *ws, double *wy, 
-	double *theta, double *xx, double *gg, integer *col, 
-	integer *head, integer *iword, double *wv, double *wn, 
-	integer *iprint, integer *info)
+	double *theta, double *xx, double *gg, int *col, 
+	int *head, int *iword, double *wv, double *wn, 
+	int *iprint, int *info)
 {
 
     /* System generated locals */
-    integer ws_dim1, ws_offset, wy_dim1, wy_offset, wn_dim1, wn_offset, i__1, 
+    int ws_dim1, ws_offset, wy_dim1, wy_offset, wn_dim1, wn_offset, i__1, 
 	    i__2;
     double d__1, d__2;
 
     /* Local variables */
-    static integer i__, j, k, m2;
+    static int i__, j, k, m2;
     static double dk;
-    static integer js, jy;
+    static int js, jy;
     static double xk;
-    static integer ibd, col2;
+    static int ibd, col2;
     static double dd_p__, temp1, temp2, alpha;
-    static integer pointr;
+    static int pointr;
 
 /*     ********************************************************************** */
 
@@ -1887,20 +1627,20 @@ L30:
 /*     from that described in [1]. One can show that the matrix K is */
 /*     equal to the matrix M^[-1]N in that paper. */
 
-/*     n is an integer variable. */
+/*     n is an int variable. */
 /*       On entry n is the dimension of the problem. */
 /*       On exit n is unchanged. */
 
-/*     m is an integer variable. */
+/*     m is an int variable. */
 /*       On entry m is the maximum number of variable metric corrections */
 /*         used to define the limited memory matrix. */
 /*       On exit m is unchanged. */
 
-/*     nsub is an integer variable. */
+/*     nsub is an int variable. */
 /*       On entry nsub is the number of free variables. */
 /*       On exit nsub is unchanged. */
 
-/*     ind is an integer array of dimension nsub. */
+/*     ind is an int array of dimension nsub. */
 /*       On entry ind specifies the coordinate indices of free variables. */
 /*       On exit ind is unchanged. */
 
@@ -1912,7 +1652,7 @@ L30:
 /*       On entry u is the upper bound of x. */
 /*       On exit u is unchanged. */
 
-/*     nbd is a integer array of dimension n. */
+/*     nbd is a int array of dimension n. */
 /*       On entry nbd represents the type of bounds imposed on the */
 /*         variables, and must be specified as follows: */
 /*         nbd(i)=0 if x(i) is unbounded, */
@@ -1942,8 +1682,8 @@ L30:
 
 /*     ws and wy are double precision arrays; */
 /*     theta is a double precision variable; */
-/*     col is an integer variable; */
-/*     head is an integer variable. */
+/*     col is an int variable; */
+/*     head is an int variable. */
 /*       On entry they store the information defining the */
 /*                                          limited memory BFGS matrix: */
 /*         ws(n,m) stores S, a set of s-vectors; */
@@ -1953,7 +1693,7 @@ L30:
 /*         head is the location of the 1st s- (or y-) vector in S (or Y). */
 /*       On exit they are unchanged. */
 
-/*     iword is an integer variable. */
+/*     iword is an int variable. */
 /*       On entry iword is unspecified. */
 /*       On exit iword specifies the status of the subspace solution. */
 /*         iword = 0 if the solution is in the box, */
@@ -1982,7 +1722,7 @@ L30:
 /*       When iprint > 0, the file iterate.dat will be created to */
 /*                        summarize the iteration. */
 
-/*     info is an integer variable. */
+/*     info is an int variable. */
 /*       On entry info is unspecified. */
 /*       On exit info = 0       for normal return, */
 /*                    = nonzero for abnormal return */
@@ -2038,9 +1778,8 @@ L30:
     if (*nsub <= 0) {
         return 0;
     }
-    if (*iprint >= 99) {
-        printf("---------------SUBSM entered---------\n");
-    }
+    DBG("[L-BFGS-B] ---------------SUBSM entered---------\n");
+
     /*     Compute wv = W'Zd. */
     pointr = *head;
     i__1 = *col;
@@ -2161,8 +1900,8 @@ L30:
     }
     if (dd_p__ > 0.) {
         dcopy(n, &xp[1], &c__1, &x[1], &c__1);
-        printf("Positive dir derivative in projection \n");
-        printf("Using the backtracking step\n");
+        DBG("[L-BFGS-B] Positive dir derivative in projection \n");
+        DBG("[L-BFGS-B] Using the backtracking step\n");
     } else {
         goto L911;
     }
@@ -2218,9 +1957,7 @@ L30:
     }
     /* ccccc */
 L911:
-    if (*iprint >= 99) {
-        printf("----------------- exit SUBSM --------------\n");
-    }
+    DBG("[L-BFGS-B] ----------------- exit SUBSM --------------\n");
     return 0;
 } /* subsm */
 

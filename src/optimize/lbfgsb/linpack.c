@@ -1,26 +1,36 @@
-/* seems to be under the GNU Lesser GPL, but this version was
- * taken directly from L-BFGS-B code from the 199s so it may
- * have been a difference license then. It was re-distributed
- * under L-BFGS-B under the 3 clause BSD.
- * See http://people.sc.fsu.edu/~jburkardt/f_src/linpack/linpack.html
- * */
-
+/*
+ * L-BFGS-B is released under the "New BSD License" (aka "Modified BSD License"
+ * or "3-clause license")
+ * Please read attached file License.txt
+ *
+ * ===========   L-BFGS-B (version 3.0.  April 25, 2011  ===================
+ *
+ *    This is a modified version of L-BFGS-B. Minor changes in the updated
+ *    code appear preceded by a line comment as follows
+ *
+ *    c-jlm-jn
+ *
+ *    Major changes are described in the accompanying paper:
+ *
+ *        Jorge Nocedal and Jose Luis Morales, Remark on "Algorithm 778:
+ *        L-BFGS-B: Fortran Subroutines for Large-Scale Bound Constrained
+ *        Optimization"  (2011). To appear in  ACM Transactions on
+ *        Mathematical Software,
+ */
 #include "lbfgsb.h"
-static integer c__1 = 1;
 
-int dpofa(double *a, integer *lda, integer *n, integer *
+static int c__1 = 1;
+
+int dpofa(double *a, int *lda, int *n, int *
 	info)
 {
     /* System generated locals */
-    integer a_dim1, a_offset, i__1, i__2, i__3;
-
-    /* Builtin functions */
-    double sqrt(double);
+    int a_dim1, a_offset, i__1, i__2, i__3;
 
     /* Local variables */
-    static integer j, k;
+    static int j, k;
     static double s, t;
-    static integer jm1;
+    static int jm1;
 
 /*
     dpofa factors a double precision symmetric positive definite 
@@ -36,10 +46,10 @@ int dpofa(double *a, integer *lda, integer *n, integer *
                the symmetric matrix to be factored.  only the 
                diagonal and upper triangle are used. 
 
-       lda     integer 
+       lda     int 
                the leading dimension of the array  a . 
 
-       n       integer 
+       n       int 
                the order of the matrix  a . 
 
     on return 
@@ -49,7 +59,7 @@ int dpofa(double *a, integer *lda, integer *n, integer *
                the strict lower triangle is unaltered. 
                if  info .ne. 0 , the factorization is not complete. 
 
-       info    integer 
+       info    int 
                = 0  for normal return. 
                = k  signals an error condition.  the leading minor 
                     of order  k  is not positive definite. 
@@ -108,20 +118,20 @@ L40:
 
 /* ====================== The end of dpofa =============================== */
 
-int dtrsl(double *t, integer *ldt, integer *n, 
-	double *b, integer *job, integer *info)
+int dtrsl(double *t, int *ldt, int *n, 
+	double *b, int *job, int *info)
 {
     /* System generated locals */
-    integer t_dim1, t_offset, i__1, i__2;
+    int t_dim1, t_offset, i__1, i__2;
 
     /* Local variables */
-    static integer j, jj, case__;
+    static int j, jj, case__;
     static double temp;
     /*
-    extern double ddot(integer *, double *, integer *, double *, 
-	    integer *);
-    extern  int daxpy(integer *, double *, double *, 
-	    integer *, double *, integer *);
+    extern double ddot(int *, double *, int *, double *, 
+	    int *);
+    extern  int daxpy(int *, double *, double *, 
+	    int *, double *, int *);
     */
 
 
@@ -142,16 +152,16 @@ int dtrsl(double *t, integer *ldt, integer *n,
 /*                   the corresponding elements of the array can be */
 /*                   used to store other information. */
 
-/*         ldt       integer */
+/*         ldt       int */
 /*                   ldt is the leading dimension of the array t. */
 
-/*         n         integer */
+/*         n         int */
 /*                   n is the order of the system. */
 
 /*         b         double precision(n). */
 /*                   b contains the right hand side of the system. */
 
-/*         job       integer */
+/*         job       int */
 /*                   job specifies what kind of system is to be solved. */
 /*                   if job is */
 
@@ -165,7 +175,7 @@ int dtrsl(double *t, integer *ldt, integer *n,
 /*         b         b contains the solution, if info .eq. 0. */
 /*                   otherwise b is unaltered. */
 
-/*         info      integer */
+/*         info      int */
 /*                   info contains zero if the system is nonsingular. */
 /*                   otherwise info contains the index of */
 /*                   the first zero diagonal element of t. */

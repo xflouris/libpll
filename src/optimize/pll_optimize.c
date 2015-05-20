@@ -18,12 +18,21 @@
  Exelixis Lab, Heidelberg Instutute for Theoretical Studies
  Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
  */
-#include "optimize.h"
-#include "lbfgsb.h"
+#include "pll_optimize.h"
+#include "lbfgsb/lbfgsb.h"
 
 #define MAX_VARIABLES 1024
 
-static double compute_lnl_unrooted (opt_params * params, double *x)
+static int v_int_max(int * v, int n)
+{
+  int i, max = v[0];
+  for (i = 1; i < n; i++)
+    if (v[i] > max)
+      max = v[i];
+  return max;
+}
+
+static double compute_lnl_unrooted (pll_optimize_options * params, double *x)
 {
   pll_partition_t * partition = params->partition;
   pll_operation_t * operations = params->operations;
@@ -38,21 +47,54 @@ static double compute_lnl_unrooted (opt_params * params, double *x)
   double score;
   double * xptr = x;
 
-  if (params->which_parameters & PARAM_SUBST_RATES)
+  /* update parameters */
+  if (params->which_parameters & PLL_PARAMETER_SUBST_RATES)
   {
-    double subsparams[6];
-    memcpy (subsparams, xptr, 5 * sizeof(double));
-    subsparams[5] = 1.0;
-    pll_set_subst_params (partition, 0, subsparams);
-    xptr += 5;
+    int * symm;
+    int n_subst_rates;
+    double * subst_rates;
+
+    symm = params->subst_params_symmetries;
+    n_subst_rates = partition->states * (partition->states-1) / 2;
+    subst_rates = (double *) malloc((size_t)n_subst_rates * sizeof(double));
+
+    assert(subst_rates);
+
+    if (symm)
+    {
+      int i, j;
+      int n_subst_free_params = 0;
+
+      /* compute the number of free parameters */
+      n_subst_free_params = v_int_max(symm, n_subst_rates);
+
+      /* assign x values to the substitution rates */
+      for (i = 0; i <= n_subst_free_params; i++)
+      {
+        double next_value =
+            (i == symm[n_subst_rates - 1]) ? 1.0 : xptr[i];
+        for (j = 0; j < n_subst_rates; j++)
+          if (symm[j] == i)
+            subst_rates[j] = next_value;
+      }
+      pll_set_subst_params (partition, 0, subst_rates);
+      xptr += n_subst_free_params;
+    }
+    else
+    {
+      memcpy (subst_rates, xptr, (n_subst_rates-1) * sizeof(double));
+      subst_rates[n_subst_rates - 1] = 1.0;
+    }
+    free (subst_rates);
   }
-  if (params->which_parameters & PARAM_PINV)
+  if (params->which_parameters & PLL_PARAMETER_PINV)
   {
     pll_update_invariant_sites_proportion (partition, params_index, xptr[0]);
     xptr++;
   }
-  if (params->which_parameters & PARAM_ALPHA)
+  if (params->which_parameters & PLL_PARAMETER_ALPHA)
   {
+    /* assign discrete rates */
     double * rate_cats;
     rate_cats = alloca(params->num_gamma_cats);
     params->alpha_value = xptr[0];
@@ -60,13 +102,9 @@ static double compute_lnl_unrooted (opt_params * params, double *x)
     pll_set_category_rates (partition, rate_cats);
     xptr++;
   }
-  if (params->which_parameters & PARAM_FREQUENCIES)
+  if (params->which_parameters & PLL_PARAMETER_BRANCH_LENGTHS)
   {
-    printf ("We do not know how to do this!");
-    assert(0);
-  }
-  if (params->which_parameters & PARAM_BRANCH_LENGTHS)
-  {
+    /* assign branch lengths */
     int num_branch_lengths = 2 * partition->tips - 3;
     memcpy (branch_lengths, xptr, num_branch_lengths * sizeof(double));
     xptr += num_branch_lengths;
@@ -82,7 +120,7 @@ static double compute_lnl_unrooted (opt_params * params, double *x)
   return score;
 }
 
-double optimize_parameters (opt_params * params)
+PLL_EXPORT double pll_optimize_parameters_lbfgsb (pll_optimize_options * params)
 {
   int i;
 
@@ -91,23 +129,22 @@ double optimize_parameters (opt_params * params)
   /* Local variables */
   double score, g[MAX_VARIABLES];
   double lower_bounds[MAX_VARIABLES];
-  integer m, num_variables;
+  int m, num_variables;
   double upper_bounds[MAX_VARIABLES], x[MAX_VARIABLES], wa[43251];
-  integer bound_type[MAX_VARIABLES], iwa[3072];
+  int bound_type[MAX_VARIABLES], iwa[3072];
 
   /*     static char task[60]; */
-  integer taskValue;
-  integer *task = &taskValue; /* must initialize !! */
+  int taskValue;
+  int *task = &taskValue; /* must initialize !! */
 
   /*     static char csave[60]; */
-  integer csaveValue;
-  integer *csave = &csaveValue;
+  int csaveValue;
+  int *csave = &csaveValue;
   double dsave[29];
-  integer isave[44];
+  int isave[44];
   logical lsave[4];
 
-  /*     We wish to have output at every iteration. */
-  integer iprint = 0;
+  int iprint = -1;
 
   /*     We specify the dimension n of the sample problem and the number */
   /*        m of limited memory corrections stored.  (n and m should not */
@@ -119,29 +156,34 @@ double optimize_parameters (opt_params * params)
   /*     We now provide nbd which defines the bounds on the variables: */
   /*                    l   specifies the lower bounds, */
   /*                    u   specifies the upper bounds. */
-  /*         nbd(i)=0 if x(i) is unbounded, */
-  /*                1 if x(i) has only a lower bound, */
-  /*                2 if x(i) has both lower and upper bounds, and */
-  /*                3 if x(i) has only an upper bound. */
-  integer * nbd_ptr = bound_type;
+  int * nbd_ptr = bound_type;
   double * l_ptr = lower_bounds, *u_ptr = upper_bounds;
-  if (params->which_parameters & PARAM_SUBST_RATES)
+  if (params->which_parameters & PLL_PARAMETER_SUBST_RATES)
   {
-    num_variables = 5;
-    for (i = 0; i < num_variables; i++)
+    int n_subst_rates;
+    int n_subst_free_params;
+
+    n_subst_rates = params->partition->states * (params->partition->states-1) / 2;
+    if (params->subst_params_symmetries)
+      n_subst_free_params = v_int_max(params->subst_params_symmetries, n_subst_rates);
+    else
+      n_subst_free_params = n_subst_rates;
+
+    for (i = 0; i < n_subst_free_params; i++)
     {
-      nbd_ptr[i] = 2;
+      nbd_ptr[i] = PLL_LBFGSB_BOUND_BOTH;
       l_ptr[i] = 0.0001;
       u_ptr[i] = 1000.;
       x[i] = params->partition->subst_params[params->params_index][i];
     }
-    nbd_ptr += 5;
-    l_ptr += 5;
-    u_ptr += 5;
+    nbd_ptr += n_subst_free_params;
+    l_ptr += n_subst_free_params;
+    u_ptr += n_subst_free_params;
+    num_variables += n_subst_free_params;
   }
-  if (params->which_parameters & PARAM_PINV)
+  if (params->which_parameters & PLL_PARAMETER_PINV)
   {
-    *nbd_ptr = 2;
+    *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
     *l_ptr = 0.0;
     *u_ptr = 0.99;
     x[num_variables] = params->partition->prop_invar[params->params_index];
@@ -150,9 +192,9 @@ double optimize_parameters (opt_params * params)
     l_ptr++;
     u_ptr++;
   }
-  if (params->which_parameters & PARAM_ALPHA)
+  if (params->which_parameters & PLL_PARAMETER_ALPHA)
   {
-    *nbd_ptr = 2;
+    *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
     *l_ptr = 0.02;
     *u_ptr = 100.0;
     x[num_variables] = params->alpha_value;
@@ -161,17 +203,17 @@ double optimize_parameters (opt_params * params)
     l_ptr++;
     u_ptr++;
   }
-  if (params->which_parameters & PARAM_FREQUENCIES)
+  if (params->which_parameters &
+      (PLL_PARAMETER_FREQUENCIES | PLL_PARAMETER_TOPOLOGY))
   {
-    printf ("We do not know how to do this!");
-    assert(0);
+    return PLL_FAILURE;
   }
-  if (params->which_parameters & PARAM_BRANCH_LENGTHS)
+  if (params->which_parameters & PLL_PARAMETER_BRANCH_LENGTHS)
   {
     int num_branch_lengths = 2 * params->partition->tips - 3;
     for (i = 0; i < num_branch_lengths; i++)
     {
-      nbd_ptr[i] = 1; /* lower bound only */
+      nbd_ptr[i] = PLL_LBFGSB_BOUND_LOWER;
       l_ptr[i] = 0.00001;
       x[num_variables + i] = params->branch_lengths[i];
     }
@@ -183,7 +225,7 @@ double optimize_parameters (opt_params * params)
 
   /*     We start the iteration by initializing task. */
 
-  *task = (integer) START;
+  *task = (int) START;
 
   int continue_opt = 1;
   while (continue_opt)
