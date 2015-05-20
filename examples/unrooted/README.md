@@ -1,37 +1,37 @@
 # Rooted tree example
 
-This examples evaluates the log-likelihood of the rooted tree presented in the
+This examples evaluates the log-likelihood of the unrooted tree presented in the
 figure below, by creating a custom post-order traversal that drives the
 likelihood computation.
 
-![rooted tree](https://github.com/xflouris/assets/raw/master/libpll/images/rooted.png)
+![unrooted tree](https://github.com/xflouris/assets/raw/master/libpll/images/unrooted.png)
 
 ## Explanation of the example
 
 The program first instantiates a partition using the function call
 
 ```C
-partition = pll_create_partition(5, 
-                                 4, 
+partition = pll_create_partition(4, 
+                                 2, 
                                  4, 
                                  6, 
                                  1, 
-                                 8, 
+                                 5, 
                                  4, 
                                  1, 
                                  PLL_ATTRIB_ARCH_SSE);
 ```
 
 The parameters of the function (in the order passed) indicate
-* the number of tip sequences that will be used for this partition, 
-* the extra number of Conditional Likelihood Vectors (CLVs) that should be allocated apart from those created for the tip sequences (typically, number of tips minus one for rooted trees), 
-* number of states in the dataset (for instance 4 for nucleotide datasets, 20 for aminoacid datasets),
-* the length of the alignment, i.e. the number of sites at the tip sequences,
-* how many different substitution models we want to have at one time, 
-* the number of probability matrices that should be allocated (typically 2 times the number of tip sequences minus 2),
-* number of discrete rate categories (rate heterogeneity),
-* number of scale buffers to be allocated,
-* attributes that specify what kind of hardware acceleration should be used.
+* the number of tip sequences that will be used for this partition (4), 
+* the extra number of Conditional Likelihood Vectors (CLVs) that should be allocated apart from those created for the tip sequences (typically, number of tips minus two for unrooted trees) (2), 
+* number of states in the dataset (for instance 4 for nucleotide datasets, 20 for aminoacid datasets) (4),
+* the length of the alignment, i.e. the number of sites at the tip sequences (6),
+* how many different substitution models we want to have at one time (1), 
+* the number of probability matrices that should be allocated (typically 2 times the number of tip sequences minus 3 for unrooted trees) (5) ,
+* number of discrete rate categories (rate heterogeneity) (4),
+* number of scale buffers to be allocated (not yet implemented) (1),
+* attributes that specify what kind of hardware acceleration should be used (PLL\_ATTRIB\_ARCH\_SSE).
 
 For a more detailed explanation of the function arguments refer to the [API Reference](https://github.com/xflouris/libpll/wiki/API-Reference#pll_create_partition).
 
@@ -73,7 +73,7 @@ and which computes the probability matrices at indices `matrix_indices` from
 the corresponding branch lengths specified in `branch_lengths`. The last
 argument indicates the size of the two arrays. Note that the function will the
 probability matrices for all available rate categories. For more information on
-this function check the documentation.
+this function check the API reference.
 
 The next step is to create a traversal descriptor for driving the likelihood
 computation. This is done by allocating a `pll_operation_t` structure which we
@@ -81,11 +81,11 @@ fill with information on how to compute each CLV corresponding to an internal
 node.
 
 ```C
-operations[0].parent_clv_index    = 5;
+operations[0].parent_clv_index    = 4;
 operations[0].child1_clv_index    = 0;
 operations[0].child2_clv_index    = 1;
 operations[0].child1_matrix_index = 0;
-operations[0].child2_matrix_index = 0;
+operations[0].child2_matrix_index = 1;
 ```
 
 `parent_clv_index` indicates which CLV we want to update/compute, using the
@@ -97,26 +97,27 @@ illustration directly correspond to the indices used in the example program.
 Now we can use the created `pll_operation_t` structure to compute the CLVs by
 calling
 
-```C
-pll_update_partials(partition, 
-                    operations, 
-                    4);
-```
+`pll_update_partials(partition, operations, 2);`
 
-where the last parameter (4) sets the number of operations to be carried in
-sequential order (0 to 3).
+where the last parameter (2) sets the number of operations to be carried in
+sequential order (0 to 1).
 
-Finally, we obtain the  log-likelihood of the dataset by a call to
+Finally, we obtain the log-likelihood of the dataset by a call to
 
 ```C
-logl = pll_compute_root_loglikelihood(partition,
-                                      8,
+logl = pll_compute_edge_loglikelihood(partition,
+                                      4,
+                                      5,
+                                      4,
                                       0);
 ```
 
-where the last two parameters specify the
+where the parameters (in order of appearance) specify the
 
-* index of the CLV to be used for integrating the log-likelihood over sites,
+* partition
+* index of one of the end-point nodes of the edge on which the log-likelihood will be computed
+* index of the other end-point node
+* index of the probability matrix for that particular edge,
 * the index of the frequency array to use.
 
 Before exiting, we dispose of the allocated memory by calling
@@ -150,4 +151,4 @@ $PWD), and run the command
 Now, run the example by changing to the directory of the compiled file and
 typing:
 
-`./rooted`
+`./unrooted`
