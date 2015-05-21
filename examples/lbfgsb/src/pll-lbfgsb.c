@@ -96,6 +96,123 @@ int * build_model_simmetries (const char * modelmatrix)
   return subst_matrix_symmetries;
 }
 
+int read_fasta (pll_partition_t ** partition_ptr, char *file, int tip_count)
+{
+
+  int i;
+  pll_partition_t * partition;
+
+  /* open FASTA file */
+  pll_fasta_t * fp = pll_fasta_open (file, pll_map_fasta);
+  if (!fp)
+    return PLL_FAILURE;
+  {
+    char * seq = NULL;
+    char * hdr = NULL;
+    long seqlen;
+    long hdrlen;
+    long seqno;
+
+    /* allocate arrays to store FASTA headers and sequences */
+    char ** headers = (char **) calloc (tip_count, sizeof(char *));
+    char ** seqdata = (char **) calloc (tip_count, sizeof(char *));
+
+    /* read FASTA sequences and make sure they are all of the same length */
+    int sites = -1;
+    for (i = 0; pll_fasta_getnext (fp, &hdr, &hdrlen, &seq, &seqlen, &seqno);
+        ++i)
+    {
+      if (i >= tip_count)
+      {
+        pll_errno = PLL_ERROR_TAXA_MISMATCH;
+      }
+      snprintf (pll_errmsg, 200,
+                "FASTA file contains more sequences than expected");
+
+      if (sites != -1 && sites != seqlen)
+      {
+        pll_errno = PLL_ERROR_SEQLEN_MISMATCH;
+        snprintf (pll_errmsg, 200,
+                  "FASTA file does not contain equal size sequences");
+      }
+
+      if (sites == -1)
+      {
+        sites = seqlen;
+      }
+
+      headers[i] = hdr;
+      seqdata[i] = seq;
+    }
+
+    /* did we stop reading the file because we reached EOF? */
+    if (pll_errno != PLL_ERROR_FILE_EOF)
+      return PLL_FAILURE;
+
+    /* close FASTA file */
+    pll_fasta_close (fp);
+
+    if (sites == -1)
+    {
+      snprintf (pll_errmsg, 200, "Unable to read alignment");
+      pll_errno = PLL_ERROR_ALIGN_UNREADABLE;
+      return PLL_FAILURE;
+    }
+
+    if (i != tip_count)
+    {
+      snprintf (pll_errmsg, 200, "Some taxa are missing from FASTA file");
+      pll_errno = PLL_ERROR_TAXA_MISMATCH;
+      return PLL_FAILURE;
+    }
+
+    (*partition_ptr) = pll_create_partition (tip_count, tip_count - 2,
+    STATES,
+                                             sites, 1, 2 * tip_count - 3,
+                                             RATE_CATS,
+                                             tip_count - 2,
+                                             PLL_ATTRIB_ARCH_SSE);
+    partition = *partition_ptr;
+
+    /* find sequences in hash table and link them with the corresponding taxa */
+    for (i = 0; i < tip_count; ++i)
+    {
+      ENTRY query;
+      query.key = headers[i];
+      ENTRY * found = NULL;
+
+      found = hsearch (query, FIND);
+
+      if (!found)
+      {
+        snprintf (pll_errmsg, 200,
+                  "Sequence with header %s does not appear in the tree", hdr);
+        pll_errno = PLL_ERROR_TAXA_MISMATCH;
+        return PLL_FAILURE;
+      }
+
+      int tip_clv_index = *((int *) (found->data));
+
+      pll_set_tip_states (partition, tip_clv_index, pll_map_nt, seqdata[i]);
+    }
+
+    /* destroy hash table */
+    hdestroy ();
+
+    /* ...neither the sequences and the headers as they are already
+     present in the form of probabilities in the tip CLVs */
+    for (i = 0; i < tip_count; ++i)
+    {
+      free (seqdata[i]);
+      free (headers[i]);
+    }
+    free (seqdata);
+    free (headers);
+  }
+
+  return PLL_SUCCESS;
+}
+
 int main (int argc, char * argv[])
 {
 
@@ -142,98 +259,18 @@ int main (int argc, char * argv[])
     hsearch (entry, ENTER);
   }
 
-  /* open FASTA file */
-  pll_fasta_t * fp = pll_fasta_open (argv[2], pll_map_fasta);
-  if (!fp)
-    fatal ("Error opening file %s", argv[2]);
+  partition = pll_create_partition_fasta(argv[2], STATES, 1, RATE_CATS,
+                                         PLL_ATTRIB_ARCH_SSE, 0,
+                                         tip_count, 0);
+  if (!partition)
+    fatal("Error %d: %s\n", pll_errno, pll_errmsg);
 
-  {
-    char * seq = NULL;
-    char * hdr = NULL;
-    long seqlen;
-    long hdrlen;
-    long seqno;
+  /* destroy hash table */
+  hdestroy ();
 
-    /* allocate arrays to store FASTA headers and sequences */
-    char ** headers = (char **) calloc (tip_count, sizeof(char *));
-    char ** seqdata = (char **) calloc (tip_count, sizeof(char *));
-
-    /* read FASTA sequences and make sure they are all of the same length */
-    int sites = -1;
-    for (i = 0; pll_fasta_getnext (fp, &hdr, &hdrlen, &seq, &seqlen, &seqno);
-        ++i)
-    {
-      if (i >= tip_count)
-        fatal ("FASTA file contains more sequences than expected");
-
-      if (sites != -1 && sites != seqlen)
-      {
-        fatal ("FASTA file does not contain equal size sequences\n");
-      }
-
-      if (sites == -1)
-      {
-        sites = seqlen;
-      }
-
-      headers[i] = hdr;
-      seqdata[i] = seq;
-    }
-
-    /* did we stop reading the file because we reached EOF? */
-    if (pll_errno != PLL_ERROR_FILE_EOF)
-      fatal ("Error while reading file %s", argv[2]);
-
-    /* close FASTA file */
-    pll_fasta_close (fp);
-
-    if (sites == -1)
-      fatal ("Unable to read alignment");
-
-    if (i != tip_count)
-      fatal ("Some taxa are missing from FASTA file");
-
-    partition = pll_create_partition (tip_count, tip_count - 2,
-    STATES,
-                                      sites, 1, 2 * tip_count - 3,
-                                      RATE_CATS,
-                                      tip_count - 2,
-                                      PLL_ATTRIB_ARCH_SSE);
-
-    /* find sequences in hash table and link them with the corresponding taxa */
-    for (i = 0; i < tip_count; ++i)
-    {
-      ENTRY query;
-      query.key = headers[i];
-      ENTRY * found = NULL;
-
-      found = hsearch (query, FIND);
-
-      if (!found)
-        fatal ("Sequence with header %s does not appear in the tree", hdr);
-
-      int tip_clv_index = *((int *) (found->data));
-
-      pll_set_tip_states (partition, tip_clv_index, pll_map_nt, seqdata[i]);
-    }
-
-    /* destroy hash table */
-    hdestroy ();
-
-    /* we no longer need these two arrays (keys and values of hash table... */
-    free (data);
-    free (tipnames);
-
-    /* ...neither the sequences and the headers as they are already
-     present in the form of probabilities in the tip CLVs */
-    for (i = 0; i < tip_count; ++i)
-    {
-      free (seqdata[i]);
-      free (headers[i]);
-    }
-    free (seqdata);
-    free (headers);
-  }
+  /* we no longer need these two arrays (keys and values of hash table... */
+  free (data);
+  free (tipnames);
 
   subst_params_symmetries = build_model_simmetries(argv[3]);
   printf("Model: ");
@@ -288,6 +325,7 @@ int main (int argc, char * argv[])
   params.lk_params.branch_lengths = branch_lengths;
   params.lk_params.matrix_indices = matrix_indices;
   params.lk_params.alpha_value = 1.0;
+  params.lk_params.freqs_index = 0;
   params.lk_params.rooted = 0;
   params.lk_params.where.unrooted_t.parent_clv_index = clv1;
   params.lk_params.where.unrooted_t.child_clv_index = clv2;

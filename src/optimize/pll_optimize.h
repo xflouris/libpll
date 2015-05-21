@@ -22,6 +22,7 @@
 #define PLL_OPTIMIZE_H_
 
 #include <pll.h>
+#include <search.h>
 
 /* Parameters mask */
 
@@ -38,6 +39,12 @@
 #define PLL_LBFGSB_BOUND_LOWER 1
 #define PLL_LBFGSB_BOUND_BOTH  2
 #define PLL_LBFGSB_BOUND_UPPER 3
+
+/* error codes */
+
+#define PLL_ERROR_TAXA_MISMATCH       101
+#define PLL_ERROR_SEQLEN_MISMATCH     102
+#define PLL_ERROR_ALIGN_UNREADABLE    103
 
 /* Structure with information necessary for evaluating the likelihood */
 
@@ -78,5 +85,12 @@ typedef struct
 /* functions in pll_optimize.c */
 
 PLL_EXPORT double pll_optimize_parameters_lbfgsb(pll_optimize_options_t * p);
-
+PLL_EXPORT pll_partition_t * pll_create_partition_fasta (char *file,
+                                                         int states,
+                                                         int n_rate_matrices,
+                                                         int n_rate_cats,
+                                                         int attributes,
+                                                         int rooted,
+                                                         int tip_count,
+                                                         char **tipnames);
 #endif /* PLL_OPTIMIZE_H_ */

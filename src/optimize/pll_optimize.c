@@ -21,8 +21,6 @@
 #include "pll_optimize.h"
 #include "lbfgsb/lbfgsb.h"
 
-#define MAX_VARIABLES 1024
-
 static int v_int_max (int * v, int n)
 {
   int i, max = v[0];
@@ -150,19 +148,225 @@ static double compute_lnl_unrooted (pll_optimize_options_t * params,
   return score;
 }
 
+/**
+ * if tip_count == 0, this function reads the file twice. The first
+ *           time for getting the number of tips.
+ * taxa_list allows mapping the sequences to their respective tips.
+ *           if taxa_list == NULL, we assume that a hashing table
+ *           has been already created.
+ */
+PLL_EXPORT pll_partition_t * pll_create_partition_fasta (char *file,
+                                                         int states,
+                                                         int n_rate_matrices,
+                                                         int n_rate_cats,
+                                                         int attributes,
+                                                         int rooted,
+                                                         int tip_count,
+                                                         char **tipnames)
+{
+
+  int i, j;
+  pll_partition_t * partition;
+
+  /* open FASTA file */
+  pll_fasta_t * fp = pll_fasta_open (file, pll_map_fasta);
+  if (!fp)
+    return PLL_FAILURE;
+  {
+    char * seq = NULL;
+    char * hdr = NULL;
+    long seqlen;
+    long hdrlen;
+    long seqno;
+
+    if (!tip_count)
+    {
+      /* get the number of tips */
+      while (pll_fasta_getnext (fp, &hdr, &hdrlen, &seq, &seqlen, &seqno))
+      {
+        free (seq);
+        free (hdr);
+        ++tip_count;
+      }
+
+      /* reset the fasta pointer */
+
+      if (!pll_fasta_rewind(fp))
+      {
+        pll_fasta_close(fp);
+        return PLL_FAILURE;
+      }
+    }
+
+    /* allocate arrays to store FASTA headers and sequences */
+    char ** headers = (char **) calloc (tip_count, sizeof(char *));
+    char ** seqdata = (char **) calloc (tip_count, sizeof(char *));
+
+    /* read FASTA sequences and make sure they are all of the same length */
+    int sites = -1;
+    for (i = 0; pll_fasta_getnext (fp, &hdr, &hdrlen, &seq, &seqlen, &seqno);
+        ++i)
+    {
+      if (i >= tip_count)
+      {
+        snprintf (pll_errmsg, 200,
+                        "FASTA file contains more sequences than expected");
+        pll_errno = PLL_ERROR_TAXA_MISMATCH;
+        return PLL_FAILURE;
+      }
+
+      if (sites != -1 && sites != seqlen)
+      {
+        snprintf (pll_errmsg, 200,
+                  "FASTA file does not contain equal size sequences");
+        pll_errno = PLL_ERROR_SEQLEN_MISMATCH;
+        return PLL_FAILURE;
+      }
+
+      if (sites == -1)
+      {
+        sites = seqlen;
+      }
+
+      headers[i] = hdr;
+      seqdata[i] = seq;
+    }
+
+    /* did we stop reading the file because we reached EOF? */
+    if (pll_errno != PLL_ERROR_FILE_EOF)
+      return PLL_FAILURE;
+
+    /* close FASTA file */
+    pll_fasta_close (fp);
+
+    if (sites == -1)
+    {
+      snprintf (pll_errmsg, 200, "Unable to read alignment");
+      pll_errno = PLL_ERROR_ALIGN_UNREADABLE;
+      return PLL_FAILURE;
+    }
+
+    if (i != tip_count)
+    {
+      snprintf (pll_errmsg, 200, "Some taxa are missing from FASTA file");
+      pll_errno = PLL_ERROR_TAXA_MISMATCH;
+      return PLL_FAILURE;
+    }
+
+    partition = pll_create_partition (tip_count,
+                                      rooted?(tip_count - 1):
+                                        (tip_count - 2),
+                                      states,
+                                      sites,
+                                      n_rate_matrices,
+                                      rooted?(2 * tip_count - 2):
+                                        (2 * tip_count - 3),
+                                      n_rate_cats,
+                                      rooted?(tip_count - 1):
+                                        (tip_count - 2),
+                                        attributes);
+    if (!partition)
+    {
+      return PLL_FAILURE;
+    }
+
+    /* find sequences and link them with the corresponding taxa */
+    for (i = 0; i < tip_count; ++i)
+    {
+      int tip_clv_index = -1;
+
+      if (tipnames)
+      {
+        for (j = 0; j < tip_count; ++j)
+        {
+          if (!strcmp (tipnames[j], headers[i]))
+          {
+            tip_clv_index = j;
+            break;
+          }
+        }
+      }
+      else
+      {
+        ENTRY query;
+        query.key = headers[i];
+        ENTRY * found = NULL;
+
+        found = hsearch (query, FIND);
+
+        if (found)
+        {
+          tip_clv_index = *((int *) (found->data));
+        }
+      }
+
+      if (tip_clv_index == -1)
+      {
+        snprintf (pll_errmsg, 200,
+                  "Sequence with header %s does not appear in the tree",
+                  headers[i]);
+        pll_errno = PLL_ERROR_TAXA_MISMATCH;
+        return PLL_FAILURE;
+      }
+
+      pll_set_tip_states (partition, tip_clv_index, pll_map_nt, seqdata[i]);
+    }
+
+    /* ...neither the sequences and the headers as they are already
+     present in the form of probabilities in the tip CLVs */
+    for (i = 0; i < tip_count; ++i)
+    {
+      free (seqdata[i]);
+      free (headers[i]);
+    }
+    free (seqdata);
+    free (headers);
+  }
+
+  return partition;
+}
+
+static int count_n_free_variables(pll_optimize_options_t * params)
+{
+  int num_variables = 0;
+  pll_partition_t * partition = params->lk_params.partition;
+
+  /* count number of variables for dynamic allocation */
+    if (params->which_parameters & PLL_PARAMETER_SUBST_RATES)
+    {
+      int n_subst_rates = partition->states * (partition->states - 1) / 2;
+      num_variables += params->subst_params_symmetries?
+          v_int_max(params->subst_params_symmetries, n_subst_rates):
+          n_subst_rates - 1;
+    }
+    num_variables += (params->which_parameters & PLL_PARAMETER_PINV) != 0;
+    num_variables += (params->which_parameters & PLL_PARAMETER_ALPHA) != 0;
+    if (params->which_parameters & PLL_PARAMETER_BRANCH_LENGTHS)
+    {
+      int num_branch_lengths = params->lk_params.rooted?
+          (2 * partition->tips - 3) :
+          (2 * partition->tips - 2);
+      num_variables += num_branch_lengths;
+    }
+    return num_variables;
+}
+
 PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     pll_optimize_options_t * params)
 {
   int i;
   pll_partition_t * partition = params->lk_params.partition;
-  /* L-BFGS-B */
 
-  /* Local variables */
-  double score, g[MAX_VARIABLES];
-  double lower_bounds[MAX_VARIABLES];
-  int m, num_variables;
-  double upper_bounds[MAX_VARIABLES], x[MAX_VARIABLES], wa[43251];
-  int bound_type[MAX_VARIABLES], iwa[3072];
+  /* L-BFGS-B */
+  int max_corrections, num_variables;
+  double score;
+  double *x,
+         *g,
+         *lower_bounds,
+         *upper_bounds,
+         *wa;
+  int *bound_type,
+      *iwa;
 
   /*     static char task[60]; */
   int taskValue;
@@ -177,96 +381,105 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
 
   int iprint = -1;
 
-  /*     We specify the dimension n of the sample problem and the number */
-  /*        m of limited memory corrections stored.  (n and m should not */
-  /*        exceed the limits nmax and mmax respectively.) */
+  max_corrections = 5;
+  num_variables   = count_n_free_variables(params);
 
-  m = 5;
-  num_variables = 0;
+  x            = (double *) calloc ((size_t) num_variables, sizeof(double));
+  g            = (double *) calloc ((size_t) num_variables, sizeof(double));
+  lower_bounds = (double *) calloc ((size_t) num_variables, sizeof(double));
+  upper_bounds = (double *) calloc ((size_t)num_variables, sizeof(double));
+  bound_type   = (int *) calloc ((size_t)num_variables, sizeof(int));
 
-  /*     We now provide nbd which defines the bounds on the variables: */
-  /*                    l   specifies the lower bounds, */
-  /*                    u   specifies the upper bounds. */
-  int * nbd_ptr = bound_type;
-  double * l_ptr = lower_bounds, *u_ptr = upper_bounds;
-  if (params->which_parameters & PLL_PARAMETER_SUBST_RATES)
   {
-    int n_subst_rates;
-    int n_subst_free_params;
-
-    n_subst_rates = partition->states * (partition->states - 1) / 2;
-    if (params->subst_params_symmetries)
-      n_subst_free_params = v_int_max (params->subst_params_symmetries,
-                                       n_subst_rates);
-    else
-      n_subst_free_params = n_subst_rates;
-
-    for (i = 0; i < n_subst_free_params; i++)
+    int * nbd_ptr = bound_type;
+    double * l_ptr = lower_bounds, *u_ptr = upper_bounds;
+    int check_n = 0;
+    if (params->which_parameters & PLL_PARAMETER_SUBST_RATES)
     {
-      nbd_ptr[i] = PLL_LBFGSB_BOUND_BOTH;
-      l_ptr[i] = 0.001;
-      u_ptr[i] = 1000.;
-      x[i] = partition->subst_params[params->params_index][i];
+      int n_subst_rates;
+      int n_subst_free_params;
+
+      n_subst_rates = partition->states * (partition->states - 1) / 2;
+      if (params->subst_params_symmetries)
+        n_subst_free_params = v_int_max (params->subst_params_symmetries,
+                                         n_subst_rates);
+      else
+        n_subst_free_params = n_subst_rates;
+
+      for (i = 0; i < n_subst_free_params; i++)
+      {
+        nbd_ptr[i] = PLL_LBFGSB_BOUND_BOTH;
+        l_ptr[i] = 0.001;
+        u_ptr[i] = 1000.;
+        x[i] = partition->subst_params[params->params_index][i];
+      }
+      nbd_ptr += n_subst_free_params;
+      l_ptr += n_subst_free_params;
+      u_ptr += n_subst_free_params;
+      check_n += n_subst_free_params;
     }
-    nbd_ptr += n_subst_free_params;
-    l_ptr += n_subst_free_params;
-    u_ptr += n_subst_free_params;
-    num_variables += n_subst_free_params;
-  }
-  if (params->which_parameters & PLL_PARAMETER_PINV)
-  {
-    *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
-    *l_ptr = 0.0;
-    *u_ptr = 0.99;
-    x[num_variables] = partition->prop_invar[params->params_index];
-    num_variables += 1;
-    nbd_ptr++;
-    l_ptr++;
-    u_ptr++;
-  }
-  if (params->which_parameters & PLL_PARAMETER_ALPHA)
-  {
-    *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
-    *l_ptr = 0.02;
-    *u_ptr = 100.0;
-    x[num_variables] = params->lk_params.alpha_value;
-    num_variables += 1;
-    nbd_ptr++;
-    l_ptr++;
-    u_ptr++;
-  }
-  if (params->which_parameters
-      & (PLL_PARAMETER_FREQUENCIES | PLL_PARAMETER_TOPOLOGY))
-  {
-    return PLL_FAILURE;
-  }
-  if (params->which_parameters & PLL_PARAMETER_BRANCH_LENGTHS)
-  {
-    int num_branch_lengths = params->lk_params.rooted?
-        (2 * partition->tips - 3) :
-        (2 * partition->tips - 2);
-    for (i = 0; i < num_branch_lengths; i++)
+    if (params->which_parameters & PLL_PARAMETER_PINV)
     {
-      nbd_ptr[i] = PLL_LBFGSB_BOUND_LOWER;
-      l_ptr[i] = 0.00001;
-      x[num_variables + i] = params->lk_params.branch_lengths[i];
+      *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
+      *l_ptr = 0.0;
+      *u_ptr = 0.99;
+      x[check_n] = partition->prop_invar[params->params_index];
+      check_n += 1;
+      nbd_ptr++;
+      l_ptr++;
+      u_ptr++;
     }
-    num_variables += num_branch_lengths;
-    nbd_ptr += num_branch_lengths;
-    l_ptr += num_branch_lengths;
-    u_ptr += num_branch_lengths;
+    if (params->which_parameters & PLL_PARAMETER_ALPHA)
+    {
+      *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
+      *l_ptr = 0.02;
+      *u_ptr = 100.0;
+      x[check_n] = params->lk_params.alpha_value;
+      check_n += 1;
+      nbd_ptr++;
+      l_ptr++;
+      u_ptr++;
+    }
+    if (params->which_parameters
+        & (PLL_PARAMETER_FREQUENCIES | PLL_PARAMETER_TOPOLOGY))
+    {
+      return PLL_FAILURE;
+    }
+    if (params->which_parameters & PLL_PARAMETER_BRANCH_LENGTHS)
+    {
+      int num_branch_lengths =
+          params->lk_params.rooted ?
+              (2 * partition->tips - 3) : (2 * partition->tips - 2);
+      for (i = 0; i < num_branch_lengths; i++)
+      {
+        nbd_ptr[i] = PLL_LBFGSB_BOUND_LOWER;
+        l_ptr[i] = 0.00001;
+        x[check_n + i] = params->lk_params.branch_lengths[i];
+      }
+      check_n += num_branch_lengths;
+      nbd_ptr += num_branch_lengths;
+      l_ptr += num_branch_lengths;
+      u_ptr += num_branch_lengths;
+    }
+    assert(check_n == num_variables);
   }
 
   /*     We start the iteration by initializing task. */
   *task = (int) START;
 
+  iwa = (int *) calloc ((size_t) 3 * num_variables, sizeof(int));
+  wa = (double *) calloc (
+      (size_t) (2 * max_corrections + 5) * num_variables
+          + 12 * max_corrections * (max_corrections + 1),
+      sizeof(double));
+
   int continue_opt = 1;
   while (continue_opt)
   {
     /*     This is the call to the L-BFGS-B code. */
-    setulb (&num_variables, &m, x, lower_bounds, upper_bounds, bound_type,
-            &score, g, &(params->factr), &(params->pgtol), wa, iwa, task,
-            &iprint, csave, lsave, isave, dsave);
+    setulb (&num_variables, &max_corrections, x, lower_bounds, upper_bounds,
+            bound_type, &score, g, &(params->factr), &(params->pgtol), wa, iwa,
+            task, &iprint, csave, lsave, isave, dsave);
     if (IS_FG(*task))
     {
       /*        the minimization routine has returned to request the */
@@ -299,6 +512,14 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
       continue_opt = 0;
     }
   }
+
+  free (iwa);
+  free (wa);
+  free (x);
+  free (g);
+  free (lower_bounds);
+  free (upper_bounds);
+  free (bound_type);
 
   return score;
 }
