@@ -23,6 +23,8 @@
 
 #include <pll.h>
 
+/* Parameters mask */
+
 #define PLL_PARAMETER_SUBST_RATES      1
 #define PLL_PARAMETER_ALPHA            2
 #define PLL_PARAMETER_PINV             4
@@ -30,33 +32,45 @@
 #define PLL_PARAMETER_BRANCH_LENGTHS  16
 #define PLL_PARAMETER_TOPOLOGY        32
 
+/* L-BFGS-B bound type */
+
 #define PLL_LBFGSB_BOUND_NONE  0
 #define PLL_LBFGSB_BOUND_LOWER 1
 #define PLL_LBFGSB_BOUND_BOTH  2
 #define PLL_LBFGSB_BOUND_UPPER 3
 
+/* Structure with information necessary for evaluating the likelihood */
+
 typedef struct
 {
-  /* pll stuff */
   pll_partition_t * partition;
   pll_operation_t * operations;
   double * branch_lengths;
   int * matrix_indices;
-  int clv1;
-  int clv2;
-  int edge_pmatrix_index;
+  int rooted;
+  int freqs_index;
+  union {
+      struct {
+        int root_clv_index;
+      } rooted_t;
+      struct {
+        int parent_clv_index;
+        int child_clv_index;
+        int edge_pmatrix_index;
+      } unrooted_t;
+    } where;
+
   double alpha_value;
-  int num_gamma_cats;
+} pll_likelihood_info_t;
 
+/* Structure with information for parameter optimization */
+
+typedef struct
+{
+  pll_likelihood_info_t lk_params;
   int params_index;
-
-  /* optimization parameters */
   unsigned int which_parameters;
-
-  /* substitution matrix symmetries and parameters */
   int * subst_params_symmetries;
-
-  /* tolerances / stopping criteria. */
   double factr;
   double pgtol;
 } pll_optimize_options_t;

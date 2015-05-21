@@ -283,22 +283,21 @@ int main (int argc, char * argv[])
   printf ("Log-L: %f\n", logl);
 
   /* pll stuff */
-  params.partition = partition;
-  params.operations = operations;
-  params.branch_lengths = branch_lengths;
-  params.matrix_indices = matrix_indices;
-  params.clv1 = clv1;
-  params.clv2 = clv2;
-  params.edge_pmatrix_index = edge_pmatrix_index;
-  params.num_gamma_cats = RATE_CATS;
-  params.params_index = 0;
-  params.alpha_value = 1.0;
-
-  params.subst_params_symmetries = subst_params_symmetries;
+  params.lk_params.partition = partition;
+  params.lk_params.operations = operations;
+  params.lk_params.branch_lengths = branch_lengths;
+  params.lk_params.matrix_indices = matrix_indices;
+  params.lk_params.alpha_value = 1.0;
+  params.lk_params.rooted = 0;
+  params.lk_params.where.unrooted_t.parent_clv_index = clv1;
+  params.lk_params.where.unrooted_t.child_clv_index = clv2;
+  params.lk_params.where.unrooted_t.edge_pmatrix_index = edge_pmatrix_index;
 
   /* optimization parameters */
+  params.params_index = 0;
+  params.subst_params_symmetries = subst_params_symmetries;
   params.factr = 1e8;
-  params.pgtol = 0.1;
+  params.pgtol = 0.01;
 
   parameters_to_optimize =
       PLL_PARAMETER_SUBST_RATES |
@@ -316,28 +315,40 @@ int main (int argc, char * argv[])
     if (parameters_to_optimize & PLL_PARAMETER_BRANCH_LENGTHS)
     {
       params.which_parameters = PLL_PARAMETER_BRANCH_LENGTHS;
-      pll_optimize_parameters_lbfgsb (&params);
+      cur_logl = pll_optimize_parameters_lbfgsb (&params);
+      printf ("  [branches]: %ld s. : %f\n", time (NULL) - start_time, cur_logl);
     }
 
     if (parameters_to_optimize & PLL_PARAMETER_SUBST_RATES)
     {
       params.which_parameters = PLL_PARAMETER_SUBST_RATES;
-      pll_optimize_parameters_lbfgsb (&params);
+      cur_logl = pll_optimize_parameters_lbfgsb (&params);
+      printf ("  [s_rates]: %ld s. : %f\n", time (NULL) - start_time, cur_logl);
+      printf ("             %f %f %f %f %f %f\n", partition->subst_params[0][0],
+                partition->subst_params[0][1], partition->subst_params[0][2],
+                partition->subst_params[0][3], partition->subst_params[0][4],
+                partition->subst_params[0][5]);
     }
 
     if (parameters_to_optimize & PLL_PARAMETER_ALPHA)
     {
       params.which_parameters = PLL_PARAMETER_ALPHA;
       cur_logl = pll_optimize_parameters_lbfgsb (&params);
+      printf ("  [alpha]: %ld s. : %f\n", time (NULL) - start_time,
+              cur_logl);
+      printf ("             %f\n", params.lk_params.alpha_value);
     }
 
     if (parameters_to_optimize & PLL_PARAMETER_PINV)
     {
       params.which_parameters = PLL_PARAMETER_PINV;
       cur_logl = pll_optimize_parameters_lbfgsb (&params);
+      printf ("  [p-inv]: %ld s. :%f\n", time (NULL) - start_time,
+              cur_logl);
+      printf ("             %f\n", partition->prop_invar[0]);
     }
 
-    printf ("  iter: %ld s. : %f\n", time (NULL) - start_time, cur_logl);
+    printf ("Iteration: %ld s. : %f\n", time (NULL) - start_time, cur_logl);
   }
   end_time = time (NULL);
   cur_logl *= -1;
@@ -345,7 +356,7 @@ int main (int argc, char * argv[])
   printf ("Final Log-L: %f\n", cur_logl);
   printf ("Time:  %ld s.\n", end_time - start_time);
 
-  printf ("Alpha: %f\n", params.alpha_value);
+  printf ("Alpha: %f\n", params.lk_params.alpha_value);
   printf ("P-inv: %f\n", partition->prop_invar[0]);
   printf ("Rates: %f %f %f %f %f %f\n", partition->subst_params[0][0],
           partition->subst_params[0][1], partition->subst_params[0][2],
