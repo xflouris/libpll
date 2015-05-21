@@ -1,4 +1,4 @@
-# Rooted tree example
+# Unrooted tree example
 
 This examples evaluates the log-likelihood of the unrooted tree presented in the
 figure below, by creating a custom post-order traversal that drives the
