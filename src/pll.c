@@ -141,7 +141,11 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   /* eigen_decomp_valid */
   partition->eigen_decomp_valid = (int *)calloc(partition->rate_matrices,
                                                              sizeof(int));
-  
+  if (!partition->eigen_decomp_valid)
+  {
+    dealloc_partition_data(partition);
+    return PLL_FAILURE;
+  }
   /* clv */
   partition->clv = (double **)calloc(partition->tips + partition->clv_buffers, 
                                      sizeof(double *));
@@ -183,7 +187,7 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   /* eigenvecs */
   partition->eigenvecs = (double **)calloc(partition->rate_matrices,
                                            sizeof(double *));
-  if (!partition->pmatrix)
+  if (!partition->eigenvecs)
   {
     dealloc_partition_data(partition);
     return PLL_FAILURE;
@@ -202,7 +206,7 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   /* inv_eigenvecs */
   partition->inv_eigenvecs = (double **)calloc(partition->rate_matrices,
                                                sizeof(double *));
-  if (!partition->pmatrix)
+  if (!partition->inv_eigenvecs)
   {
     dealloc_partition_data(partition);
     return PLL_FAILURE;
@@ -221,7 +225,7 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   /* eigenvals */
   partition->eigenvals = (double **)calloc(partition->rate_matrices,
                                                sizeof(double *));
-  if (!partition->pmatrix)
+  if (!partition->eigenvals)
   {
     dealloc_partition_data(partition);
     return PLL_FAILURE;
@@ -287,6 +291,11 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   /* proportion of invariant sites */
   partition->prop_invar = (double *)calloc(partition->rate_matrices,
                                              sizeof(double));
+  if (!partition->prop_invar)
+  {
+    dealloc_partition_data(partition);
+    return PLL_FAILURE;
+  }
 
   return partition;
 }
@@ -309,7 +318,11 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
   for (i = 0; i < partition->sites; ++i)
   {
     if ((c = map[(int)sequence[i]]) == 0)
+    {
+      pll_errno = PLL_ERROR_TIP_DATA_ILLEGAL_STATE;
+      snprintf(pll_errmsg, 200, "Illegal state code in tip \"%c\"", sequence[i]);
       return PLL_FAILURE;
+    }
 
     /* decompose basecall into the encoded residues and set the appropriate
        positions in the tip vector */
