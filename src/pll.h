@@ -307,6 +307,8 @@ PLL_EXPORT long pll_fasta_getfilesize(pll_fasta_t * fd);
 
 PLL_EXPORT long pll_fasta_getfilepos(pll_fasta_t * fd);
 
+PLL_EXPORT int pll_fasta_rewind(pll_fasta_t * fd);
+
 /* functions in unrooted.y */
 
 PLL_EXPORT pll_utree_t * pll_parse_newick_utree(const char * filename, 

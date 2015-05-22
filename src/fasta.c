@@ -91,6 +91,29 @@ PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename, const unsigned in
   return fd;
 }
 
+PLL_EXPORT int pll_fasta_rewind(pll_fasta_t * fd)
+{
+  int i;
+
+  rewind(fd->fp);
+
+  /* reset stripped char frequencies */
+  fd->stripped_count = 0;
+  for(i=0; i<256; i++)
+    fd->stripped[i] = 0;
+
+  fd->line[0] = 0;
+  if (!fgets(fd->line, PLL_LINEALLOC, fd->fp))
+  {
+    pll_errno = PLL_ERROR_FILE_SEEK;
+    snprintf(pll_errmsg, 200, "Unable to rewind and cache data");
+    return PLL_FAILURE;
+  }
+  fd->lineno = 1;
+
+  return PLL_SUCCESS;
+}
+
 PLL_EXPORT void pll_fasta_close(pll_fasta_t * fd)
 {
   fclose(fd->fp);
@@ -195,7 +218,8 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
                       if (!mem)
                       {
                         pll_errno = PLL_ERROR_MEM_ALLOC;
-                        snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+                        snprintf(pll_errmsg, 200,
+                                 "Unable to allocate enough memory.");
                         free(*head);
                         free(*seq);
                         return PLL_FAILURE;
@@ -219,9 +243,10 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
                   else
                   {
                     pll_errno = PLL_ERROR_FASTA_UNPRINTABLECHAR;
-                    snprintf(pll_errmsg, 200, "illegal unprintable character %#.2x "
-                                              "(hexadecimal) on line %ld in "
-                                              "the fasta file", c, fd->lineno);
+                    snprintf(pll_errmsg, 200, "illegal unprintable character "
+                                              "%#.2x (hexadecimal) on line %ld "
+                                              "in the fasta file",
+                                              c, fd->lineno);
                   }
                   return PLL_FAILURE;
 
