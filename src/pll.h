@@ -78,7 +78,7 @@
 
 /* structures and data types */
 
-typedef struct
+typedef struct pll_partition
 {
   int tips;
   int clv_buffers;
@@ -110,7 +110,7 @@ typedef struct
 
 /* Structure for driving likelihood operations */
 
-typedef struct
+typedef struct pll_operation
 {
   int parent_clv_index;
   int child1_clv_index;
@@ -131,7 +131,7 @@ typedef struct pll_dlist
 
 /* Simple structure for handling FASTA parsing */
 
-typedef struct
+typedef struct pll_fasta
 {
   FILE * fp;
   char line[PLL_LINEALLOC];
@@ -242,14 +242,14 @@ PLL_EXPORT int pll_dlist_prepend(pll_dlist_t ** dlist, void * data);
 
 PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition, 
                                      int params_index, 
-                                     double * params);
+                                     const double * params);
 
 PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
                                     int params_index,
-                                    double * frequencies);
+                                    const double * frequencies);
 
 PLL_EXPORT void pll_set_category_rates(pll_partition_t * partition,
-                                       double * rates);
+                                       const double * rates);
 
 PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
                                          int params_index, 
