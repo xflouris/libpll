@@ -85,7 +85,7 @@ static int tree_indend_level(pll_utree_t * tree, int indend)
   int a = tree_indend_level(tree->next->back,       indend+1);
   int b = tree_indend_level(tree->next->next->back, indend+1);
 
-  return MAX(a,b);
+  return (a > b ? a : b);
 }
 
 void pll_show_ascii_utree(pll_utree_t * tree)
@@ -94,7 +94,7 @@ void pll_show_ascii_utree(pll_utree_t * tree)
   
   a = tree_indend_level(tree->back,1);
   b = tree_indend_level(tree,0);
-  int max_indend_level = MAX(a,b);
+  int max_indend_level = (a > b ? a : b);
 
 
   int * active_node_order = (int *)malloc((max_indend_level+1) * sizeof(int));

@@ -41,10 +41,6 @@
 #define PLL_EXPORT
 #endif
 
-/* macros */
-
-#define MIN(a,b) ((a) < (b) ? (a) : (b))
-#define MAX(a,b) ((a) > (b) ? (a) : (b))
 
 /* constants */
 
@@ -78,11 +74,12 @@
 #define PLL_ERROR_FASTA_INVALIDHEADER    6
 #define PLL_ERROR_MEM_ALLOC              7
 #define PLL_ERROR_NEWICK_SYNTAX          8
+#define PLL_ERROR_TIP_DATA_ILLEGAL_STATE 9
 
 
 /* structures and data types */
 
-typedef struct
+typedef struct pll_partition
 {
   int tips;
   int clv_buffers;
@@ -114,7 +111,7 @@ typedef struct
 
 /* Structure for driving likelihood operations */
 
-typedef struct
+typedef struct pll_operation
 {
   int parent_clv_index;
   int parent_scaler_index;
@@ -138,11 +135,11 @@ typedef struct pll_dlist
 
 /* Simple structure for handling FASTA parsing */
 
-typedef struct
+typedef struct pll_fasta
 {
   FILE * fp;
   char line[PLL_LINEALLOC];
-  unsigned int * chrstatus;
+  const unsigned int * chrstatus;
   long no;
   long filesize;
   long lineno;
@@ -166,50 +163,50 @@ typedef struct tree_noderec
 
 extern int pll_errno;
 extern char pll_errmsg[200];
-extern unsigned int pll_map_bin[256];
-extern unsigned int pll_map_nt[256];
-extern unsigned int pll_map_aa[256];
-extern unsigned int pll_map_fasta[256];
+extern const unsigned int pll_map_bin[256];
+extern const unsigned int pll_map_nt[256];
+extern const unsigned int pll_map_aa[256];
+extern const unsigned int pll_map_fasta[256];
 
-extern double pll_aa_rates_dayhoff[190];
-extern double pll_aa_rates_lg[190];
-extern double pll_aa_rates_dcmut[190];
-extern double pll_aa_rates_jtt[190];
-extern double pll_aa_rates_mtrev[190];
-extern double pll_aa_rates_wag[190];
-extern double pll_aa_rates_rtrev[190];
-extern double pll_aa_rates_cprev[190];
-extern double pll_aa_rates_vt[190];
-extern double pll_aa_rates_blosum62[190];
-extern double pll_aa_rates_mtmam[190];
-extern double pll_aa_rates_mtart[190];
-extern double pll_aa_rates_mtzoa[190];
-extern double pll_aa_rates_pmb[190];
-extern double pll_aa_rates_hivb[190];
-extern double pll_aa_rates_hivw[190];
-extern double pll_aa_rates_jttdcmut[190];
-extern double pll_aa_rates_flu[190];
-extern double pll_aa_rates_stmtrev[190];
+extern const double pll_aa_rates_dayhoff[190];
+extern const double pll_aa_rates_lg[190];
+extern const double pll_aa_rates_dcmut[190];
+extern const double pll_aa_rates_jtt[190];
+extern const double pll_aa_rates_mtrev[190];
+extern const double pll_aa_rates_wag[190];
+extern const double pll_aa_rates_rtrev[190];
+extern const double pll_aa_rates_cprev[190];
+extern const double pll_aa_rates_vt[190];
+extern const double pll_aa_rates_blosum62[190];
+extern const double pll_aa_rates_mtmam[190];
+extern const double pll_aa_rates_mtart[190];
+extern const double pll_aa_rates_mtzoa[190];
+extern const double pll_aa_rates_pmb[190];
+extern const double pll_aa_rates_hivb[190];
+extern const double pll_aa_rates_hivw[190];
+extern const double pll_aa_rates_jttdcmut[190];
+extern const double pll_aa_rates_flu[190];
+extern const double pll_aa_rates_stmtrev[190];
 
-extern double pll_aa_freqs_dayhoff[20];
-extern double pll_aa_freqs_lg[20];
-extern double pll_aa_freqs_dcmut[20];
-extern double pll_aa_freqs_jtt[20];
-extern double pll_aa_freqs_mtrev[20];
-extern double pll_aa_freqs_wag[20];
-extern double pll_aa_freqs_rtrev[20];
-extern double pll_aa_freqs_cprev[20];
-extern double pll_aa_freqs_vt[20];
-extern double pll_aa_freqs_blosum62[20];
-extern double pll_aa_freqs_mtmam[20];
-extern double pll_aa_freqs_mtart[20];
-extern double pll_aa_freqs_mtzoa[20];
-extern double pll_aa_freqs_pmb[20];
-extern double pll_aa_freqs_hivb[20];
-extern double pll_aa_freqs_hivw[20];
-extern double pll_aa_freqs_jttdcmut[20];
-extern double pll_aa_freqs_flu[20];
-extern double pll_aa_freqs_stmtrev[20];
+extern const double pll_aa_freqs_dayhoff[20];
+extern const double pll_aa_freqs_lg[20];
+extern const double pll_aa_freqs_dcmut[20];
+extern const double pll_aa_freqs_jtt[20];
+extern const double pll_aa_freqs_mtrev[20];
+extern const double pll_aa_freqs_wag[20];
+extern const double pll_aa_freqs_rtrev[20];
+extern const double pll_aa_freqs_cprev[20];
+extern const double pll_aa_freqs_vt[20];
+extern const double pll_aa_freqs_blosum62[20];
+extern const double pll_aa_freqs_mtmam[20];
+extern const double pll_aa_freqs_mtart[20];
+extern const double pll_aa_freqs_mtzoa[20];
+extern const double pll_aa_freqs_pmb[20];
+extern const double pll_aa_freqs_hivb[20];
+extern const double pll_aa_freqs_hivw[20];
+extern const double pll_aa_freqs_jttdcmut[20];
+extern const double pll_aa_freqs_flu[20];
+extern const double pll_aa_freqs_stmtrev[20];
 
 #ifdef __cplusplus
 extern "C" {
@@ -249,14 +246,14 @@ PLL_EXPORT int pll_dlist_prepend(pll_dlist_t ** dlist, void * data);
 
 PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition, 
                                      int params_index, 
-                                     double * params);
+                                     const double * params);
 
 PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
                                     int params_index,
-                                    double * frequencies);
+                                    const double * frequencies);
 
 PLL_EXPORT void pll_set_category_rates(pll_partition_t * partition,
-                                       double * rates);
+                                       const double * rates);
 
 PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
                                          int params_index, 
@@ -266,14 +263,14 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
 
 PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition);
 
-PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition, 
+PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition,
                                                      int params_index,
                                                      double prop_invar);
 
 /* functions in likelihood.c */
 
 PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
-                                    pll_operation_t * operations,
+                                    const pll_operation_t * operations,
                                     int count);
 
 PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
@@ -309,7 +306,7 @@ PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
 /* functions in fasta.c */
 
 PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename,
-                                        unsigned int * map);
+                                        const unsigned int * map);
 
 PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
                                  long * head_len,  char ** seq,

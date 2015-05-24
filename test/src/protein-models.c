@@ -29,7 +29,7 @@
 
 #define FLOAT_PRECISION 5
 
-  static double * prot_matrices[N_PROT_MODELS] =
+  static const double * prot_matrices[N_PROT_MODELS] =
       {
       pll_aa_rates_dayhoff,  pll_aa_rates_lg,
       pll_aa_rates_dcmut,    pll_aa_rates_jtt,
@@ -43,7 +43,7 @@
       pll_aa_rates_stmtrev
       };
 
-  static double * prot_freqs[N_PROT_MODELS] =
+  static const double * prot_freqs[N_PROT_MODELS] =
       {
       pll_aa_freqs_dayhoff,  pll_aa_freqs_lg,
       pll_aa_freqs_dcmut,    pll_aa_freqs_jtt,

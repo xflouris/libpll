@@ -21,19 +21,19 @@
 
 #include "pll.h"
 
-static void update_partials(pll_partition_t * partition, 
-                            double * parent_clv, 
-                            double * left_clv, 
-                            double * right_clv, 
-                            double * left_matrix, 
-                            double * right_matrix,
+static void update_partials(pll_partition_t * partition,
+                            double * parent_clv,
+                            const double * left_clv,
+                            const double * right_clv,
+                            const double * left_matrix,
+                            const double * right_matrix,
                             unsigned int * scaler)
 {
   int i,j,k,n;
   int scaling;
 
-  double * lmat;
-  double * rmat;
+  const double * lmat;
+  const double * rmat;
 
   int states = partition->states;
   int span = states * partition->rate_cats;
@@ -77,8 +77,8 @@ static void update_partials(pll_partition_t * partition,
   }
 }
 
-void pll_update_partials(pll_partition_t * partition, 
-                         pll_operation_t * operations, 
+void pll_update_partials(pll_partition_t * partition,
+                         const pll_operation_t * operations,
                          int count)
 {
   int i,j;
@@ -86,8 +86,6 @@ void pll_update_partials(pll_partition_t * partition,
   unsigned int * parent_scaler;
   unsigned int * c1_scaler;
   unsigned int * c2_scaler;
-
-  
 
   /* if the parent is supposed to have a scaler then initialized it as the
      element-wise sum of child1 and child2 scalers */
@@ -137,10 +135,10 @@ double pll_compute_root_loglikelihood(pll_partition_t * partition,
 
   double logl = 0;
   double term;
-  double * clv = partition->clv[clv_index];
+  const double * clv = partition->clv[clv_index];
   int rates = partition->rate_cats;
   int states = partition->states;
-  double * freqs = partition->frequencies[freqs_index];
+  const double * freqs = partition->frequencies[freqs_index];
   double prop_invar = partition->prop_invar[freqs_index];
   double site_lk, inv_site_lk;
   unsigned int * scaler;
@@ -167,6 +165,18 @@ double pll_compute_root_loglikelihood(pll_partition_t * partition,
     site_lk = term / rates;
 
     /* account for invariant sites */
+    /* @MTH: This is not quite right, at least it does not cover
+        all of the corner cases, if the library is intending
+        to deal with partial ambiguity.
+      It is possible for a DNA site to be all N's and Y's.
+      This could be dealt with by expanding partition->frequencies
+        to deal with ambiguity codes, and then allowing 
+        partition->invariant to index that large state space.
+      Not sure if it is worth it...
+      Depending on the preprocessing, it may be necessary to deal with
+        the all missing case too (those could be removed before scoring
+        as their likelihood contribution is always 1.0)
+    */
     if (prop_invar > 0)
     {
       inv_site_lk = (partition->invariant[i] == -1) ?
@@ -198,10 +208,10 @@ double pll_compute_edge_loglikelihood(pll_partition_t * partition,
   double terma, termb;
   double site_lk, inv_site_lk;
 
-  double * clvp = partition->clv[parent_clv_index];
-  double * clvc = partition->clv[child_clv_index];
-  double * freqs = partition->frequencies[freqs_index];
-  double * pmatrix = partition->pmatrix[matrix_index];
+  const double * clvp = partition->clv[parent_clv_index];
+  const double * clvc = partition->clv[child_clv_index];
+  const double * freqs = partition->frequencies[freqs_index];
+  const double * pmatrix = partition->pmatrix[matrix_index];
   double prop_invar = partition->prop_invar[freqs_index];
   int states = partition->states;
   int rates = partition->rate_cats;
@@ -241,6 +251,7 @@ double pll_compute_edge_loglikelihood(pll_partition_t * partition,
     site_lk = terma / rates;
 
     /* account for invariant sites */
+    /* See @MTH comment above */
     if (prop_invar > 0)
     {
       inv_site_lk = (partition->invariant[n] == -1) ? 

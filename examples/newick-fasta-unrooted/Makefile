@@ -35,10 +35,10 @@ all: $(PROG)
 OBJS=nfu.o
 
 $(PROG): $(OBJS)
-	$(CC) $(LINKFLAGS) -o $@ $+ $(LIBS)
+	$(CC) $(LINKFLAGS) -o $@ $+ $(LIBS) $(LDFLAGS)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 clean:
 	rm -f *~ $(OBJS) gmon.out $(PROG)
