@@ -122,18 +122,27 @@ int main(int argc, char * argv[])
   operations[0].child2_clv_index    = 1;
   operations[0].child1_matrix_index = 1;
   operations[0].child2_matrix_index = 1;
+  operations[0].parent_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[0].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[0].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
   operations[1].parent_clv_index    = 6;
   operations[1].child1_clv_index    = 5;
   operations[1].child2_clv_index    = 2;
   operations[1].child1_matrix_index = 0;
   operations[1].child2_matrix_index = 1;
+  operations[1].parent_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[1].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[1].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
   operations[2].parent_clv_index    = 7;
   operations[2].child1_clv_index    = 3;
   operations[2].child2_clv_index    = 4;
   operations[2].child1_matrix_index = 1;
   operations[2].child2_matrix_index = 1;
+  operations[2].parent_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[2].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[2].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
   for (cur_model=0; cur_model < N_PROT_MODELS; cur_model++) {
 
@@ -164,23 +173,29 @@ int main(int argc, char * argv[])
     pll_update_partials(partition, operations, 3);
     
     printf ("Tip 0: ");
-    pll_show_clv(partition,0,FLOAT_PRECISION+1);
+    pll_show_clv(partition,0,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
     printf ("Tip 1: ");
-    pll_show_clv(partition,1,FLOAT_PRECISION+1);
+    pll_show_clv(partition,1,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
     printf ("Tip 2: ");
-    pll_show_clv(partition,2,FLOAT_PRECISION+1);
+    pll_show_clv(partition,2,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
     printf ("Tip 3: ");
-    pll_show_clv(partition,3,FLOAT_PRECISION+1);
+    pll_show_clv(partition,3,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
     printf ("Tip 4: ");
-    pll_show_clv(partition,4,FLOAT_PRECISION+1);
+    pll_show_clv(partition,4,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
     printf ("CLV 5: ");
-    pll_show_clv(partition,5,FLOAT_PRECISION+1);
+    pll_show_clv(partition,5,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
     printf ("CLV 6: ");
-    pll_show_clv(partition,6,FLOAT_PRECISION+1);
+    pll_show_clv(partition,6,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
     printf ("CLV 7: ");
-    pll_show_clv(partition,7,FLOAT_PRECISION+1);
+    pll_show_clv(partition,7,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
 
-    double logl = pll_compute_edge_loglikelihood(partition,6,7,0,0);
+    double logl = pll_compute_edge_loglikelihood(partition,
+                                                 6,
+                                                 PLL_SCALE_BUFFER_NONE,
+                                                 7,
+                                                 PLL_SCALE_BUFFER_NONE,
+                                                 0,
+                                                 0);
 
     printf("Log-L (%s): %.12f\n", prot_model_names[cur_model], logl);
   }

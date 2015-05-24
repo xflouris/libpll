@@ -21,6 +21,8 @@
 
 #include "pll.h"
 
+static void unscale(double * prob, unsigned int times);
+
 void pll_show_pmatrix(pll_partition_t * partition, 
                       int index, 
                       int float_precision)
@@ -42,13 +44,27 @@ void pll_show_pmatrix(pll_partition_t * partition,
   }
 }
 
-void pll_show_clv(pll_partition_t * partition, int index, int float_precision)
+static void unscale(double * prob, unsigned int times)
+{
+  unsigned int i;
+
+  for (i = 0; i < times; ++i)
+    *prob *= PLL_SCALE_THRESHOLD;
+}
+
+void pll_show_clv(pll_partition_t * partition,
+                  int clv_index,
+                  int scaler_index,
+                  int float_precision)
 {
   int i,j,k;
 
-  double * clv = partition->clv[index];
+  double * clv = partition->clv[clv_index];
+  unsigned int * scaler = (scaler_index == PLL_SCALE_BUFFER_NONE) ?
+                          NULL : partition->scale_buffer[scaler_index];
   int states = partition->states;
   int rates = partition->rate_cats;
+  double prob;
 
   printf ("[ ");
   for (i = 0; i < partition->sites; ++i)
@@ -59,9 +75,13 @@ void pll_show_clv(pll_partition_t * partition, int index, int float_precision)
       printf("(");
       for (k = 0; k < partition->states-1; ++k)
       {
-        printf("%.*f,", float_precision, clv[i*rates*states + j*states + k]);
+        prob = clv[i*rates*states + j*states + k];
+        if (scaler) unscale(&prob, scaler[i]);
+        printf("%.*f,", float_precision, prob);
       }
-      printf("%.*f)", float_precision, clv[i*rates*states + j*states + k]);
+      prob = clv[i*rates*states + j*states + k];
+      if (scaler) unscale(&prob, scaler[i]);
+      printf("%.*f)", float_precision, prob);
       if (j < rates - 1) printf(",");
     }
     printf("} ");
