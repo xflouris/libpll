@@ -33,24 +33,17 @@ static void dealloc_partition_data(pll_partition_t * partition)
   if (!partition) return;
 
   free(partition->rates);
-  free(partition->scale_buffer);
   free(partition->eigen_decomp_valid);
   if (partition->prop_invar)
     free(partition->prop_invar);
   if (partition->invariant)
     free(partition->invariant);
 
-/*
-  if (partition->tip_clv)
-    for (i = 0; i < partition->tips; ++i) 
-      free(partition->tip_clv[i]);
-  free(partition->tip_clv);
+  if (partition->scale_buffer)
+    for (i = 0; i < partition->scale_buffers; ++i)
+      free(partition->scale_buffer[i]);
+  free(partition->scale_buffer);
 
-  if (partition->inner_clv)
-    for (i = 0; i < partition->clv_buffers; ++i) 
-      free(partition->inner_clv[i]);
-  free(partition->inner_clv);
-*/
   if (partition->clv)
     for (i = 0; i < partition->clv_buffers + partition->tips; ++i)
       free(partition->clv[i]);
@@ -287,6 +280,25 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   /* proportion of invariant sites */
   partition->prop_invar = (double *)calloc(partition->rate_matrices,
                                              sizeof(double));
+  
+  /* scale_buffer */
+  partition->scale_buffer = (unsigned int **)calloc(partition->scale_buffers,
+                                                    sizeof(unsigned int *));
+  if (!partition->scale_buffer)
+  {
+    dealloc_partition_data(partition);
+    return PLL_FAILURE;
+  }
+  for (i = 0; i < partition->scale_buffers; ++i)
+  {
+    partition->scale_buffer[i] = (unsigned int *)calloc(partition->sites,
+                                                        sizeof(unsigned int));
+    if (!partition->scale_buffer[i])
+    {
+      dealloc_partition_data(partition);
+      return PLL_FAILURE;
+    }
+  }
 
   return partition;
 }

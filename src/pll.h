@@ -57,6 +57,10 @@
 
 #define PLL_LINEALLOC 2048
 
+#define PLL_SCALE_FACTOR 115792089237316195423570985008687907853269984665640564039457584007913129639936.0  /*  2**256 (exactly)  */
+#define PLL_SCALE_THRESHOLD (1.0/PLL_SCALE_FACTOR)
+#define PLL_SCALE_BUFFER_NONE -1
+
 /* attribute flags */
 
 #define PLL_ATTRIB_ARCH_SSE       1 << 0
@@ -66,7 +70,7 @@
 
 /* error codes */
 
-#define PLL_ERROR_FILE_OPEN              1 
+#define PLL_ERROR_FILE_OPEN              1
 #define PLL_ERROR_FILE_SEEK              2
 #define PLL_ERROR_FILE_EOF               3
 #define PLL_ERROR_FASTA_ILLEGALCHAR      4
@@ -96,7 +100,7 @@ typedef struct
   double ** pmatrix;
   double * rates;
   double ** subst_params;
-  double * scale_buffer;
+  unsigned int ** scale_buffer;
   double ** frequencies;
   double * prop_invar;
   int * invariant;
@@ -113,10 +117,13 @@ typedef struct
 typedef struct
 {
   int parent_clv_index;
+  int parent_scaler_index;
   int child1_clv_index;
   int child1_matrix_index;
+  int child1_scaler_index;
   int child2_clv_index;
   int child2_matrix_index;
+  int child2_scaler_index;
 } pll_operation_t;
 
 
@@ -265,34 +272,38 @@ PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition
 
 /* functions in likelihood.c */
 
-PLL_EXPORT void pll_update_partials(pll_partition_t * partition, 
-                                    pll_operation_t * operations, 
+PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
+                                    pll_operation_t * operations,
                                     int count);
 
-PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition, 
-                                                 int clv_index, 
+PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
+                                                 int clv_index,
+                                                 int scaler_index,
                                                  int freqs_index);
 
-PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition, 
-                                                 int parent_clv_index, 
-                                                 int child_clv_index, 
+PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
+                                                 int parent_clv_index,
+                                                 int parent_scaler_index,
+                                                 int child_clv_index,
+                                                 int child_scaler_index,
                                                  int matrix_index,
                                                  int freqs_index);
 
 /* functions in gamma.c */
 
-PLL_EXPORT int pll_compute_gamma_cats(double alpha, 
-                                      int categories, 
+PLL_EXPORT int pll_compute_gamma_cats(double alpha,
+                                      int categories,
                                       double * output_rates);
 
 /* functions in output.c */
 
-PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition, 
-                                 int index, 
+PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition,
+                                 int index,
                                  int float_precision);
 
-PLL_EXPORT void pll_show_clv(pll_partition_t * partition, 
-                             int index, 
+PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
+                             int clv_index,
+                             int scaler_index,
                              int float_precision);
 
 /* functions in fasta.c */
@@ -314,7 +325,7 @@ PLL_EXPORT int pll_fasta_rewind(pll_fasta_t * fd);
 
 /* functions in unrooted.y */
 
-PLL_EXPORT pll_utree_t * pll_parse_newick_utree(const char * filename, 
+PLL_EXPORT pll_utree_t * pll_parse_newick_utree(const char * filename,
                                                 int * tip_count);
 
 PLL_EXPORT void pll_destroy_utree(pll_utree_t * root);
@@ -332,7 +343,9 @@ PLL_EXPORT void pll_traverse_utree(pll_utree_t * tree,
                                    pll_operation_t ** ops,
                                    int * edge_pmatrix_index,
                                    int * edge_node1_clv_index,
-                                   int * edge_node2_clv_index);
+                                   int * edge_node1_scaler_index,
+                                   int * edge_node2_clv_index,
+                                   int * edge_node2_scaler_index);
 
 PLL_EXPORT char ** pll_query_utree_tipnames(pll_utree_t * tree,
                                             int tips);

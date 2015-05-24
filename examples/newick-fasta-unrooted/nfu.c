@@ -197,8 +197,10 @@ int main(int argc, char * argv[])
 
 
   int edge_pmatrix_index;
-  int clv1;
-  int clv2;
+  int clv1_index;
+  int clv2_index;
+  int scaler1_index;
+  int scaler2_index;
 
   /* We perform a simple traversal on the unrooted tree topology. The following
      function allocates branch_lengths, matrix_indices and operations in case
@@ -222,8 +224,10 @@ int main(int argc, char * argv[])
                      &matrix_indices, 
                      &operations, 
                      &edge_pmatrix_index, 
-                     &clv1, 
-                     &clv2);
+                     &clv1_index, 
+                     &scaler1_index,
+                     &clv2_index,
+                     &scaler2_index);
 
   /* we will no longer need the tree structure */
   pll_destroy_utree(tree);
@@ -291,8 +295,10 @@ int main(int argc, char * argv[])
      index for the concrete branch length, and the index of the model of whose
      frequency vector is to be used */
   double logl = pll_compute_edge_loglikelihood(partition,
-                                               clv1,
-                                               clv2,
+                                               clv1_index,
+                                               scaler1_index,
+                                               clv2_index,
+                                               scaler2_index,
                                                edge_pmatrix_index,
                                                0);
 
