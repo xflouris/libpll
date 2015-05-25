@@ -336,7 +336,7 @@ static void query_utree_tipnames_recursive(pll_utree_t * tree,
 }
 
 PLL_EXPORT char ** pll_query_utree_tipnames(pll_utree_t * tree,
-                                                    int tips)
+                                            int tips)
 {
   char ** tipnames = (char **)calloc(tips, sizeof(char *)); 
   int index = 0;

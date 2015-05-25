@@ -21,13 +21,14 @@
 %{
 #include "pll.h"
 
-extern int yylex();
-extern FILE * yyin;
-extern void yylex_destroy();
+extern int pll_utree_lex();
+extern FILE * pll_utree_in;
+extern void pll_utree_lex_destroy();
 
 static int tip_cnt = 0;
 
-int yywrap() 
+
+int pll_utree_wrap()
 { 
   return 1;
 }
@@ -73,7 +74,7 @@ void pll_destroy_utree(pll_utree_t * root)
   free(root);
 }
 
-static void yyerror(pll_utree_t * tree, const char * s) 
+static void pll_utree_error(pll_utree_t * tree, const char * s) 
 {
   fprintf(stderr, "%s.\n", s);
 }
@@ -84,11 +85,12 @@ static void yyerror(pll_utree_t * tree, const char * s)
 {
   char * s;
   char * d;
-  struct tree_noderec * tree;
+  struct pll_utree * tree;
 }
 
+%define api.prefix {pll_utree_}
 %error-verbose
-%parse-param {struct tree_noderec * tree}
+%parse-param {struct pll_utree * tree}
 %destructor { pll_destroy_utree($$); } subtree
 
 %token OPAR
@@ -167,30 +169,30 @@ number: NUMBER   { $$=$1;};
 
 pll_utree_t * pll_parse_newick_utree(const char * filename, int * tip_count)
 {
-  struct tree_noderec * tree;
+  struct pll_utree * tree;
 
   tree = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
 
-  yyin = fopen(filename, "r");
-  if (!yyin)
+  pll_utree_in = fopen(filename, "r");
+  if (!pll_utree_in)
   {
     pll_destroy_utree(tree);
     pll_errno = PLL_ERROR_FILE_OPEN;
     snprintf(pll_errmsg, 200, "Unable to open file (%s)", filename);
     return PLL_FAILURE;
   }
-  else if (yyparse(tree))
+  else if (pll_utree_parse(tree))
   {
     pll_destroy_utree(tree);
     tree = NULL;
-    fclose(yyin);
-    yylex_destroy();
+    fclose(pll_utree_in);
+    pll_utree_lex_destroy();
     return PLL_FAILURE;
   }
   
-  if (yyin) fclose(yyin);
+  if (pll_utree_in) fclose(pll_utree_in);
 
-  yylex_destroy();
+  pll_utree_lex_destroy();
 
   *tip_count = tip_cnt;
 

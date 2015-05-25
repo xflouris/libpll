@@ -149,15 +149,25 @@ typedef struct pll_fasta
 
 /* Simple unrooted tree structure for parsing newick */
 
-typedef struct tree_noderec
+typedef struct pll_utree
 {
   char * label;
   double length;
-  struct tree_noderec * next;
-  struct tree_noderec * back;
+  struct pll_utree * next;
+  struct pll_utree * back;
 
   void * data;
 } pll_utree_t;
+
+typedef struct pll_rtree
+{
+  char * label;
+  double length;
+  struct pll_rtree * left;
+  struct pll_rtree * right;
+
+  void * data;
+} pll_rtree_t;
 
 /* common data */
 
@@ -320,7 +330,14 @@ PLL_EXPORT long pll_fasta_getfilepos(pll_fasta_t * fd);
 
 PLL_EXPORT int pll_fasta_rewind(pll_fasta_t * fd);
 
-/* functions in unrooted.y */
+/* functions in parse_rtree.y */
+
+PLL_EXPORT pll_rtree_t * pll_parse_newick_rtree(const char * filename,
+                                                int * tip_count);
+
+PLL_EXPORT void pll_destroy_rtree(pll_rtree_t * root);
+
+/* functions in parse_utree.y */
 
 PLL_EXPORT pll_utree_t * pll_parse_newick_utree(const char * filename,
                                                 int * tip_count);
