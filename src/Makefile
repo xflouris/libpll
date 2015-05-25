@@ -45,11 +45,11 @@ $(PROG): $(OBJS)
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-%.c: %.y
-	$(BISON) -d -o $@ $<
+parse_%.c: parse_%.y
+	$(BISON) -p pll_$*_ -d -o $@ $<
 
-%.c: %.l
-	$(FLEX) -o $@ $<
+lex_%.c: lex_%.l
+	$(FLEX) -P pll_$*_ -o $@ $<
 
 clean:
 	rm -f *~ $(OBJS) gmon.out $(PROG)

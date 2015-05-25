@@ -27,12 +27,6 @@ extern void pll_rtree_lex_destroy();
 
 static int tip_cnt = 0;
 
-
-int pll_rtree_wrap() 
-{ 
-  return 1;
-}
-
 void pll_destroy_rtree(pll_rtree_t * root)
 {
   if (!root) return;
@@ -60,7 +54,6 @@ static void pll_rtree_error(pll_rtree_t * tree, const char * s)
   struct pll_rtree * tree;
 }
 
-%define api.prefix {pll_rtree_}
 %error-verbose
 %parse-param {struct pll_rtree * tree}
 %destructor { pll_destroy_rtree($$); } subtree

@@ -107,7 +107,7 @@ Please refer to our wiki page.
 
 ## libpll license and third party licenses
 
-The code is currently licensed under the GNU Affero General Public License version 3.
+The code is currently licensed under the [GNU Affero General Public License version 3](http://www.gnu.org/licenses/agpl-3.0.en.html).
 
 ## Code
 
@@ -164,7 +164,7 @@ doi:[10.1093/sysbio/syu084](http://dx.doi.org/10.1093/sysbio/syu084)
 doi:[10.1093/bioinformatics/btu033](http://dx.doi.org/10.1093/bioinformatics/btu033)
 
 * Tavar&eacute; S. (1986)
-**Some probabilistic and statistical problems in the analysis of DNA sequences**
+**Some probabilistic and statistical problems in the analysis of DNA sequences.**
 *American Mathematical Sciety: Lectures on Mathematics in the Life Sciences*, 17: 57-86.
 
 * Yang Z. (2014)

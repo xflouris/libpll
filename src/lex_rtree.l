@@ -19,7 +19,7 @@
     Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 */
 %{
-#include "rooted.h"
+#include "parse_rtree.h"
 #include "pll.h"
 
 static size_t string_length = 0;
@@ -55,6 +55,7 @@ static char * append(size_t * dstlen, const char * src, size_t srclen)
 }
 
 %}
+%option noyywrap
 %option prefix="pll_rtree_"
 %option nounput
 %option noinput

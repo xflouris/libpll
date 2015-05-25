@@ -27,12 +27,6 @@ extern void pll_utree_lex_destroy();
 
 static int tip_cnt = 0;
 
-
-int pll_utree_wrap()
-{ 
-  return 1;
-}
-
 static void dealloc_tree_recursive(pll_utree_t * node)
 {
   if (!node->next)
@@ -88,7 +82,6 @@ static void pll_utree_error(pll_utree_t * tree, const char * s)
   struct pll_utree * tree;
 }
 
-%define api.prefix {pll_utree_}
 %error-verbose
 %parse-param {struct pll_utree * tree}
 %destructor { pll_destroy_utree($$); } subtree
