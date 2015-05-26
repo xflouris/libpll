@@ -41,7 +41,6 @@
 #define PLL_EXPORT
 #endif
 
-
 /* constants */
 
 #define PLL_FAILURE  0
@@ -344,7 +343,7 @@ PLL_EXPORT pll_utree_t * pll_parse_newick_utree(const char * filename,
 
 PLL_EXPORT void pll_destroy_utree(pll_utree_t * root);
 
-/* functions in tree.c */
+/* functions in utree.c */
 
 PLL_EXPORT void pll_show_ascii_utree(pll_utree_t * tree);
 
@@ -364,6 +363,22 @@ PLL_EXPORT void pll_traverse_utree(pll_utree_t * tree,
 PLL_EXPORT char ** pll_query_utree_tipnames(pll_utree_t * tree,
                                             int tips);
 
+/* functions in rtree.c */
+
+PLL_EXPORT void pll_show_ascii_rtree(pll_rtree_t * tree);
+
+PLL_EXPORT char * pll_write_newick_rtree(pll_rtree_t * root);
+
+PLL_EXPORT void pll_traverse_rtree(pll_rtree_t * tree,
+                                   int tips,
+                                   double ** branch_lengths,
+                                   int ** indices,
+                                   pll_operation_t ** ops,
+                                   int * root_clv_index,
+                                   int * root_scaler_index);
+
+PLL_EXPORT char ** pll_query_rtree_tipnames(pll_rtree_t * tree,
+                                            int tips);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

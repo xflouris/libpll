@@ -93,9 +93,13 @@ Below is a list of available functions in the current version.
 ### Tree manipulation functions
 
 * `void pll_show_ascii_utree(pll_utree_t * tree);`
+* `void pll_show_ascii_rtree(pll_rtree_t * tree);`
 * `char * pll_write_newick_utree(pll_utree_t * root);`
+* `char * pll_write_newick_rtree(pll_rtree_t * root);`
 * `char ** pll_query_utree_tipnames(pll_utree_t * tree, int tips);`
+* `char ** pll_query_rtree_tipnames(pll_rtree_t * tree, int tips);`
 * `void pll_traverse_utree(pll_utree_t * tree, int tips, double ** branch_lengths, int ** indices, pll_operation_t ** ops, int * edge_pmatrix_index, int * edge_node1_clv_index, int * edge_node2_clv_index);`
+* `void pll_traverse_rtree(pll_rtree_t * tree, int tips, double ** branch_lengths, int ** indices, pll_operation_t ** ops, int * root_clv_index, int * root_scaler_index);`
 
 ### Auxiliary functions
 
@@ -103,7 +107,7 @@ Below is a list of available functions in the current version.
 
 ## Usage examples
 
-Please refer to our wiki page.
+Please refer to the [wiki page](https://github.com/xflouris/libpll/wiki).
 
 ## libpll license and third party licenses
 
@@ -126,7 +130,8 @@ The code is written in C.
 **models.c**     | Model parameters related functions.
 **output.c**     | Functions for output in terminal (i.e. conditional likelihood arrays, probability matrices).
 **pll.c**        | Functions for setting PLL partitions (instances).
-**tree.c**       | Rooted/Unrooted tree manipulation functions.
+**rtree.c**      | Rooted tree manipulation functions.
+**utree.c**      | Unrooted tree manipulation functions.
 **parse_rtree.y**| Functions for parsing rooted trees in newick format.
 **parse_utree.y**| Functions for parsing unrooted trees in newick format.
 
