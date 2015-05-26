@@ -15,7 +15,7 @@ int main(int argc, char * argv[])
                                    1,       /* How many different substitution models (or eigen decompositions) do we want to use concurrently (i.e. 4 for LG4) */
                                    5,       /* How many probability matrices should we allocate */
                                    4,       /* Number of rate categories */
-                                   1,       /* How many scale buffers do we want (not implemented currently) */
+                                   2,       /* How many scale buffers do we want (not implemented currently) */
                                    PLL_ATTRIB_ARCH_SSE);        /* various attributes (not yet implemented) */
   
   /* initialize an array of two different branch lengths */
@@ -72,12 +72,18 @@ int main(int argc, char * argv[])
   operations[0].child2_clv_index    = 1;
   operations[0].child1_matrix_index = 0;
   operations[0].child2_matrix_index = 1;
+  operations[0].parent_scaler_index = 0;
+  operations[0].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[0].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
   operations[1].parent_clv_index    = 5;
   operations[1].child1_clv_index    = 2;
   operations[1].child2_clv_index    = 3;
   operations[1].child1_matrix_index = 2;
   operations[1].child2_matrix_index = 3;
+  operations[1].parent_scaler_index = 1;
+  operations[1].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[1].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
   /* use the operations array to compute 4 CLVs. Operations will be carried out
      starting from operation 0 to 3 */
@@ -85,21 +91,21 @@ int main(int argc, char * argv[])
 
   /* print out the CLVs at tip and inner nodes*/
   printf ("Tip 0: ");
-  pll_show_clv(partition,0,7);
+  pll_show_clv(partition,0,PLL_SCALE_BUFFER_NONE,7);
   printf ("Tip 1: ");
-  pll_show_clv(partition,1,7);
+  pll_show_clv(partition,1,PLL_SCALE_BUFFER_NONE,7);
   printf ("Tip 2: ");
-  pll_show_clv(partition,2,7);
+  pll_show_clv(partition,2,PLL_SCALE_BUFFER_NONE,7);
   printf ("Tip 3: ");
-  pll_show_clv(partition,3,7);
+  pll_show_clv(partition,3,PLL_SCALE_BUFFER_NONE,7);
   printf ("Tip 4: ");
-  pll_show_clv(partition,4,7);
+  pll_show_clv(partition,4,0,7);
   printf ("CLV 5: ");
-  pll_show_clv(partition,5,7);
+  pll_show_clv(partition,5,1,7);
 
   /* compute the likelihood at the root of the rooted tree by specifying the CLV
      index of the root CLV and the index of the frequency vector to be used */
-  double logl = pll_compute_edge_loglikelihood(partition,4,5,4,0);
+  double logl = pll_compute_edge_loglikelihood(partition,4,0,5,1,4,0);
 
   printf("Log-L: %f\n", logl);
 
@@ -119,7 +125,7 @@ int main(int argc, char * argv[])
   pll_update_partials(partition, operations, 2);
 
   /* re-evaluate the log-likelihood */
-  logl = pll_compute_edge_loglikelihood(partition,4,5,4,0);
+  logl = pll_compute_edge_loglikelihood(partition,4,0,5,1,4,0);
   
   printf("Log-L (Inv+Gamma 0.5): %f\n", logl);
 
@@ -133,7 +139,7 @@ int main(int argc, char * argv[])
   pll_update_partials(partition, operations, 2);
 
   /* re-evaluate the log-likelihood */
-  logl = pll_compute_edge_loglikelihood(partition,4,5,4,0);
+  logl = pll_compute_edge_loglikelihood(partition,4,0,5,1,4,0);
 
   printf("Log-L (Inv+Gamma 0.75): %f\n", logl);
 

@@ -28,11 +28,11 @@ CC = gcc
 CFLAGS = -Wall -g -O3 $(WARN)
 LINKFLAGS = -L. $(PROFILING)
 LIBS=-lpll -lm
-PROG=nfu
+PROG=nfr
 
 all: $(PROG)
 
-OBJS=nfu.o
+OBJS=$(PROG).o
 
 $(PROG): $(OBJS)
 	$(CC) $(LINKFLAGS) -o $@ $+ $(LIBS) $(LDFLAGS)

@@ -7,34 +7,29 @@
 #define RATE_CATS 4
 
 
-static void set_missing_branch_length_recursive(pll_utree_t * tree, 
+static void set_missing_branch_length_recursive(pll_rtree_t * tree, 
                                                 double length)
 {
-  if (tree)
-  {
-    /* set branch length to default if not set */
-    if (!tree->length)
-      tree->length = length;
+  if (!tree) return;
 
-    if (tree->next)
-    {
-      if (!tree->next->length)
-        tree->next->length = length;
+  if (!tree->length)
+    tree->length = length;
 
-      if (!tree->next->next->length)
-        tree->next->next->length = length;
+  if (tree->left)
+    set_missing_branch_length_recursive(tree->left, length);
 
-      set_missing_branch_length_recursive(tree->next->back, length);
-      set_missing_branch_length_recursive(tree->next->next->back, length);
-    }
-  }
+  if (tree->right)
+    set_missing_branch_length_recursive(tree->right, length);
 }
 
 /* branch lengths not present in the newick file get a value of 0.000001 */
-static void set_missing_branch_length(pll_utree_t * tree, double length)
+static void set_missing_branch_length(pll_rtree_t * tree, double length)
 {
-  set_missing_branch_length_recursive(tree, 0.000001);
-  set_missing_branch_length_recursive(tree->back, 0.000001);
+  if (tree)
+  {
+    set_missing_branch_length_recursive(tree->left,  0.000001);
+    set_missing_branch_length_recursive(tree->right, 0.000001);
+  }
 }
 
 static void fatal(const char * format, ...)
@@ -58,7 +53,7 @@ int main(int argc, char * argv[])
   if (argc != 3)
     fatal(" syntax: %s [newick] [fasta]", argv[0]);
 
-  pll_utree_t * tree = pll_parse_newick_utree(argv[1], &tip_count);
+  pll_rtree_t * tree = pll_parse_newick_rtree(argv[1], &tip_count);
   
   /* fix all missing branch lengths (i.e. those that did not appear in the 
      newick) to 0.000001 */
@@ -68,15 +63,15 @@ int main(int argc, char * argv[])
   /* Uncomment to display ASCII tree and newick format
 
   printf("Number of tips in tree: %d\n", tip_count);
-  pll_show_ascii_utree(tree);
-  char * newick = pll_write_newick_utree(tree);
+  pll_show_ascii_rtree(tree);
+  char * newick = pll_write_newick_rtree(tree);
   printf("%s\n", newick);
   free(newick);
 
   */
 
   /*  obtain an array of pointers to tip names */
-  char ** tipnames = pll_query_utree_tipnames(tree, tip_count);
+  char ** tipnames = pll_query_rtree_tipnames(tree, tip_count);
 
   /* create a libc hash table of size tip_count */
   hcreate(tip_count);
@@ -151,13 +146,13 @@ int main(int argc, char * argv[])
   */
 
   partition = pll_create_partition(tip_count,
-                                   tip_count-2,
+                                   tip_count-1,
                                    STATES,
                                    sites,
                                    1,
-                                   2*tip_count-3,
+                                   2*tip_count-2,
                                    RATE_CATS,
-                                   tip_count-2,
+                                   tip_count-1,
                                    PLL_ATTRIB_ARCH_SSE);
 
   /* find sequences in hash table and link them with the corresponding taxa */
@@ -196,11 +191,8 @@ int main(int argc, char * argv[])
 
 
 
-  int edge_pmatrix_index;
-  int clv1_index;
-  int clv2_index;
-  int scaler1_index;
-  int scaler2_index;
+  int root_index;
+  int scaler_index;
 
   /* We perform a simple traversal on the unrooted tree topology. The following
      function allocates branch_lengths, matrix_indices and operations in case
@@ -218,19 +210,16 @@ int main(int argc, char * argv[])
      then be used to evaluate the log-likelihood using the
      pll_compute_edge_loglikelihood function 
   */
-  pll_traverse_utree(tree, 
+  pll_traverse_rtree(tree, 
                      tip_count, 
                      &branch_lengths, 
                      &matrix_indices, 
                      &operations, 
-                     &edge_pmatrix_index, 
-                     &clv1_index, 
-                     &scaler1_index,
-                     &clv2_index,
-                     &scaler2_index);
+                     &root_index, 
+                     &scaler_index);
 
   /* we will no longer need the tree structure */
-  pll_destroy_utree(tree);
+  pll_destroy_rtree(tree);
 
   /* initialize the array of base frequencies */
   double frequencies[4] = { 0.17, 0.19, 0.25, 0.39 };
@@ -262,11 +251,11 @@ int main(int argc, char * argv[])
                            0, 
                            matrix_indices, 
                            branch_lengths, 
-                           2*tip_count-3);
+                           2*tip_count-2);
 
   /* Uncomment to output the probability matrices (for each branch and each rate
      category) on screen 
-  for (i = 0; i < 2*tip_count-3; ++i)
+  for (i = 0; i < 2*tip_count-2; ++i)
   {
     printf ("P-matrix (%d) for branch length %f\n", i, branch_lengths[i]);
     pll_show_pmatrix(partition, i,17);
@@ -275,14 +264,14 @@ int main(int argc, char * argv[])
   
   */
 
-  /* use the operations array to compute all tip_count-2 inner CLVs. Operations
+  /* use the operations array to compute all tip_count-1 inner CLVs. Operations
      will be carried out sequentially starting from operation 0 and upwards */
-  pll_update_partials(partition, operations, tip_count-2);
+  pll_update_partials(partition, operations, tip_count-1);
 
   /* Uncomment to print on screen the CLVs at tip and inner nodes. From 0 to
      tip_count-1 are tip CLVs, the rest are inner node CLVs.
 
-  for (i = 0; i < 2*tip_count-2; ++i)
+  for (i = 0; i < 2*tip_count-1; ++i)
   {
     printf ("CLV %d: ", i);
     pll_show_clv(partition,i,17);
@@ -294,12 +283,9 @@ int main(int argc, char * argv[])
      the CLV indices at the two end-point of the branch, the probability matrix
      index for the concrete branch length, and the index of the model of whose
      frequency vector is to be used */
-  double logl = pll_compute_edge_loglikelihood(partition,
-                                               clv1_index,
-                                               scaler1_index,
-                                               clv2_index,
-                                               scaler2_index,
-                                               edge_pmatrix_index,
+  double logl = pll_compute_root_loglikelihood(partition,
+                                               root_index,
+                                               scaler_index,
                                                0);
 
   printf("Log-L: %f\n", logl);

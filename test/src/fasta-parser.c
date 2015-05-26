@@ -122,11 +122,11 @@ int smalltest ()
   double subst_params[6] =
     { 1, 5, 1, 1, 5, 1 };
 
-  partition = pll_create_partition (N_TAXA_SMALL, 4,
-  N_STATES,
-                                    num_sites, 1, 2 * N_TAXA_SMALL - 3,
-                                    N_CAT_GAMMA,
-                                    1, 1);
+  partition = pll_create_partition(N_TAXA_SMALL, 4,
+                                   N_STATES,
+                                   num_sites, 1, 2 * N_TAXA_SMALL - 3,
+                                   N_CAT_GAMMA,
+                                   1, 1);
 
   fp = pll_fasta_open ("testdata/small.fas", pll_map_fasta);
   i = 0;
@@ -147,18 +147,27 @@ int smalltest ()
   operations[0].child2_clv_index = 1;
   operations[0].child1_matrix_index = 1;
   operations[0].child2_matrix_index = 1;
+  operations[0].parent_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[0].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[0].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
   operations[1].parent_clv_index = 6;
   operations[1].child1_clv_index = 5;
   operations[1].child2_clv_index = 2;
   operations[1].child1_matrix_index = 0;
   operations[1].child2_matrix_index = 1;
+  operations[1].parent_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[1].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[1].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
   operations[2].parent_clv_index = 7;
   operations[2].child1_clv_index = 3;
   operations[2].child2_clv_index = 4;
   operations[2].child1_matrix_index = 1;
   operations[2].child2_matrix_index = 1;
+  operations[2].parent_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[2].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
+  operations[2].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
   pll_compute_gamma_cats (ALPHA, N_CAT_GAMMA, rate_cats);
   pll_set_subst_params (partition, 0, subst_params);
@@ -167,8 +176,14 @@ int smalltest ()
   pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths, 4);
   pll_update_partials (partition, operations, 3);
 
-  printf ("logL: %17.12f\n",
-          pll_compute_edge_loglikelihood (partition, 6, 7, 0, 0));
+  printf ("logL: %17.12f\n", 
+          pll_compute_edge_loglikelihood(partition,
+                                         6, 
+                                         PLL_SCALE_BUFFER_NONE,
+                                         7,
+                                         PLL_SCALE_BUFFER_NONE, 
+                                         0, 
+                                         0));
 
   free (operations);
   pll_fasta_close (fp);

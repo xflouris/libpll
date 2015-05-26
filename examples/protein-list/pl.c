@@ -3,9 +3,78 @@
 #include <search.h>
 
 
-#define STATES    4
+#define STATES    20
 #define RATE_CATS 4
+#define PROT_MODELS_COUNT 19
 
+const double * protein_models_rates_list[PROT_MODELS_COUNT] =
+ {
+   pll_aa_rates_dayhoff,
+   pll_aa_rates_lg,
+   pll_aa_rates_dcmut,
+   pll_aa_rates_jtt,
+   pll_aa_rates_mtrev,
+   pll_aa_rates_wag,
+   pll_aa_rates_rtrev,
+   pll_aa_rates_cprev,
+   pll_aa_rates_vt,
+   pll_aa_rates_blosum62,
+   pll_aa_rates_mtmam,
+   pll_aa_rates_mtart,
+   pll_aa_rates_mtzoa,
+   pll_aa_rates_pmb,
+   pll_aa_rates_hivb,
+   pll_aa_rates_hivw,
+   pll_aa_rates_jttdcmut,
+   pll_aa_rates_flu,
+   pll_aa_rates_stmtrev
+ };
+
+const double * protein_models_freqs_list[PROT_MODELS_COUNT] =
+ {
+   pll_aa_freqs_dayhoff,
+   pll_aa_freqs_lg,
+   pll_aa_freqs_dcmut,
+   pll_aa_freqs_jtt,
+   pll_aa_freqs_mtrev,
+   pll_aa_freqs_wag,
+   pll_aa_freqs_rtrev,
+   pll_aa_freqs_cprev,
+   pll_aa_freqs_vt,
+   pll_aa_freqs_blosum62,
+   pll_aa_freqs_mtmam,
+   pll_aa_freqs_mtart,
+   pll_aa_freqs_mtzoa,
+   pll_aa_freqs_pmb,
+   pll_aa_freqs_hivb,
+   pll_aa_freqs_hivw,
+   pll_aa_freqs_jttdcmut,
+   pll_aa_freqs_flu,
+   pll_aa_freqs_stmtrev
+ };
+
+const char * protein_models_names_list[PROT_MODELS_COUNT] =
+{
+   "DAYHOFF",
+   "LG",
+   "DCMUT",
+   "JTT",
+   "MTREV",
+   "WAG",
+   "RTREV",
+   "CPREV",
+   "VT",
+   "BLOSUM62",
+   "MTMAM",
+   "MTART",
+   "MTZOA",
+   "PMB",
+   "HIVB",
+   "HIVW",
+   "JTTDCMUT",
+   "FLU",
+   "STMTREV"
+};
 
 static void set_missing_branch_length_recursive(pll_utree_t * tree, 
                                                 double length)
@@ -174,7 +243,7 @@ int main(int argc, char * argv[])
         
     int tip_clv_index = *((int *)(found->data));
 
-    pll_set_tip_states(partition, tip_clv_index, pll_map_nt, seqdata[i]);
+    pll_set_tip_states(partition, tip_clv_index, pll_map_aa, seqdata[i]);
   }
 
   /* destroy hash table */
@@ -193,8 +262,6 @@ int main(int argc, char * argv[])
   }
   free(seqdata);
   free(headers);
-
-
 
   int edge_pmatrix_index;
   int clv1_index;
@@ -232,13 +299,6 @@ int main(int argc, char * argv[])
   /* we will no longer need the tree structure */
   pll_destroy_utree(tree);
 
-  /* initialize the array of base frequencies */
-  double frequencies[4] = { 0.17, 0.19, 0.25, 0.39 };
-
-  /* substitution rates for the 4x4 GTR model. This means we need exactly
-     (4*4-4)/2 = 6 values, i.e. the number of elements above the diagonal */
-  double subst_params[6] = {1,1,1,1,1,1};
-
   /* we'll use 4 rate categories, and currently initialize them to 0 */
   double rate_cats[4] = {0};
 
@@ -246,63 +306,69 @@ int main(int argc, char * argv[])
      with alpha shape 1 and store them in rate_cats  */
   pll_compute_gamma_cats(1, 4, rate_cats);
 
-  /* set frequencies at model with index 0 (we currently have only one model) */
-  pll_set_frequencies(partition, 0, frequencies);
-
-  /* set 6 substitution parameters at model with index 0 */
-  pll_set_subst_params(partition, 0, subst_params);
-
   /* set rate categories */
   pll_set_category_rates(partition, rate_cats);
 
-  /* update 2*tip_count-3 probability matrices for model with index 0. The i-th
-     matrix (i ranges from 0 to 2*tip_count-4) is generated using branch length
-     branch_lengths[i] and can be refered to with index matrix_indices[i] */
-  pll_update_prob_matrices(partition, 
-                           0, 
-                           matrix_indices, 
-                           branch_lengths, 
-                           2*tip_count-3);
 
-  /* Uncomment to output the probability matrices (for each branch and each rate
-     category) on screen 
-  for (i = 0; i < 2*tip_count-3; ++i)
+  /* iterate through all protein models and compute the log-likelihood */
+  for (i = 0; i < PROT_MODELS_COUNT; ++i)
   {
-    printf ("P-matrix (%d) for branch length %f\n", i, branch_lengths[i]);
-    pll_show_pmatrix(partition, i,17);
-    printf ("\n");
+
+    /* set frequencies at model with index 0 (we currently have only one model) */
+    pll_set_frequencies(partition, 0, protein_models_freqs_list[i]);
+
+    /* set 6 substitution parameters at model with index 0 */
+    pll_set_subst_params(partition, 0, protein_models_rates_list[i]);
+
+    /* update 2*tip_count-3 probability matrices for model with index 0. The i-th
+       matrix (i ranges from 0 to 2*tip_count-4) is generated using branch length
+       branch_lengths[i] and can be refered to with index matrix_indices[i] */
+    pll_update_prob_matrices(partition, 
+                             0, 
+                             matrix_indices, 
+                             branch_lengths, 
+                             2*tip_count-3);
+
+    /* Uncomment to output the probability matrices (for each branch and each rate
+       category) on screen 
+    for (i = 0; i < 2*tip_count-3; ++i)
+    {
+      printf ("P-matrix (%d) for branch length %f\n", i, branch_lengths[i]);
+      pll_show_pmatrix(partition, i,17);
+      printf ("\n");
+    }
+    
+    */
+
+    /* use the operations array to compute all tip_count-2 inner CLVs. Operations
+       will be carried out sequentially starting from operation 0 and upwards */
+    pll_update_partials(partition, operations, tip_count-2);
+
+    /* Uncomment to print on screen the CLVs at tip and inner nodes. From 0 to
+       tip_count-1 are tip CLVs, the rest are inner node CLVs.
+
+    for (i = 0; i < 2*tip_count-2; ++i)
+    {
+      printf ("CLV %d: ", i);
+      pll_show_clv(partition,i,17);
+    }
+
+    */
+
+    /* compute the likelihood on an edge of the unrooted tree by specifying
+       the CLV indices at the two end-point of the branch, the probability matrix
+       index for the concrete branch length, and the index of the model of whose
+       frequency vector is to be used */
+    double logl = pll_compute_edge_loglikelihood(partition,
+                                                 clv1_index,
+                                                 scaler1_index,
+                                                 clv2_index,
+                                                 scaler2_index,
+                                                 edge_pmatrix_index,
+                                                 0);
+
+    printf("Log-L (%s): %f\n", protein_models_names_list[i], logl);
   }
-  
-  */
-
-  /* use the operations array to compute all tip_count-2 inner CLVs. Operations
-     will be carried out sequentially starting from operation 0 and upwards */
-  pll_update_partials(partition, operations, tip_count-2);
-
-  /* Uncomment to print on screen the CLVs at tip and inner nodes. From 0 to
-     tip_count-1 are tip CLVs, the rest are inner node CLVs.
-
-  for (i = 0; i < 2*tip_count-2; ++i)
-  {
-    printf ("CLV %d: ", i);
-    pll_show_clv(partition,i,17);
-  }
-
-  */
-
-  /* compute the likelihood on an edge of the unrooted tree by specifying
-     the CLV indices at the two end-point of the branch, the probability matrix
-     index for the concrete branch length, and the index of the model of whose
-     frequency vector is to be used */
-  double logl = pll_compute_edge_loglikelihood(partition,
-                                               clv1_index,
-                                               scaler1_index,
-                                               clv2_index,
-                                               scaler2_index,
-                                               edge_pmatrix_index,
-                                               0);
-
-  printf("Log-L: %f\n", logl);
 
   /* destroy all structures allocated for the concrete PLL partition instance */
   pll_destroy_partition(partition);

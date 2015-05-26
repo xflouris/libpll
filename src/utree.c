@@ -85,7 +85,7 @@ static int tree_indend_level(pll_utree_t * tree, int indend)
   int a = tree_indend_level(tree->next->back,       indend+1);
   int b = tree_indend_level(tree->next->next->back, indend+1);
 
-  return MAX(a,b);
+  return (a > b ? a : b);
 }
 
 void pll_show_ascii_utree(pll_utree_t * tree)
@@ -94,7 +94,7 @@ void pll_show_ascii_utree(pll_utree_t * tree)
   
   a = tree_indend_level(tree->back,1);
   b = tree_indend_level(tree,0);
-  int max_indend_level = MAX(a,b);
+  int max_indend_level = (a > b ? a : b);
 
 
   int * active_node_order = (int *)malloc((max_indend_level+1) * sizeof(int));
@@ -154,13 +154,14 @@ PLL_EXPORT char * pll_write_newick_utree(pll_utree_t * root)
 }
 
 static void traverse_utree(pll_utree_t * tree, 
-                    double * branch_lengths, 
-                    int * indices,
-                    int * index,
-                    int * tip_count,
-                    int * inner_count,
-                    pll_operation_t * ops,
-                    int * ops_index)
+                           int tips,
+                           double * branch_lengths, 
+                           int * indices,
+                           int * index,
+                           int * tip_count,
+                           int * inner_count,
+                           pll_operation_t * ops,
+                           int * ops_index)
 {
   /* is it a tip? */
   if (!tree->next)      /* tip */
@@ -174,6 +175,7 @@ static void traverse_utree(pll_utree_t * tree,
   else  /* inner */
   {
     traverse_utree(tree->next->back, 
+                   tips,
                    branch_lengths, 
                    indices, 
                    index, 
@@ -185,6 +187,7 @@ static void traverse_utree(pll_utree_t * tree,
     int child1_index = indices[*index - 1];
 
     traverse_utree(tree->next->next->back, 
+                   tips,
                    branch_lengths, 
                    indices, 
                    index, 
@@ -203,6 +206,12 @@ static void traverse_utree(pll_utree_t * tree,
     ops[*ops_index].child2_clv_index = child2_index;
     ops[*ops_index].child2_matrix_index = child2_index;
 
+    ops[*ops_index].parent_scaler_index = *inner_count - tips;
+    ops[*ops_index].child1_scaler_index = (child1_index >= tips)
+                                  ? child1_index - tips : PLL_SCALE_BUFFER_NONE;
+    ops[*ops_index].child2_scaler_index = (child2_index >= tips)
+                                  ? child2_index - tips : PLL_SCALE_BUFFER_NONE;
+
     branch_lengths[*index] = tree->length;
     indices[*index] = *inner_count;
     *index = *index + 1;
@@ -211,14 +220,16 @@ static void traverse_utree(pll_utree_t * tree,
   }
 }
 
-void pll_traverse_utree(pll_utree_t * tree, 
-                        int tips, 
-                        double ** branch_lengths, 
+void pll_traverse_utree(pll_utree_t * tree,
+                        int tips,
+                        double ** branch_lengths,
                         int ** indices,
                         pll_operation_t ** ops,
                         int * edge_pmatrix_index,
                         int * edge_node1_clv_index,
-                        int * edge_node2_clv_index)
+                        int * edge_node1_scaler_index,
+                        int * edge_node2_clv_index,
+                        int * edge_node2_scaler_index)
 {
   int all_nodes = tips*2 - 2;
 
@@ -251,19 +262,23 @@ void pll_traverse_utree(pll_utree_t * tree,
 
   /* traverse first subtree */
 
-  traverse_utree(tree->back, 
-                 *branch_lengths, 
-                 *indices, &index, 
-                 &tip_count, 
-                 &inner_count, 
-                 *ops, 
+  traverse_utree(tree->back,
+                 tips,
+                 *branch_lengths,
+                 *indices, &index,
+                 &tip_count,
+                 &inner_count,
+                 *ops,
                  &ops_index);
 
   *edge_node1_clv_index = (*indices)[index-1];
   *edge_pmatrix_index = (*indices)[index-1];
+  *edge_node1_scaler_index = ((*indices)[index-1] >= tips)
+                         ? ((*indices)[index-1] - tips) : PLL_SCALE_BUFFER_NONE;
 
   /* traverse second subtree */
   traverse_utree(tree->next->back, 
+                 tips,
                  *branch_lengths, 
                  *indices, 
                  &index, 
@@ -276,6 +291,7 @@ void pll_traverse_utree(pll_utree_t * tree,
   
   /* traverse third subtree */
   traverse_utree(tree->next->next->back, 
+                 tips,
                  *branch_lengths, 
                  *indices, &index, 
                  &tip_count, 
@@ -285,15 +301,23 @@ void pll_traverse_utree(pll_utree_t * tree,
 
   int child2_index = (*indices)[index - 1];
 
-  (*ops)[ops_index].parent_clv_index = inner_count;
+  /* set the last record of operations */
+  (*ops)[ops_index].parent_clv_index    = inner_count;
+  (*ops)[ops_index].parent_scaler_index = inner_count - tips;
 
-  (*ops)[ops_index].child1_clv_index = child1_index;
+  (*ops)[ops_index].child1_clv_index    = child1_index;
   (*ops)[ops_index].child1_matrix_index = child1_index;
+  (*ops)[ops_index].child1_scaler_index = (child1_index >= tips)
+                                  ? child1_index - tips : PLL_SCALE_BUFFER_NONE;
 
-  (*ops)[ops_index].child2_clv_index = child2_index;
+  (*ops)[ops_index].child2_clv_index    = child2_index;
   (*ops)[ops_index].child2_matrix_index = child2_index;
+  (*ops)[ops_index].child2_scaler_index = (child2_index >= tips)
+                                  ? child2_index - tips : PLL_SCALE_BUFFER_NONE;
+
 
   *edge_node2_clv_index = inner_count;
+  *edge_node2_scaler_index = inner_count - tips;
 }
 
 static void query_utree_tipnames_recursive(pll_utree_t * tree,
@@ -312,7 +336,7 @@ static void query_utree_tipnames_recursive(pll_utree_t * tree,
 }
 
 PLL_EXPORT char ** pll_query_utree_tipnames(pll_utree_t * tree,
-                                                    int tips)
+                                            int tips)
 {
   char ** tipnames = (char **)calloc(tips, sizeof(char *)); 
   int index = 0;

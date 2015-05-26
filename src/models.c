@@ -349,7 +349,7 @@ void pll_update_prob_matrices(pll_partition_t * partition,
 
 void pll_set_frequencies(pll_partition_t * partition, 
                          int params_index, 
-                         double * frequencies)
+                         const double * frequencies)
 {
   memcpy(partition->frequencies[params_index], 
          frequencies, 
@@ -358,14 +358,14 @@ void pll_set_frequencies(pll_partition_t * partition,
 }
 
 void pll_set_category_rates(pll_partition_t * partition,
-                            double * rates)
+                            const double * rates)
 {
   memcpy(partition->rates, rates, partition->rate_cats*sizeof(double));
 }
 
 void pll_set_subst_params(pll_partition_t * partition, 
                           int params_index, 
-                          double * params)
+                          const double * params)
 {
   int count = partition->states * (partition->states-1) / 2;
   memcpy(partition->subst_params[params_index], params, count*sizeof(double));
