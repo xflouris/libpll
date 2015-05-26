@@ -109,6 +109,10 @@ input: OPAR subtree COMMA subtree COMMA subtree CPAR optional_label optional_len
   tree->next->back         = $4;
   tree->next->next->back   = $6;
 
+  $2->back                 = tree;
+  $4->back                 = tree->next;
+  $6->back                 = tree->next->next;
+
   tree->label              = $8;
   tree->next->label        = $8;
   tree->next->next->label  = $8;
@@ -130,6 +134,9 @@ subtree: OPAR subtree COMMA subtree CPAR optional_label optional_length
 
   $$->next->back         = $2;
   $$->next->next->back   = $4;
+
+  $2->back               = $$->next;
+  $4->back               = $$->next->next;
 
   $$->label              = $6;
   $$->next->label        = $6;
