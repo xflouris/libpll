@@ -103,6 +103,7 @@ input: OPAR subtree COMMA subtree COMMA subtree CPAR optional_label optional_len
   tree->next               = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
 
   tree->next->next         = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
+  tree->next->next->next   = tree;
 
 
   tree->back               = $2;
@@ -130,6 +131,7 @@ subtree: OPAR subtree COMMA subtree CPAR optional_label optional_length
   $$->next               = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
 
   $$->next->next         = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
+  $$->next->next->next   = $$;
 
 
   $$->next->back         = $2;
