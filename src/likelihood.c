@@ -99,6 +99,7 @@ void pll_update_partials(pll_partition_t * partition,
     {
       /* get scaler for parent */
       parent_scaler = partition->scale_buffer[operations[i].parent_scaler_index];
+      memset(parent_scaler, 0, sizeof(unsigned int) * partition->sites);
 
       /* if child1 has a scaler copy it to the parent */
       if (operations[i].child1_scaler_index != PLL_SCALE_BUFFER_NONE)
