@@ -24,8 +24,9 @@ PROFILING=-g
 # Compiler warnings
 WARN=-Wall -Wsign-compare
 
-AR = ar
+ifndef CC
 CC = gcc
+endif
 CFLAGS = -D_GNU_SOURCE -fPIC -g -msse3 -O3 $(WARN)
 LINKFLAGS=$(PROFILING)
 LIBS=-lm
@@ -37,7 +38,7 @@ PROG=libpll.so
 
 all: $(PROG)
 
-OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o unrooted.o lex.o tree.o
+OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o parse_utree.o parse_rtree.o lex_utree.o lex_rtree.o utree.o rtree.o
 
 $(PROG): $(OBJS)
 	$(CC) -shared -Wl,-soname,$@ -o $@ $+
@@ -45,11 +46,11 @@ $(PROG): $(OBJS)
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-%.c: %.y
-	$(BISON) -d -o $@ $<
+parse_%.c: parse_%.y
+	$(BISON) -p pll_$*_ -d -o $@ $<
 
-%.c: %.l
-	$(FLEX) -o $@ $<
+lex_%.c: lex_%.l
+	$(FLEX) -P pll_$*_ -o $@ $<
 
 clean:
 	rm -f *~ $(OBJS) gmon.out $(PROG)

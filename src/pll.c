@@ -33,24 +33,17 @@ static void dealloc_partition_data(pll_partition_t * partition)
   if (!partition) return;
 
   free(partition->rates);
-  free(partition->scale_buffer);
   free(partition->eigen_decomp_valid);
   if (partition->prop_invar)
     free(partition->prop_invar);
   if (partition->invariant)
     free(partition->invariant);
 
-/*
-  if (partition->tip_clv)
-    for (i = 0; i < partition->tips; ++i) 
-      free(partition->tip_clv[i]);
-  free(partition->tip_clv);
+  if (partition->scale_buffer)
+    for (i = 0; i < partition->scale_buffers; ++i)
+      free(partition->scale_buffer[i]);
+  free(partition->scale_buffer);
 
-  if (partition->inner_clv)
-    for (i = 0; i < partition->clv_buffers; ++i) 
-      free(partition->inner_clv[i]);
-  free(partition->inner_clv);
-*/
   if (partition->clv)
     for (i = 0; i < partition->clv_buffers + partition->tips; ++i)
       free(partition->clv[i]);
@@ -141,7 +134,11 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   /* eigen_decomp_valid */
   partition->eigen_decomp_valid = (int *)calloc(partition->rate_matrices,
                                                              sizeof(int));
-  
+  if (!partition->eigen_decomp_valid)
+  {
+    dealloc_partition_data(partition);
+    return PLL_FAILURE;
+  }
   /* clv */
   partition->clv = (double **)calloc(partition->tips + partition->clv_buffers, 
                                      sizeof(double *));
@@ -183,7 +180,7 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   /* eigenvecs */
   partition->eigenvecs = (double **)calloc(partition->rate_matrices,
                                            sizeof(double *));
-  if (!partition->pmatrix)
+  if (!partition->eigenvecs)
   {
     dealloc_partition_data(partition);
     return PLL_FAILURE;
@@ -202,7 +199,7 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   /* inv_eigenvecs */
   partition->inv_eigenvecs = (double **)calloc(partition->rate_matrices,
                                                sizeof(double *));
-  if (!partition->pmatrix)
+  if (!partition->inv_eigenvecs)
   {
     dealloc_partition_data(partition);
     return PLL_FAILURE;
@@ -221,7 +218,7 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   /* eigenvals */
   partition->eigenvals = (double **)calloc(partition->rate_matrices,
                                                sizeof(double *));
-  if (!partition->pmatrix)
+  if (!partition->eigenvals)
   {
     dealloc_partition_data(partition);
     return PLL_FAILURE;
@@ -287,6 +284,30 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   /* proportion of invariant sites */
   partition->prop_invar = (double *)calloc(partition->rate_matrices,
                                              sizeof(double));
+  if (!partition->prop_invar)
+  {
+    dealloc_partition_data(partition);
+    return PLL_FAILURE;
+  }
+  
+  /* scale_buffer */
+  partition->scale_buffer = (unsigned int **)calloc(partition->scale_buffers,
+                                                    sizeof(unsigned int *));
+  if (!partition->scale_buffer)
+  {
+    dealloc_partition_data(partition);
+    return PLL_FAILURE;
+  }
+  for (i = 0; i < partition->scale_buffers; ++i)
+  {
+    partition->scale_buffer[i] = (unsigned int *)calloc(partition->sites,
+                                                        sizeof(unsigned int));
+    if (!partition->scale_buffer[i])
+    {
+      dealloc_partition_data(partition);
+      return PLL_FAILURE;
+    }
+  }
 
   return partition;
 }
@@ -309,7 +330,11 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
   for (i = 0; i < partition->sites; ++i)
   {
     if ((c = map[(int)sequence[i]]) == 0)
+    {
+      pll_errno = PLL_ERROR_TIP_DATA_ILLEGAL_STATE;
+      snprintf(pll_errmsg, 200, "Illegal state code in tip \"%c\"", sequence[i]);
       return PLL_FAILURE;
+    }
 
     /* decompose basecall into the encoded residues and set the appropriate
        positions in the tip vector */

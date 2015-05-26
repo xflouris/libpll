@@ -58,9 +58,9 @@ Below is a list of available functions in the current version.
 
 ### Models setup
 
-* `void pll_set_subst_params(pll_partition_t * partition, int params_index, double * params);`
-* `void pll_set_frequencies(pll_partition_t * partition, pll_partition_t * partition, int params_index, double * frequencies);`
-* `void pll_set_category_rates(pll_partition_t * partition, double * rates);`
+* `void pll_set_subst_params(pll_partition_t * partition, int params_index, const double * params);`
+* `void pll_set_frequencies(pll_partition_t * partition, pll_partition_t * partition, int params_index, const double * frequencies);`
+* `void pll_set_category_rates(pll_partition_t * partition, const double * rates);`
 * `void pll_update_prob_matrices(pll_partition_t * partition, int params_index, int * matrix_indices, double * branch_lenghts);`
 * `int pll_set_tip_states(pll_partition_t * partition, int tip_index, const unsigned int * map, const char * sequence);`
 * `void pll_set_tip_clv(pll_partition_t * partition, int tip_index, const double * clv);`
@@ -69,7 +69,7 @@ Below is a list of available functions in the current version.
 
 ### Likelihood computation
 
-* `void pll_update_partials(pll_partition_t * partition, pll_operation_t * operations, int count);`
+* `void pll_update_partials(pll_partition_t * partition, const pll_operation_t * operations, int count);`
 * `double pll_compute_root_loglikelihood(pll_partition_t * partition, int clv_index, int freqs_index);`
 * `double pll_compute_edge_loglikelihood(pll_partition_t * partition, int parent_clv_index, int child_clv_index, int matrix_index, int freqs_index);`
 
@@ -80,20 +80,26 @@ Below is a list of available functions in the current version.
 
 ### Functions for parsing files
 
-* `pll_fasta_t * pll_fasta_open(const char * filename, unsigned int * map);`
+* `pll_fasta_t * pll_fasta_open(const char * filename, const unsigned int * map);`
 * `int pll_fasta_getnext(pll_fasta_t * fd, char ** head, long * head_len, char ** seq, long * seq_len, long * seqno);`
 * `void pll_fasta_close(pll_fasta_t * fd);`
 * `long pll_fasta_getfilesize(pll_fasta_t * fd);`
 * `long pll_fasta_getfilepos(pll_fasta_t * fd);`
 * `pll_utree_t * pll_parse_newick_utree(const char * filename, int * tip_count);`
+* `pll_rtree_t * pll_parse_newick_rtree(const char * filename, int * tip_count);`
 * `void pll_destroy_utree(pll_utree_t * root);`
+* `void pll_destroy_rtree(pll_rtree_t * root);`
 
 ### Tree manipulation functions
 
 * `void pll_show_ascii_utree(pll_utree_t * tree);`
+* `void pll_show_ascii_rtree(pll_rtree_t * tree);`
 * `char * pll_write_newick_utree(pll_utree_t * root);`
+* `char * pll_write_newick_rtree(pll_rtree_t * root);`
 * `char ** pll_query_utree_tipnames(pll_utree_t * tree, int tips);`
+* `char ** pll_query_rtree_tipnames(pll_rtree_t * tree, int tips);`
 * `void pll_traverse_utree(pll_utree_t * tree, int tips, double ** branch_lengths, int ** indices, pll_operation_t ** ops, int * edge_pmatrix_index, int * edge_node1_clv_index, int * edge_node2_clv_index);`
+* `void pll_traverse_rtree(pll_rtree_t * tree, int tips, double ** branch_lengths, int ** indices, pll_operation_t ** ops, int * root_clv_index, int * root_scaler_index);`
 
 ### Auxiliary functions
 
@@ -101,11 +107,11 @@ Below is a list of available functions in the current version.
 
 ## Usage examples
 
-Please refer to our wiki page.
+Please refer to the [wiki page](https://github.com/xflouris/libpll/wiki).
 
 ## libpll license and third party licenses
 
-The code is currently licensed under the GNU Affero General Public License version 3.
+The code is currently licensed under the [GNU Affero General Public License version 3](http://www.gnu.org/licenses/agpl-3.0.en.html).
 
 ## Code
 
@@ -115,7 +121,8 @@ The code is written in C.
 -----------------|----------------
 **fasta.c**      | Functions for parsing FASTA files.
 **gamma.c**      | Functions related to Gamma (&Gamma;) function.
-**lex.l**        | Lexical analyzer for newick parsing.
+**lex_rtree.l**  | Lexical analyzer parsing newick rooted trees.
+**lex_utree.l**  | Lexical analyzer parsing newick unrooted trees.
 **likelihood.c** | Likelihood computation functions.
 **list.c**       | (Doubly) Linked-list implementations.
 **Makefile**     | Makefile.
@@ -123,8 +130,10 @@ The code is written in C.
 **models.c**     | Model parameters related functions.
 **output.c**     | Functions for output in terminal (i.e. conditional likelihood arrays, probability matrices).
 **pll.c**        | Functions for setting PLL partitions (instances).
-**tree.c**       | Rooted/Unrooted tree manipulation functions.
-**unrooted.y**   | Functions for parsing unrooted trees in newick format.
+**rtree.c**      | Rooted tree manipulation functions.
+**utree.c**      | Unrooted tree manipulation functions.
+**parse_rtree.y**| Functions for parsing rooted trees in newick format.
+**parse_utree.y**| Functions for parsing unrooted trees in newick format.
 
 ## Bugs
 
@@ -140,7 +149,8 @@ However, mistakes may happen. All bug reports are highly appreciated.
 
 ## Contributing to libpll
 
-Please read the details in our wiki (coming soon).
+Please read the section [Contributing to `libpll`](https://github.com/xflouris/libpll/wiki#contributing-to-libpll) 
+of the [wiki](https://github.com/xflouris/libpll/wiki).
 
 ## References
 
@@ -159,7 +169,7 @@ doi:[10.1093/sysbio/syu084](http://dx.doi.org/10.1093/sysbio/syu084)
 doi:[10.1093/bioinformatics/btu033](http://dx.doi.org/10.1093/bioinformatics/btu033)
 
 * Tavar&eacute; S. (1986)
-**Some probabilistic and statistical problems in the analysis of DNA sequences**
+**Some probabilistic and statistical problems in the analysis of DNA sequences.**
 *American Mathematical Sciety: Lectures on Mathematics in the Life Sciences*, 17: 57-86.
 
 * Yang Z. (2014)

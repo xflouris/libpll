@@ -28,17 +28,17 @@ CC = gcc
 CFLAGS = -Wall -g -O3 $(WARN)
 LINKFLAGS = -L. $(PROFILING)
 LIBS=-lpll -lm
-PROG=nfu
+PROG=rooted-tacg
 
 all: $(PROG)
 
-OBJS=nfu.o
+OBJS=$(PROG).o
 
 $(PROG): $(OBJS)
-	$(CC) $(LINKFLAGS) -o $@ $+ $(LIBS) $(LDFLAGS)
+	$(CC) $(LINKFLAGS) -o $@ $+ $(LIBS)
 
 %.o: %.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
 	rm -f *~ $(OBJS) gmon.out $(PROG)

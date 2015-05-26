@@ -37,7 +37,7 @@ static char * xstrchrnul(char * s, int c)
   return (char *)s + strlen(s);
 }
 
-PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename, unsigned int * map)
+PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename, const unsigned int * map)
 {
   int i;
   pll_fasta_t * fd = (pll_fasta_t *)malloc(sizeof(pll_fasta_t));

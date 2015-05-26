@@ -1,5 +1,162 @@
 #include "pll.h"
 
+/* encodes the sequence in a TACG order (CLVs and p-matrix). Note that it
+   would be more elegant to do it with a map, i.e. create a pll_map_nt_tacg
+   but we use this example to demonstrate pll_set_tip_clv instead */
+double * encode_tacg(const char * seq)
+{
+  const int states = 4;
+  int i,j;
+
+  int len = strlen(seq);
+
+  double * enc = (double *)malloc(states * len * sizeof(double));
+  for (i = 0, j = 0; i < len; ++i)
+  {
+    switch (seq[i])
+    {
+
+      /* solid characters */
+
+      case 'a':
+      case 'A':
+       enc[j+0] = 0; 
+       enc[j+1] = 1; 
+       enc[j+2] = 0; 
+       enc[j+3] = 0; 
+       break;
+      
+      case 'c':
+      case 'C':
+       enc[j+0] = 0; 
+       enc[j+1] = 0; 
+       enc[j+2] = 1; 
+       enc[j+3] = 0; 
+       break;
+        
+      case 'g':
+      case 'G':
+       enc[j+0] = 0; 
+       enc[j+1] = 0; 
+       enc[j+2] = 0; 
+       enc[j+3] = 1; 
+       break;
+
+      case 't':
+      case 'T':
+      case 'u':
+      case 'U':
+       enc[j+0] = 1; 
+       enc[j+1] = 0; 
+       enc[j+2] = 0; 
+       enc[j+3] = 0; 
+       break;
+      
+      /* now degenerates */
+
+      case 'B':  /* T,C,G */
+      case 'b':
+       enc[j+0] = 1; 
+       enc[j+1] = 0; 
+       enc[j+2] = 1; 
+       enc[j+3] = 1; 
+       break;
+        
+      case 'D': /* T,A,G */
+      case 'd':
+       enc[j+0] = 1; 
+       enc[j+1] = 1; 
+       enc[j+2] = 0; 
+       enc[j+3] = 1; 
+       break;
+        
+      case 'H': /* T,A,C */
+      case 'h':
+       enc[j+0] = 1; 
+       enc[j+1] = 1; 
+       enc[j+2] = 1; 
+       enc[j+3] = 0; 
+       break;
+
+      case 'K': /* T,G */
+      case 'k':
+       enc[j+0] = 1; 
+       enc[j+1] = 0; 
+       enc[j+2] = 0; 
+       enc[j+3] = 1; 
+       break;
+
+      case 'M': /* A,C */
+      case 'm':
+       enc[j+0] = 0; 
+       enc[j+1] = 1; 
+       enc[j+2] = 1; 
+       enc[j+3] = 0; 
+       break;
+
+      case 'n': /* T,A,C,G */
+      case 'N':
+      case 'o':
+      case 'O':
+      case 'x':
+      case 'X':
+      case '-':
+      case '?':
+       enc[j+0] = 1; 
+       enc[j+1] = 1; 
+       enc[j+2] = 1; 
+       enc[j+3] = 1; 
+       break;
+
+      case 'R': /* A,G */
+      case 'r':
+       enc[j+0] = 0; 
+       enc[j+1] = 1; 
+       enc[j+2] = 0; 
+       enc[j+3] = 1; 
+       break;
+
+      case 'S': /* C,G */
+      case 's':
+       enc[j+0] = 0; 
+       enc[j+1] = 0; 
+       enc[j+2] = 1; 
+       enc[j+3] = 1; 
+       break;
+
+      case 'V': /* A,C,G */
+      case 'v':
+       enc[j+0] = 0; 
+       enc[j+1] = 1; 
+       enc[j+2] = 1; 
+       enc[j+3] = 1; 
+       break;
+
+      case 'W': /* T,A */
+      case 'w':
+       enc[j+0] = 1; 
+       enc[j+1] = 1; 
+       enc[j+2] = 0; 
+       enc[j+3] = 0; 
+       break;
+
+      case 'Y': /* T,C */
+      case 'y':
+       enc[j+0] = 1; 
+       enc[j+1] = 0; 
+       enc[j+2] = 1; 
+       enc[j+3] = 0; 
+       break;
+      
+      default:
+        fprintf(stderr,"Invalid base or I probably forgot it\n");
+        assert(0);
+    }
+    j += states;
+  }
+  return enc;
+}
+
 int main(int argc, char * argv[])
 {
   int i;
@@ -20,8 +177,10 @@ int main(int argc, char * argv[])
   /* initialize an array of two different branch lengths */
   double branch_lengths[5] = { 0.36, 0.722, 0.985, 0.718, 1.44};
 
-  /* initialize an array of frequencies */
-  double frequencies[4] = { 0.17, 0.19, 0.25, 0.39 };
+  /* initialize an array of frequencies. Note that for this particular example
+     we put them in T,A,C,G order since we are going to encode our CLVs in
+     the T,A,C,G order */
+  double frequencies[4] = { 0.39, 0.17, 0.19, 0.25 };
 
   /* To be used together with branch_lengths to map branch lengths to 
      probability matrices */
@@ -47,11 +206,25 @@ int main(int argc, char * argv[])
 
   /* set the 5 tip CLVs, and use the pll_map_nt map for converting
      the sequences to CLVs */
-  pll_set_tip_states(partition, 0, pll_map_nt, "WAAAAB");
-  pll_set_tip_states(partition, 1, pll_map_nt, "CACACD");
-  pll_set_tip_states(partition, 2, pll_map_nt, "AGGACA");
-  pll_set_tip_states(partition, 3, pll_map_nt, "CGTAGT");
-  pll_set_tip_states(partition, 4, pll_map_nt, "CGAATT");
+  double * enc = encode_tacg("WAAAAB");
+  pll_set_tip_clv(partition, 0, enc);
+  free(enc);
+
+  enc = encode_tacg("CACACD");
+  pll_set_tip_clv(partition, 1, enc);
+  free(enc);
+
+  enc = encode_tacg("AGGACA");
+  pll_set_tip_clv(partition, 2, enc);
+  free(enc);
+
+  enc = encode_tacg("CGTAGT");
+  pll_set_tip_clv(partition, 3, enc);
+  free(enc);
+
+  enc = encode_tacg("CGAATT");
+  pll_set_tip_clv(partition, 4, enc);
+  free(enc);
 
   /* update two probability matrices for the corresponding branch lengths */
   pll_update_prob_matrices(partition, 0, matrix_indices, branch_lengths, 5);

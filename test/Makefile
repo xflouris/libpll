@@ -41,7 +41,7 @@ $(DATADIR)/%:
 
 obj/%: src/%.c $(DEPS)
 	@mkdir -p "$(@D)"
-	$(CC) $(CFLAGS) -o $@ $< $(CLIBS) -DDATADIR=\"$(DATADIR)\"
+	$(CC) $(CFLAGS) -o $@ $< $(CLIBS) $(LDFLAGS) -DDATADIR=\"$(DATADIR)\"
 
 clean:
 	rm -rf obj
