@@ -30,8 +30,9 @@
 #define PLL_PARAMETER_ALPHA            2
 #define PLL_PARAMETER_PINV             4
 #define PLL_PARAMETER_FREQUENCIES      8
-#define PLL_PARAMETER_BRANCH_LENGTHS  16
-#define PLL_PARAMETER_TOPOLOGY        32
+#define PLL_PARAMETER_SINGLE_BRANCH   16
+#define PLL_PARAMETER_BRANCH_LENGTHS  32
+#define PLL_PARAMETER_TOPOLOGY        64
 
 /* L-BFGS-B bound type */
 
@@ -39,6 +40,10 @@
 #define PLL_LBFGSB_BOUND_LOWER 1
 #define PLL_LBFGSB_BOUND_BOTH  2
 #define PLL_LBFGSB_BOUND_UPPER 3
+
+#define PLL_OPT_MIN_BRANCH_LEN       1e-4
+#define PLL_OPT_DEFAULT_BRANCH_LEN    0.1
+#define PLL_OPT_LNL_UNLIKELY       -1e+80
 
 /* error codes */
 
@@ -59,10 +64,13 @@ typedef struct
   union {
       struct {
         int root_clv_index;
+        int scaler_index;
       } rooted_t;
       struct {
         int parent_clv_index;
+        int parent_scaler_index;
         int child_clv_index;
+        int child_scaler_index;
         int edge_pmatrix_index;
       } unrooted_t;
     } where;
@@ -93,4 +101,8 @@ PLL_EXPORT pll_partition_t * pll_create_partition_fasta (char *file,
                                                          int rooted,
                                                          int tip_count,
                                                          char **tipnames);
+PLL_EXPORT double pll_optimize_branch_lengths_iterative (
+                                               pll_optimize_options_t * params,
+                                               pll_utree_t * tree,
+                                               int smoothings);
 #endif /* PLL_OPTIMIZE_H_ */
