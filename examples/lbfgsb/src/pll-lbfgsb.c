@@ -29,7 +29,15 @@
 #define RATE_CATS 4
 #define SUBST_PARAMS (STATES*(STATES-1)/2)
 
-#define OPT_EPSILON 1e-2
+#define OPTIMIZE_BRANCHES     1
+#define OPTIMIZE_SUBST_PARAMS 1
+#define OPTIMIZE_ALPHA        1
+#define OPTIMIZE_FREQS        1
+#define OPTIMIZE_PINV         0
+
+/* tolerances */
+#define OPT_EPSILON       1e-2
+#define OPT_PARAM_EPSILON 1e-4
 
 static void set_missing_branch_length_recursive (pll_utree_t * tree,
                                                  double length)
@@ -71,7 +79,7 @@ static void fatal (const char * format, ...)
   exit (EXIT_FAILURE);
 }
 
-int * build_model_simmetries (const char * modelmatrix)
+static int * build_model_symmetries (const char * modelmatrix)
 {
   int i, next_index;
   assert(strlen(modelmatrix) == SUBST_PARAMS);
@@ -96,123 +104,6 @@ int * build_model_simmetries (const char * modelmatrix)
   return subst_matrix_symmetries;
 }
 
-int read_fasta (pll_partition_t ** partition_ptr, char *file, int tip_count)
-{
-
-  int i;
-  pll_partition_t * partition;
-
-  /* open FASTA file */
-  pll_fasta_t * fp = pll_fasta_open (file, pll_map_fasta);
-  if (!fp)
-    return PLL_FAILURE;
-  {
-    char * seq = NULL;
-    char * hdr = NULL;
-    long seqlen;
-    long hdrlen;
-    long seqno;
-
-    /* allocate arrays to store FASTA headers and sequences */
-    char ** headers = (char **) calloc (tip_count, sizeof(char *));
-    char ** seqdata = (char **) calloc (tip_count, sizeof(char *));
-
-    /* read FASTA sequences and make sure they are all of the same length */
-    int sites = -1;
-    for (i = 0; pll_fasta_getnext (fp, &hdr, &hdrlen, &seq, &seqlen, &seqno);
-        ++i)
-    {
-      if (i >= tip_count)
-      {
-        pll_errno = PLL_ERROR_TAXA_MISMATCH;
-      }
-      snprintf (pll_errmsg, 200,
-                "FASTA file contains more sequences than expected");
-
-      if (sites != -1 && sites != seqlen)
-      {
-        pll_errno = PLL_ERROR_SEQLEN_MISMATCH;
-        snprintf (pll_errmsg, 200,
-                  "FASTA file does not contain equal size sequences");
-      }
-
-      if (sites == -1)
-      {
-        sites = seqlen;
-      }
-
-      headers[i] = hdr;
-      seqdata[i] = seq;
-    }
-
-    /* did we stop reading the file because we reached EOF? */
-    if (pll_errno != PLL_ERROR_FILE_EOF)
-      return PLL_FAILURE;
-
-    /* close FASTA file */
-    pll_fasta_close (fp);
-
-    if (sites == -1)
-    {
-      snprintf (pll_errmsg, 200, "Unable to read alignment");
-      pll_errno = PLL_ERROR_ALIGN_UNREADABLE;
-      return PLL_FAILURE;
-    }
-
-    if (i != tip_count)
-    {
-      snprintf (pll_errmsg, 200, "Some taxa are missing from FASTA file");
-      pll_errno = PLL_ERROR_TAXA_MISMATCH;
-      return PLL_FAILURE;
-    }
-
-    (*partition_ptr) = pll_create_partition (tip_count, tip_count - 2,
-    STATES,
-                                             sites, 1, 2 * tip_count - 3,
-                                             RATE_CATS,
-                                             tip_count - 2,
-                                             PLL_ATTRIB_ARCH_SSE);
-    partition = *partition_ptr;
-
-    /* find sequences in hash table and link them with the corresponding taxa */
-    for (i = 0; i < tip_count; ++i)
-    {
-      ENTRY query;
-      query.key = headers[i];
-      ENTRY * found = NULL;
-
-      found = hsearch (query, FIND);
-
-      if (!found)
-      {
-        snprintf (pll_errmsg, 200,
-                  "Sequence with header %s does not appear in the tree", hdr);
-        pll_errno = PLL_ERROR_TAXA_MISMATCH;
-        return PLL_FAILURE;
-      }
-
-      int tip_clv_index = *((int *) (found->data));
-
-      pll_set_tip_states (partition, tip_clv_index, pll_map_nt, seqdata[i]);
-    }
-
-    /* destroy hash table */
-    hdestroy ();
-
-    /* ...neither the sequences and the headers as they are already
-     present in the form of probabilities in the tip CLVs */
-    for (i = 0; i < tip_count; ++i)
-    {
-      free (seqdata[i]);
-      free (headers[i]);
-    }
-    free (seqdata);
-    free (headers);
-  }
-
-  return PLL_SUCCESS;
-}
-
 int main (int argc, char * argv[])
 {
 
@@ -226,7 +117,9 @@ int main (int argc, char * argv[])
   int parameters_to_optimize;
   int edge_pmatrix_index;
   int clv1;
+  int scaler1;
   int clv2;
+  int scaler2;
 
   pll_utree_t * tree;
   char ** tipnames;
@@ -238,8 +131,7 @@ int main (int argc, char * argv[])
 
   tree = pll_parse_newick_utree (argv[1], &tip_count);
 
-  /* fix all missing branch lengths (i.e. those that did not appear in the
-   newick) to 0.00001 */
+  /* fix all missing branch lengths to 0.00001 */
   set_missing_branch_length (tree, 0.00001);
 
   /*  obtain an array of pointers to tip names */
@@ -259,11 +151,11 @@ int main (int argc, char * argv[])
     hsearch (entry, ENTER);
   }
 
-  partition = pll_create_partition_fasta(argv[2], STATES, 1, RATE_CATS,
-                                         PLL_ATTRIB_ARCH_SSE, 0,
-                                         tip_count, 0);
+  partition = pll_create_partition_fasta (argv[2], STATES, 1, RATE_CATS,
+  PLL_ATTRIB_ARCH_SSE,
+                                          0, tip_count, 0);
   if (!partition)
-    fatal("Error %d: %s\n", pll_errno, pll_errmsg);
+    fatal ("Error %d: %s\n", pll_errno, pll_errmsg);
 
   /* destroy hash table */
   hdestroy ();
@@ -272,21 +164,19 @@ int main (int argc, char * argv[])
   free (data);
   free (tipnames);
 
-  subst_params_symmetries = build_model_simmetries(argv[3]);
-  printf("Model: ");
-  for (i=0; i<SUBST_PARAMS; i++)
-    printf("%d", subst_params_symmetries[i]);
-  printf("\n");
+  subst_params_symmetries = build_model_symmetries (argv[3]);
+  printf ("Model: ");
+  for (i = 0; i < SUBST_PARAMS; i++)
+    printf ("%d", subst_params_symmetries[i]);
+  printf ("\n");
 
   pll_traverse_utree (tree, tip_count, &branch_lengths, &matrix_indices,
-                      &operations, &edge_pmatrix_index, &clv1, &clv2);
-
-  /* we will no longer need the tree structure */
-  pll_destroy_utree (tree);
+                      &operations, &edge_pmatrix_index, &clv1, &scaler1, &clv2,
+                      &scaler2);
 
   /* initialize the array of base frequencies */
   double frequencies[4] =
-    { 0.17, 0.19, 0.25, 0.39 };
+    { 0.25, 0.25, 0.25, 0.25 };
 
   /* substitution rates for the 4x4 GTR model. This means we need exactly
    (4*4-4)/2 = 6 values, i.e. the number of elements above the diagonal */
@@ -294,12 +184,12 @@ int main (int argc, char * argv[])
     { 1, 1, 1, 1, 1, 1 };
 
   /* we'll use 4 rate categories, and currently initialize them to 0 */
-  double rate_cats[4] =
+  double rate_cats[RATE_CATS] =
     { 0 };
 
   /* compute the discretized category rates from a gamma distribution
    with alpha shape 1 and store them in rate_cats  */
-  pll_compute_gamma_cats (0.43, 4, rate_cats);
+  pll_compute_gamma_cats (0.1, RATE_CATS, rate_cats);
 
   /* set frequencies at model with index 0 (we currently have only one model) */
   pll_set_frequencies (partition, 0, frequencies);
@@ -315,8 +205,12 @@ int main (int argc, char * argv[])
 
   pll_update_partials (partition, operations, tip_count - 2);
 
-  double logl = pll_compute_edge_loglikelihood (partition, clv1, clv2,
-                                                edge_pmatrix_index, 0);
+  double logl = pll_compute_edge_loglikelihood (partition, clv1, scaler1, clv2,
+                                                scaler2, edge_pmatrix_index, 0);
+
+  char * newick = pll_write_newick_utree(tree);
+  printf("Starting tree: %s\n", newick);
+  free(newick);
   printf ("Log-L: %f\n", logl);
 
   /* pll stuff */
@@ -324,24 +218,27 @@ int main (int argc, char * argv[])
   params.lk_params.operations = operations;
   params.lk_params.branch_lengths = branch_lengths;
   params.lk_params.matrix_indices = matrix_indices;
-  params.lk_params.alpha_value = 1.0;
+  params.lk_params.alpha_value = 0.1;
   params.lk_params.freqs_index = 0;
   params.lk_params.rooted = 0;
   params.lk_params.where.unrooted_t.parent_clv_index = clv1;
+  params.lk_params.where.unrooted_t.parent_scaler_index = scaler1;
   params.lk_params.where.unrooted_t.child_clv_index = clv2;
+  params.lk_params.where.unrooted_t.child_scaler_index = scaler2;
   params.lk_params.where.unrooted_t.edge_pmatrix_index = edge_pmatrix_index;
 
   /* optimization parameters */
   params.params_index = 0;
   params.subst_params_symmetries = subst_params_symmetries;
   params.factr = 1e8;
-  params.pgtol = 0.01;
+  params.pgtol = OPT_PARAM_EPSILON;
 
   parameters_to_optimize =
-      PLL_PARAMETER_SUBST_RATES |
-      PLL_PARAMETER_ALPHA;
-  // | PLL_PARAMETER_PINV;
-  // | PLL_PARAMETER_BRANCH_LENGTHS
+      (OPTIMIZE_SUBST_PARAMS * PLL_PARAMETER_SUBST_RATES) |
+      (OPTIMIZE_ALPHA * PLL_PARAMETER_ALPHA) |
+      (OPTIMIZE_BRANCHES * PLL_PARAMETER_BRANCH_LENGTHS) |
+      (OPTIMIZE_PINV * PLL_PARAMETER_PINV) |
+      (OPTIMIZE_FREQS * PLL_PARAMETER_FREQUENCIES);
 
   start_time = time (NULL);
   logl *= -1;
@@ -350,30 +247,58 @@ int main (int argc, char * argv[])
   {
     logl = cur_logl;
 
+    if (parameters_to_optimize & PLL_PARAMETER_FREQUENCIES)
+    {
+      params.freq_ratios = calloc ((size_t) partition->states - 1,
+                                   sizeof(double));
+      for (i = 0; i < (partition->states - 1); i++)
+      {
+        params.freq_ratios[i] =
+          partition->frequencies[params.lk_params.freqs_index][i] /
+          partition->frequencies[params.lk_params.freqs_index]
+                                 [partition->states - 1];
+      }
+      params.which_parameters = PLL_PARAMETER_FREQUENCIES;
+      cur_logl = pll_optimize_parameters_lbfgsb (&params);
+      printf ("  %5ld s [freqs]: %f\n", time (NULL) - start_time, cur_logl);
+      printf ("             ");
+      for (i = 0; i < partition->states; i++)
+        printf ("%f ", partition->frequencies[0][i]);
+      printf ("\n");
+      free (params.freq_ratios);
+    }
+
     if (parameters_to_optimize & PLL_PARAMETER_BRANCH_LENGTHS)
     {
-      params.which_parameters = PLL_PARAMETER_BRANCH_LENGTHS;
-      cur_logl = pll_optimize_parameters_lbfgsb (&params);
-      printf ("  [branches]: %ld s. : %f\n", time (NULL) - start_time, cur_logl);
+      params.which_parameters = PLL_PARAMETER_SINGLE_BRANCH;
+      cur_logl = pll_optimize_branch_lengths_iterative (&params, tree, 1);
+      params.lk_params.branch_lengths[0] = branch_lengths[0];
+      params.lk_params.where.unrooted_t.parent_clv_index = clv1;
+      params.lk_params.where.unrooted_t.parent_scaler_index = scaler1;
+      params.lk_params.where.unrooted_t.child_clv_index = clv2;
+      params.lk_params.where.unrooted_t.child_scaler_index = scaler2;
+      params.lk_params.where.unrooted_t.edge_pmatrix_index = edge_pmatrix_index;
+
+      printf ("  %5ld s [branches]: %f\n", time (NULL) - start_time,
+              cur_logl);
     }
 
     if (parameters_to_optimize & PLL_PARAMETER_SUBST_RATES)
     {
       params.which_parameters = PLL_PARAMETER_SUBST_RATES;
       cur_logl = pll_optimize_parameters_lbfgsb (&params);
-      printf ("  [s_rates]: %ld s. : %f\n", time (NULL) - start_time, cur_logl);
+      printf ("  %5ld s [s_rates]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             %f %f %f %f %f %f\n", partition->subst_params[0][0],
-                partition->subst_params[0][1], partition->subst_params[0][2],
-                partition->subst_params[0][3], partition->subst_params[0][4],
-                partition->subst_params[0][5]);
+              partition->subst_params[0][1], partition->subst_params[0][2],
+              partition->subst_params[0][3], partition->subst_params[0][4],
+              partition->subst_params[0][5]);
     }
 
     if (parameters_to_optimize & PLL_PARAMETER_ALPHA)
     {
       params.which_parameters = PLL_PARAMETER_ALPHA;
       cur_logl = pll_optimize_parameters_lbfgsb (&params);
-      printf ("  [alpha]: %ld s. : %f\n", time (NULL) - start_time,
-              cur_logl);
+      printf ("  %5ld s [alpha]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             %f\n", params.lk_params.alpha_value);
     }
 
@@ -381,12 +306,11 @@ int main (int argc, char * argv[])
     {
       params.which_parameters = PLL_PARAMETER_PINV;
       cur_logl = pll_optimize_parameters_lbfgsb (&params);
-      printf ("  [p-inv]: %ld s. :%f\n", time (NULL) - start_time,
-              cur_logl);
+      printf ("  %5ld s [p-inv]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             %f\n", partition->prop_invar[0]);
     }
 
-    printf ("Iteration: %ld s. : %f\n", time (NULL) - start_time, cur_logl);
+    printf ("Iteration: %5ld s. : %f\n", time (NULL) - start_time, cur_logl);
   }
   end_time = time (NULL);
   cur_logl *= -1;
@@ -401,13 +325,17 @@ int main (int argc, char * argv[])
           partition->subst_params[0][3], partition->subst_params[0][4],
           partition->subst_params[0][5]);
 
+  newick = pll_write_newick_utree(tree);
+  printf("Final tree: %s\n", newick);
+  free(newick);
   printf ("Final Log-L: %f\n", logl);
 
   /* CLEAN */
-  /* destroy all structures allocated for the concrete PLL partition instance */
+
+  pll_destroy_utree (tree);
   pll_destroy_partition (partition);
 
-  free(subst_params_symmetries);
+  free (subst_params_symmetries);
   free (branch_lengths);
   free (matrix_indices);
   free (operations);
