@@ -75,6 +75,15 @@
 #define PLL_ERROR_NEWICK_SYNTAX          8
 #define PLL_ERROR_TIP_DATA_ILLEGAL_STATE 9
 
+/* utree specific */
+
+#define PLL_UTREE_SHOW_LABEL             1 << 0
+#define PLL_UTREE_SHOW_BRANCH_LENGTH     1 << 1
+#define PLL_UTREE_SHOW_CLV_INDEX         1 << 2
+#define PLL_UTREE_SHOW_SCALER_INDEX      1 << 3
+#define PLL_UTREE_SHOW_PMATRIX_INDEX     1 << 4
+
+
 
 /* structures and data types */
 
@@ -152,6 +161,9 @@ typedef struct pll_utree
 {
   char * label;
   double length;
+  int clv_index;
+  int scaler_index;
+  int pmatrix_index;
   struct pll_utree * next;
   struct pll_utree * back;
 
@@ -345,23 +357,27 @@ PLL_EXPORT void pll_destroy_utree(pll_utree_t * root);
 
 /* functions in utree.c */
 
-PLL_EXPORT void pll_show_ascii_utree(pll_utree_t * tree);
+PLL_EXPORT void pll_show_ascii_utree(pll_utree_t * tree, int options);
 
 PLL_EXPORT char * pll_write_newick_utree(pll_utree_t * root);
 
-PLL_EXPORT void pll_traverse_utree(pll_utree_t * tree, 
-                                   int tips, 
-                                   double ** branch_lengths, 
-                                   int ** indices,
-                                   pll_operation_t ** ops,
-                                   int * edge_pmatrix_index,
-                                   int * edge_node1_clv_index,
-                                   int * edge_node1_scaler_index,
-                                   int * edge_node2_clv_index,
-                                   int * edge_node2_scaler_index);
+PLL_EXPORT void pll_utree_query_tipnodes(pll_utree_t * root,
+                                         pll_utree_t ** node_list);
 
-PLL_EXPORT char ** pll_query_utree_tipnames(pll_utree_t * tree,
-                                            int tips);
+PLL_EXPORT void pll_utree_query_innernodes(pll_utree_t * root,
+                                           pll_utree_t ** node_list);
+
+PLL_EXPORT int pll_utree_traverse(pll_utree_t * node,
+                                  int (*cbtrav)(pll_utree_t *),
+                                  pll_utree_t ** outbuffer);
+
+PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
+                                            int trav_buffer_size,
+                                            double * branches,
+                                            int * pmatrix_indices,
+                                            pll_operation_t * ops,
+                                            int * matrix_count,
+                                            int * ops_count);
 
 /* functions in rtree.c */
 
