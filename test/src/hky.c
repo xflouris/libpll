@@ -41,7 +41,7 @@ int main(int argc, char * argv[])
 
   pll_partition_t * partition;
   pll_operation_t * operations;
-  partition = pll_create_partition(n_tips,
+  partition = pll_partition_create(n_tips,
                                    4,           /* clv buffers */
                                    N_STATES_NT, /* number of states */
                                    n_sites,     /* sequence length */
@@ -147,7 +147,7 @@ int main(int argc, char * argv[])
   }
 
   free(operations);
-  pll_destroy_partition(partition);
+  pll_partition_destroy(partition);
 
   return (0);
 }

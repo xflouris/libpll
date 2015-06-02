@@ -8,7 +8,7 @@ int main(int argc, char * argv[])
   int alpha = 1;
 
   /* create the PLL partition instance */
-  partition = pll_create_partition(4,       /* How many tip sequences do we have */
+  partition = pll_partition_create(4,       /* How many tip sequences do we have */
                                    2,       /* How many extra CLV buffers (apart from the tip sequences) should we allocate */
                                    4,       /* How many states do our data have */
                                    6,       /* How long are the tip sequences (number of sites) */
@@ -147,7 +147,7 @@ int main(int argc, char * argv[])
   free(operations);
 
   /* destroy all structures allocated for the concrete PLL partition instance */
-  pll_destroy_partition(partition);
+  pll_partition_destroy(partition);
 
   return (0);
 }

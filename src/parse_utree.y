@@ -45,7 +45,7 @@ static void dealloc_tree_recursive(pll_utree_t * node)
   free(node);
 }
 
-void pll_destroy_utree(pll_utree_t * root)
+void pll_utree_destroy(pll_utree_t * root)
 {
   if (!root) return;
   if (!(root->next))
@@ -84,7 +84,7 @@ static void pll_utree_error(pll_utree_t * tree, const char * s)
 
 %error-verbose
 %parse-param {struct pll_utree * tree}
-%destructor { pll_destroy_utree($$); } subtree
+%destructor { pll_utree_destroy($$); } subtree
 
 %token OPAR
 %token CPAR
@@ -244,7 +244,7 @@ static void assign_indices(pll_utree_t * node, int tip_count)
   node->next->next->pmatrix_index = node->next->next->back->pmatrix_index;
 }
 
-pll_utree_t * pll_parse_newick_utree(const char * filename, int * tip_count)
+pll_utree_t * pll_utree_parse_newick(const char * filename, int * tip_count)
 {
   struct pll_utree * tree;
 
@@ -253,14 +253,14 @@ pll_utree_t * pll_parse_newick_utree(const char * filename, int * tip_count)
   pll_utree_in = fopen(filename, "r");
   if (!pll_utree_in)
   {
-    pll_destroy_utree(tree);
+    pll_utree_destroy(tree);
     pll_errno = PLL_ERROR_FILE_OPEN;
     snprintf(pll_errmsg, 200, "Unable to open file (%s)", filename);
     return PLL_FAILURE;
   }
   else if (pll_utree_parse(tree))
   {
-    pll_destroy_utree(tree);
+    pll_utree_destroy(tree);
     tree = NULL;
     fclose(pll_utree_in);
     pll_utree_lex_destroy();

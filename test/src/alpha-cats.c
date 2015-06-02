@@ -70,15 +70,15 @@ int main(int argc, char * argv[])
 
   for (k = 0; k < NUM_CATS; ++k) {
     pll_partition_t * partition;
-    partition = pll_create_partition(n_tips,
-                               4, /* clv buffers */
-                               N_STATES_NT, /* number of states */
-                               n_sites,     /* sequence length */
-                               1,           /* different rate parameters */
-                               2*n_tips-3,  /* probability matrices */
-                               n_cat_gamma[k], /* gamma categories */
-                               0,           /* scale buffers */
-                               1);          /* attributes */
+    partition = pll_partition_create(n_tips,
+                                     4, /* clv buffers */
+                                     N_STATES_NT, /* number of states */
+                                     n_sites,     /* sequence length */
+                                     1,           /* different rate parameters */
+                                     2*n_tips-3,  /* probability matrices */
+                                     n_cat_gamma[k], /* gamma categories */
+                                     0,           /* scale buffers */
+                                     1);          /* attributes */
 
     if (partition == PLL_FAILURE) 
     {
@@ -155,7 +155,7 @@ int main(int argc, char * argv[])
                                                                    0);
     }
 
-    pll_destroy_partition(partition);
+    pll_partition_destroy(partition);
   }
 
     printf("\n");
