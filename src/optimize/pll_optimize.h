@@ -41,8 +41,8 @@
 #define PLL_LBFGSB_BOUND_BOTH  2
 #define PLL_LBFGSB_BOUND_UPPER 3
 
-#define PLL_OPT_MIN_BRANCH_LEN       1e-4
-#define PLL_OPT_DEFAULT_BRANCH_LEN    0.1
+#define PLL_OPT_MIN_BRANCH_LEN       1e-8
+#define PLL_OPT_DEFAULT_BRANCH_LEN   1e-8
 #define PLL_OPT_LNL_UNLIKELY       -1e+80
 
 /* error codes */
@@ -50,6 +50,8 @@
 #define PLL_ERROR_TAXA_MISMATCH       101
 #define PLL_ERROR_SEQLEN_MISMATCH     102
 #define PLL_ERROR_ALIGN_UNREADABLE    103
+#define PLL_ERROR_INVALID_PINV        111
+#define PLL_ERROR_INVALID_ALPHA       112
 
 /* Structure with information necessary for evaluating the likelihood */
 
@@ -85,6 +87,7 @@ typedef struct
   pll_likelihood_info_t lk_params;
   int params_index;
   unsigned int which_parameters;
+  double * freq_ratios;
   int * subst_params_symmetries;
   double factr;
   double pgtol;
