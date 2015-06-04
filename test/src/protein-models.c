@@ -81,7 +81,7 @@ int main(int argc, char * argv[])
 
   printf ("Creating PLL partition\n");
 
-  partition = pll_create_partition(5,                            /* tips */
+  partition = pll_partition_create(5,                            /* tips */
                                    4,                     /* clv buffers */
                                    N_STATES,                   /* states */
                                    113,                           /* sites */
@@ -201,7 +201,7 @@ int main(int argc, char * argv[])
   }
 
   free(operations);
-  pll_destroy_partition(partition);
+  pll_partition_destroy(partition);
 
   return (0);
 }

@@ -49,7 +49,7 @@ int bigtest ()
 
   printf ("Creating PLL partition\n");
 
-  partition = pll_create_partition (N_TAXA_BIG, /* tips */
+  partition = pll_partition_create(N_TAXA_BIG, /* tips */
                                     4, /* clv buffers */
                                     N_STATES, /* states */
                                     N_SITES, /* sites */
@@ -96,7 +96,7 @@ int bigtest ()
   assert(i == N_TAXA_BIG);
 
   pll_fasta_close (fp);
-  pll_destroy_partition (partition);
+  pll_partition_destroy(partition);
 
   return PLL_SUCCESS;
 }
@@ -122,7 +122,7 @@ int smalltest ()
   double subst_params[6] =
     { 1, 5, 1, 1, 5, 1 };
 
-  partition = pll_create_partition(N_TAXA_SMALL, 4,
+  partition = pll_partition_create(N_TAXA_SMALL, 4,
                                    N_STATES,
                                    num_sites, 1, 2 * N_TAXA_SMALL - 3,
                                    N_CAT_GAMMA,
@@ -187,7 +187,7 @@ int smalltest ()
 
   free (operations);
   pll_fasta_close (fp);
-  pll_destroy_partition (partition);
+  pll_partition_destroy(partition);
 
   return PLL_SUCCESS;
 }

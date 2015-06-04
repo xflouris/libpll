@@ -45,7 +45,7 @@ static void dealloc_tree_recursive(pll_utree_t * node)
   free(node);
 }
 
-void pll_destroy_utree(pll_utree_t * root)
+void pll_utree_destroy(pll_utree_t * root)
 {
   if (!root) return;
   if (!(root->next))
@@ -84,7 +84,7 @@ static void pll_utree_error(pll_utree_t * tree, const char * s)
 
 %error-verbose
 %parse-param {struct pll_utree * tree}
-%destructor { pll_destroy_utree($$); } subtree
+%destructor { pll_utree_destroy($$); } subtree
 
 %token OPAR
 %token CPAR
@@ -121,6 +121,7 @@ input: OPAR subtree COMMA subtree COMMA subtree CPAR optional_label optional_len
   tree->length             = $2->length;
   tree->next->length       = $4->length;
   tree->next->next->length = $6->length;
+
   free($9);
 };
 
@@ -169,7 +170,81 @@ number: NUMBER   { $$=$1;};
 
 %%
 
-pll_utree_t * pll_parse_newick_utree(const char * filename, int * tip_count)
+static void recursive_assign_indices(pll_utree_t * node,
+                                    int * tip_clv_index,
+                                    int * inner_clv_index,
+                                    int * inner_scaler_index)
+{
+  if (!node->next)
+  {
+    node->clv_index = *tip_clv_index;
+    node->pmatrix_index = *tip_clv_index;
+    node->scaler_index = PLL_SCALE_BUFFER_NONE;
+    *tip_clv_index = *tip_clv_index + 1;
+    return;
+  }
+
+  recursive_assign_indices(node->next->back,
+                           tip_clv_index,
+                           inner_clv_index,
+                           inner_scaler_index);
+
+  recursive_assign_indices(node->next->next->back,
+                           tip_clv_index,
+                           inner_clv_index,
+                           inner_scaler_index);
+
+  node->clv_index = *inner_clv_index;
+  node->next->clv_index = *inner_clv_index;
+  node->next->next->clv_index = *inner_clv_index;
+
+  node->pmatrix_index = *inner_clv_index;
+  node->next->pmatrix_index = node->next->back->pmatrix_index;
+  node->next->next->pmatrix_index = node->next->next->back->pmatrix_index;
+
+  node->scaler_index = *inner_scaler_index;
+  node->next->scaler_index = *inner_scaler_index;
+  node->next->next->scaler_index = *inner_scaler_index;
+
+  *inner_clv_index = *inner_clv_index + 1;
+  *inner_scaler_index = *inner_scaler_index + 1;
+}
+
+static void assign_indices(pll_utree_t * node, int tip_count)
+{
+  int tip_clv_index = 0;
+  int inner_clv_index = tip_count;
+  int inner_scaler_index = 0;
+
+  recursive_assign_indices(node->back,
+                           &tip_clv_index,
+                           &inner_clv_index,
+                           &inner_scaler_index);
+
+  recursive_assign_indices(node->next->back,
+                           &tip_clv_index,
+                           &inner_clv_index,
+                           &inner_scaler_index);
+
+  recursive_assign_indices(node->next->next->back,
+                           &tip_clv_index,
+                           &inner_clv_index,
+                           &inner_scaler_index);
+
+  node->clv_index = inner_clv_index;
+  node->next->clv_index = inner_clv_index;
+  node->next->next->clv_index = inner_clv_index;
+
+  node->scaler_index = inner_scaler_index;
+  node->next->scaler_index = inner_scaler_index;
+  node->next->next->scaler_index = inner_scaler_index;
+
+  node->pmatrix_index = node->back->pmatrix_index;
+  node->next->pmatrix_index = node->next->back->pmatrix_index;
+  node->next->next->pmatrix_index = node->next->next->back->pmatrix_index;
+}
+
+pll_utree_t * pll_utree_parse_newick(const char * filename, int * tip_count)
 {
   struct pll_utree * tree;
 
@@ -178,14 +253,14 @@ pll_utree_t * pll_parse_newick_utree(const char * filename, int * tip_count)
   pll_utree_in = fopen(filename, "r");
   if (!pll_utree_in)
   {
-    pll_destroy_utree(tree);
+    pll_utree_destroy(tree);
     pll_errno = PLL_ERROR_FILE_OPEN;
     snprintf(pll_errmsg, 200, "Unable to open file (%s)", filename);
     return PLL_FAILURE;
   }
   else if (pll_utree_parse(tree))
   {
-    pll_destroy_utree(tree);
+    pll_utree_destroy(tree);
     tree = NULL;
     fclose(pll_utree_in);
     pll_utree_lex_destroy();
@@ -197,6 +272,9 @@ pll_utree_t * pll_parse_newick_utree(const char * filename, int * tip_count)
   pll_utree_lex_destroy();
 
   *tip_count = tip_cnt;
+  
+  /* initialize clv and scaler indices */
+  assign_indices(tree, tip_cnt);
 
   return tree;
 }

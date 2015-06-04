@@ -75,6 +75,15 @@
 #define PLL_ERROR_NEWICK_SYNTAX          8
 #define PLL_ERROR_TIP_DATA_ILLEGAL_STATE 9
 
+/* utree specific */
+
+#define PLL_UTREE_SHOW_LABEL             1 << 0
+#define PLL_UTREE_SHOW_BRANCH_LENGTH     1 << 1
+#define PLL_UTREE_SHOW_CLV_INDEX         1 << 2
+#define PLL_UTREE_SHOW_SCALER_INDEX      1 << 3
+#define PLL_UTREE_SHOW_PMATRIX_INDEX     1 << 4
+
+
 
 /* structures and data types */
 
@@ -152,6 +161,9 @@ typedef struct pll_utree
 {
   char * label;
   double length;
+  int clv_index;
+  int scaler_index;
+  int pmatrix_index;
   struct pll_utree * next;
   struct pll_utree * back;
 
@@ -162,6 +174,9 @@ typedef struct pll_rtree
 {
   char * label;
   double length;
+  int clv_index;
+  int scaler_index;
+  int pmatrix_index;
   struct pll_rtree * left;
   struct pll_rtree * right;
 
@@ -223,7 +238,7 @@ extern "C" {
 
 /* functions in pll.c */
 
-PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
+PLL_EXPORT pll_partition_t * pll_partition_create(int tips,
                                                   int clv_buffers,
                                                   int states,
                                                   int sites,
@@ -233,7 +248,7 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
                                                   int scale_buffers,
                                                   int attributes);
 
-PLL_EXPORT void pll_destroy_partition(pll_partition_t * partition);
+PLL_EXPORT void pll_partition_destroy(pll_partition_t * partition);
 
 PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition, 
                                   int tip_index, 
@@ -331,54 +346,66 @@ PLL_EXPORT int pll_fasta_rewind(pll_fasta_t * fd);
 
 /* functions in parse_rtree.y */
 
-PLL_EXPORT pll_rtree_t * pll_parse_newick_rtree(const char * filename,
+PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
                                                 int * tip_count);
 
-PLL_EXPORT void pll_destroy_rtree(pll_rtree_t * root);
+PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root);
 
 /* functions in parse_utree.y */
 
-PLL_EXPORT pll_utree_t * pll_parse_newick_utree(const char * filename,
+PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
                                                 int * tip_count);
 
-PLL_EXPORT void pll_destroy_utree(pll_utree_t * root);
+PLL_EXPORT void pll_utree_destroy(pll_utree_t * root);
 
 /* functions in utree.c */
 
-PLL_EXPORT void pll_show_ascii_utree(pll_utree_t * tree);
+PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options);
 
-PLL_EXPORT char * pll_write_newick_utree(pll_utree_t * root);
+PLL_EXPORT char * pll_utree_export_newick(pll_utree_t * root);
 
-PLL_EXPORT void pll_traverse_utree(pll_utree_t * tree, 
-                                   int tips, 
-                                   double ** branch_lengths, 
-                                   int ** indices,
-                                   pll_operation_t ** ops,
-                                   int * edge_pmatrix_index,
-                                   int * edge_node1_clv_index,
-                                   int * edge_node1_scaler_index,
-                                   int * edge_node2_clv_index,
-                                   int * edge_node2_scaler_index);
+PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
+                                  int (*cbtrav)(pll_utree_t *),
+                                  pll_utree_t ** outbuffer);
 
-PLL_EXPORT char ** pll_query_utree_tipnames(pll_utree_t * tree,
-                                            int tips);
+PLL_EXPORT int pll_utree_query_tipnodes(pll_utree_t * root,
+                                        pll_utree_t ** node_list);
+
+PLL_EXPORT int pll_utree_query_innernodes(pll_utree_t * root,
+                                          pll_utree_t ** node_list);
+
+PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
+                                            int trav_buffer_size,
+                                            double * branches,
+                                            int * pmatrix_indices,
+                                            pll_operation_t * ops,
+                                            int * matrix_count,
+                                            int * ops_count);
 
 /* functions in rtree.c */
 
-PLL_EXPORT void pll_show_ascii_rtree(pll_rtree_t * tree);
+PLL_EXPORT void pll_rtree_show_ascii(pll_rtree_t * tree, int options);
 
-PLL_EXPORT char * pll_write_newick_rtree(pll_rtree_t * root);
+PLL_EXPORT char * pll_rtree_export_newick(pll_rtree_t * root);
 
-PLL_EXPORT void pll_traverse_rtree(pll_rtree_t * tree,
-                                   int tips,
-                                   double ** branch_lengths,
-                                   int ** indices,
-                                   pll_operation_t ** ops,
-                                   int * root_clv_index,
-                                   int * root_scaler_index);
+PLL_EXPORT int pll_rtree_traverse(pll_rtree_t * root,
+                                   int (*cbtrav)(pll_rtree_t *),
+                                   pll_rtree_t ** outbuffer);
 
-PLL_EXPORT char ** pll_query_rtree_tipnames(pll_rtree_t * tree,
-                                            int tips);
+PLL_EXPORT int pll_rtree_query_tipnodes(pll_rtree_t * root,
+                                        pll_rtree_t ** node_list);
+
+PLL_EXPORT int pll_rtree_query_innernodes(pll_rtree_t * root,
+                                          pll_rtree_t ** node_list);
+
+PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
+                                            int trav_buffer_size,
+                                            double * branches,
+                                            int * pmatrix_indices,
+                                            pll_operation_t * ops,
+                                            int * matrix_count,
+                                            int * ops_count);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
