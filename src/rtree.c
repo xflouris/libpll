@@ -23,9 +23,25 @@
 
 static int indend_space = 4;
 
+static void print_node_info(pll_rtree_t * tree, int options)
+{
+  if (options & PLL_UTREE_SHOW_LABEL)
+    printf (" %s", tree->label);
+  if (options & PLL_UTREE_SHOW_BRANCH_LENGTH)
+    printf (" %f", tree->length);
+  if (options & PLL_UTREE_SHOW_CLV_INDEX)
+    printf (" %d", tree->clv_index);
+  if (options & PLL_UTREE_SHOW_SCALER_INDEX)
+    printf (" %d", tree->scaler_index);
+  if (options & PLL_UTREE_SHOW_PMATRIX_INDEX)
+    printf (" %d", tree->pmatrix_index);
+  printf("\n");
+}
+
 static void print_tree_recurse(pll_rtree_t * tree, 
                                int indend_level, 
-                               int * active_node_order)
+                               int * active_node_order,
+                               int options)
 {
   int i,j;
 
@@ -59,7 +75,7 @@ static void print_tree_recurse(pll_rtree_t * tree,
     printf ("-");
   if (tree->left || tree->right) printf("+");
 
-  printf (" %s:%f\n", tree->label, tree->length);
+  print_node_info(tree, options);
 
   if (active_node_order[indend_level-1] == 2) 
     active_node_order[indend_level-1] = 0;
@@ -67,11 +83,13 @@ static void print_tree_recurse(pll_rtree_t * tree,
   active_node_order[indend_level] = 1;
   print_tree_recurse(tree->left,
                      indend_level+1,
-                     active_node_order);
+                     active_node_order,
+                     options);
   active_node_order[indend_level] = 2;
   print_tree_recurse(tree->right,
                      indend_level+1,
-                     active_node_order);
+                     active_node_order,
+                     options);
 
 }
 
@@ -85,7 +103,7 @@ static int tree_indend_level(pll_rtree_t * tree, int indend)
   return (a > b ? a : b);
 }
 
-void pll_show_ascii_rtree(pll_rtree_t * tree)
+void pll_rtree_show_ascii(pll_rtree_t * tree, int options)
 {
   
   int indend_max = tree_indend_level(tree,0);
@@ -94,13 +112,13 @@ void pll_show_ascii_rtree(pll_rtree_t * tree)
   active_node_order[0] = 1;
   active_node_order[1] = 1;
 
-  printf(" %s:%f\n", tree->label, tree->length);
-  print_tree_recurse(tree->left,  1, active_node_order);
-  print_tree_recurse(tree->right, 1, active_node_order);
+  print_node_info(tree, options);
+  print_tree_recurse(tree->left,  1, active_node_order, options);
+  print_tree_recurse(tree->right, 1, active_node_order, options);
   free(active_node_order);
 }
 
-PLL_EXPORT char * pll_write_newick_rtree(pll_rtree_t * root)
+PLL_EXPORT char * pll_rtree_export_newick(pll_rtree_t * root)
 {
   char * newick;
 
@@ -110,8 +128,8 @@ PLL_EXPORT char * pll_write_newick_rtree(pll_rtree_t * root)
     asprintf(&newick, "%s:%f", root->label, root->length);
   else
   {
-    char * subtree1 = pll_write_newick_rtree(root->left);
-    char * subtree2 = pll_write_newick_rtree(root->right);
+    char * subtree1 = pll_rtree_export_newick(root->left);
+    char * subtree2 = pll_rtree_export_newick(root->right);
 
     asprintf(&newick, "(%s,%s)%s:%f", subtree1,
                                       subtree2,
@@ -124,164 +142,172 @@ PLL_EXPORT char * pll_write_newick_rtree(pll_rtree_t * root)
   return newick;
 }
 
-static void traverse_rtree(pll_rtree_t * tree,
-                           int tips,
-                           double * branch_lengths,
-                           int * indices,
+
+PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
+                                            int trav_buffer_size,
+                                            double * branches,
+                                            int * pmatrix_indices,
+                                            pll_operation_t * ops,
+                                            int * matrix_count,
+                                            int * ops_count)
+{
+  pll_rtree_t * node;
+  int i;
+
+  *ops_count = 0;
+  *matrix_count = 0;
+
+  for (i = 0; i < trav_buffer_size; ++i)
+  {
+    node = trav_buffer[i];
+
+    /* do not store the branch of the root, since it does not exist */
+    if (i < trav_buffer_size-1)
+    {
+      *branches++ = node->length;
+      *pmatrix_indices++ = node->pmatrix_index;
+      *matrix_count = *matrix_count + 1;
+    }
+
+    if (node->left)
+    {
+      ops[*ops_count].parent_clv_index = node->clv_index;
+      ops[*ops_count].parent_scaler_index = node->scaler_index;
+
+      ops[*ops_count].child1_clv_index = node->left->clv_index;
+      ops[*ops_count].child1_scaler_index = node->left->scaler_index;
+      ops[*ops_count].child1_matrix_index = node->left->pmatrix_index;
+
+      ops[*ops_count].child2_clv_index = node->right->clv_index;
+      ops[*ops_count].child2_scaler_index = node->right->scaler_index;
+      ops[*ops_count].child2_matrix_index = node->right->pmatrix_index;
+
+      *ops_count = *ops_count + 1;
+    }
+  }
+}
+
+static void rtree_traverse(pll_rtree_t * node,
+                           int (*cbtrav)(pll_rtree_t *),
                            int * index,
-                           int * tip_count,
-                           int * inner_count,
-                           pll_operation_t * ops,
-                           int * ops_index)
+                           pll_rtree_t ** outbuffer)
 {
-  if (!tree->left)
+  if (!node->left)
   {
-    branch_lengths[*index] = tree->length;
-    indices[*index] = *tip_count;
-
-    *index = *index + 1;
-    *tip_count = *tip_count + 1;
+    if (cbtrav(node))
+    {
+      outbuffer[*index] = node;
+      *index = *index + 1;
+    }
+    return;
   }
-  else
-  {
-    traverse_rtree(tree->left,
-                   tips,
-                   branch_lengths,
-                   indices,
-                   index,
-                   tip_count,
-                   inner_count,
-                   ops,
-                   ops_index);
 
-    int left_index = indices[*index-1];
+  if (cbtrav(node->left))
+    rtree_traverse(node->left, cbtrav, index, outbuffer);
 
-    traverse_rtree(tree->right,
-                   tips,
-                   branch_lengths,
-                   indices,
-                   index,
-                   tip_count,
-                   inner_count,
-                   ops,
-                   ops_index);         
+  if (cbtrav(node->right))
+    rtree_traverse(node->right, cbtrav, index, outbuffer);
 
-    int right_index = indices[*index - 1];
-
-    ops[*ops_index].parent_clv_index = *inner_count;
-
-    ops[*ops_index].child1_clv_index = left_index;
-    ops[*ops_index].child1_matrix_index = left_index;
-
-    ops[*ops_index].child2_clv_index = right_index;
-    ops[*ops_index].child2_matrix_index = right_index;
-
-    ops[*ops_index].parent_scaler_index = *inner_count - tips;
-    ops[*ops_index].child1_scaler_index = (left_index >= tips)
-                                  ? left_index - tips : PLL_SCALE_BUFFER_NONE;
-    ops[*ops_index].child2_scaler_index = (right_index >= tips)
-                                  ? right_index - tips : PLL_SCALE_BUFFER_NONE;
-
-    branch_lengths[*index] = tree->length;
-    indices[*index] = *inner_count;
-    *index = *index + 1;
-    *inner_count = *inner_count + 1;
-    *ops_index = *ops_index + 1;
-
-  }
+  outbuffer[*index] = node;
+  *index = *index + 1;
 }
 
-void pll_traverse_rtree(pll_rtree_t * tree,
-                        int tips,
-                        double ** branch_lengths,
-                        int ** indices,
-                        pll_operation_t ** ops,
-                        int * root_clv_index,
-                        int * root_scaler_index)
+int pll_rtree_traverse(pll_rtree_t * root,
+                       int (*cbtrav)(pll_rtree_t *),
+                       pll_rtree_t ** outbuffer)
 {
-  int all_nodes = tips*2 - 1;
-
-  int tip_count = 0;
-  int inner_count = tips;
-  int ops_index = 0;
   int index = 0;
-  
-  if (!*branch_lengths)
-    *branch_lengths = (double *)calloc(all_nodes-1, sizeof(double));
-  if (!*indices)
-    *indices = (int *)calloc(all_nodes-1, sizeof(int));
-  if (!*ops)
-    *ops = (pll_operation_t *)calloc(all_nodes - tips, sizeof(pll_operation_t));
 
-  traverse_rtree(tree->left,
-                 tips,
-                 *branch_lengths,
-                 *indices, 
-                 &index,
-                 &tip_count,
-                 &inner_count,
-                 *ops,
-                 &ops_index);
+  if (!root->left) return -1;
 
-  int left_index = (*indices)[index - 1];
+  /* we will traverse an unrooted tree in the following way
+      
+           root
+            /\
+           /  \
+        left   right
 
-  traverse_rtree(tree->right,
-                 tips,
-                 *branch_lengths,
-                 *indices, 
-                 &index,
-                 &tip_count,
-                 &inner_count,
-                 *ops,
-                 &ops_index);
+     at each node the callback function is called to decide whether we
+     are going to traversing the subtree rooted at the specific node */
 
-  int right_index = (*indices)[index - 1];
+  if (cbtrav(root))
+  {
+    if (cbtrav(root->left))
+      rtree_traverse(root->left, cbtrav, &index, outbuffer);
 
-  /* set the last record of operations */
-  (*ops)[ops_index].parent_clv_index    = inner_count;
-  (*ops)[ops_index].parent_scaler_index = inner_count - tips;
+    if (cbtrav(root->right))
+      rtree_traverse(root->right, cbtrav, &index, outbuffer);
 
-  (*ops)[ops_index].child1_clv_index    = left_index;
-  (*ops)[ops_index].child1_matrix_index = left_index;
-  (*ops)[ops_index].child1_scaler_index = (left_index >= tips)
-                                  ? left_index - tips : PLL_SCALE_BUFFER_NONE;
+    outbuffer[index++] = root;
+  }
 
-  (*ops)[ops_index].child2_clv_index    = right_index;
-  (*ops)[ops_index].child2_matrix_index = right_index;
-  (*ops)[ops_index].child2_scaler_index = (right_index >= tips)
-                                  ? right_index - tips : PLL_SCALE_BUFFER_NONE;
-
-
-  *root_clv_index = inner_count;
-  *root_scaler_index = inner_count - tips;
-
+  return index;
 }
 
-static void query_utree_tipnames_recursive(pll_rtree_t * tree,
-                                           char ** tipnames,
+static void rtree_query_tipnodes_recursive(pll_rtree_t * node,
+                                           pll_rtree_t ** node_list,
                                            int * index)
 {
-  if (!tree) return;
+  if (!node) return;
 
-  if (!tree->left)
+  if (!node->left)
   {
-    tipnames[*index] = tree->label;
+    node_list[*index] = node;
     *index = *index + 1;
     return;
   }
 
-  query_utree_tipnames_recursive(tree->left,  tipnames, index);
-  query_utree_tipnames_recursive(tree->right, tipnames, index);
+  rtree_query_tipnodes_recursive(node->left,  node_list, index);
+  rtree_query_tipnodes_recursive(node->right, node_list, index);
 }
 
-PLL_EXPORT char ** pll_query_rtree_tipnames(pll_rtree_t * tree,
-                                            int tips)
+PLL_EXPORT int pll_rtree_query_tipnodes(pll_rtree_t * root,
+                                        pll_rtree_t ** node_list)
 {
-  char ** tipnames = (char **)calloc(tips, sizeof(char *)); 
   int index = 0;
 
-  query_utree_tipnames_recursive(tree->left,  tipnames, &index);
-  query_utree_tipnames_recursive(tree->right, tipnames, &index);
+  if (!root) return 0;
+  if (!root->left)
+  {
+    node_list[index++] = root;
+    return index;
+  }
 
-  return tipnames;
+  rtree_query_tipnodes_recursive(root->left,  node_list, &index);
+  rtree_query_tipnodes_recursive(root->right, node_list, &index);
+
+  return index;
+}
+
+static void rtree_query_innernodes_recursive(pll_rtree_t * root,
+                                           pll_rtree_t ** node_list,
+                                           int * index)
+{
+  if (!root) return;
+  if (!root->left) return;
+
+  /* postorder traversal */
+
+  rtree_query_innernodes_recursive(root->left,  node_list, index);
+  rtree_query_innernodes_recursive(root->right, node_list, index);
+
+  node_list[*index] = root;
+  *index = *index + 1;
+  return;
+}
+
+PLL_EXPORT int pll_rtree_query_innernodes(pll_rtree_t * root,
+                                        pll_rtree_t ** node_list)
+{
+  int index = 0;
+
+  if (!root) return 0;
+  if (!root->left) return 0;
+
+  rtree_query_innernodes_recursive(root->left,  node_list, &index);
+  rtree_query_innernodes_recursive(root->right, node_list, &index);
+
+  node_list[index++] = root;
+
+  return index;
 }

@@ -82,7 +82,7 @@ static void dealloc_partition_data(pll_partition_t * partition)
   free(partition);
 }
 
-PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
+PLL_EXPORT pll_partition_t * pll_partition_create(int tips,
                                                   int clv_buffers,
                                                   int states,
                                                   int sites,
@@ -312,7 +312,7 @@ PLL_EXPORT pll_partition_t * pll_create_partition(int tips,
   return partition;
 }
 
-PLL_EXPORT void pll_destroy_partition(pll_partition_t * partition)
+PLL_EXPORT void pll_partition_destroy(pll_partition_t * partition)
 {
   dealloc_partition_data(partition);
 }

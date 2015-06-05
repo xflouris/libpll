@@ -76,13 +76,12 @@ int main(int argc, char * argv[])
 
   /* parse the unrooted binary tree in newick format, and store the number
      of tip nodes in tip_nodes_count */
-  pll_utree_t * tree = pll_parse_newick_utree(argv[1], &tip_nodes_count);
+  pll_utree_t * tree = pll_utree_parse_newick(argv[1], &tip_nodes_count);
   
   /* fix all missing branch lengths (i.e. those that did not appear in the 
      newick) to 0.000001 */
   set_missing_branch_length(tree, 0.000001);
 
-  
   /* compute and show node count information */
   inner_nodes_count = tip_nodes_count - 2;
   nodes_count = inner_nodes_count + tip_nodes_count;
@@ -98,10 +97,10 @@ int main(int argc, char * argv[])
      node. The code will also write (and print on screen) the newick format
      of the tree.
 
-  pll_show_ascii_utree(tree, PLL_UTREE_SHOW_LABEL |
+  pll_utree_show_ascii(tree, PLL_UTREE_SHOW_LABEL |
                              PLL_UTREE_SHOW_BRANCH_LENGTH |
                              PLL_UTREE_SHOW_CLV_INDEX);
-  char * newick = pll_write_newick_utree(tree);
+  char * newick = pll_utree_export_newick(tree);
   printf("%s\n", newick);
   free(newick);
 
@@ -184,7 +183,7 @@ int main(int argc, char * argv[])
   
   */
 
-  partition = pll_create_partition(tip_nodes_count,
+  partition = pll_partition_create(tip_nodes_count,
                                    inner_nodes_count,
                                    STATES,
                                    sites,
@@ -260,10 +259,9 @@ int main(int argc, char * argv[])
   branch_lengths = (double *)malloc(branch_count * sizeof(double));
   matrix_indices = (int *)malloc(branch_count * sizeof(int));
   operations = (pll_operation_t *)malloc(inner_nodes_count *
-                                                sizeof(pll_utree_t));
+                                                sizeof(pll_operation_t));
 
-  /* compute a partial traversal starting from the randomly selected
-     inner node */
+  /* perform a postorder traversal of the unrooted tree */
   int traversal_size = pll_utree_traverse(tree,
                                           cb_full_traversal,
                                           travbuffer);
@@ -280,8 +278,6 @@ int main(int argc, char * argv[])
                               operations,
                               &matrix_count,
                               &ops_count);
-
-
 
                               
   printf ("Traversal size: %d\n", traversal_size);
@@ -338,9 +334,8 @@ int main(int argc, char * argv[])
 
   printf("Log-L: %f\n", logl);
   
-
   /* destroy all structures allocated for the concrete PLL partition instance */
-  pll_destroy_partition(partition);
+  pll_partition_destroy(partition);
 
   /* deallocate traversal buffer, branch lengths array, matrix indices
      array and operations */
@@ -350,7 +345,7 @@ int main(int argc, char * argv[])
   free(operations);
 
   /* we will no longer need the tree structure */
-  pll_destroy_utree(tree);
+  pll_utree_destroy(tree);
 
   return (EXIT_SUCCESS);
 }
