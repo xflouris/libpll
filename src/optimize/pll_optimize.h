@@ -26,13 +26,14 @@
 
 /* Parameters mask */
 
-#define PLL_PARAMETER_SUBST_RATES      1
-#define PLL_PARAMETER_ALPHA            2
-#define PLL_PARAMETER_PINV             4
-#define PLL_PARAMETER_FREQUENCIES      8
-#define PLL_PARAMETER_SINGLE_BRANCH   16
-#define PLL_PARAMETER_BRANCH_LENGTHS  32
-#define PLL_PARAMETER_TOPOLOGY        64
+#define PLL_PARAMETER_SUBST_RATES          1
+#define PLL_PARAMETER_ALPHA                2
+#define PLL_PARAMETER_PINV                 4
+#define PLL_PARAMETER_FREQUENCIES          8
+#define PLL_PARAMETER_BRANCHES_SINGLE     16
+#define PLL_PARAMETER_BRANCHES_ALL        32
+#define PLL_PARAMETER_BRANCHES_ITERATIVE  64
+#define PLL_PARAMETER_TOPOLOGY           128
 
 /* L-BFGS-B bound type */
 
@@ -77,6 +78,7 @@ typedef struct
       } unrooted_t;
     } where;
 
+  char __padding__[4];
   double alpha_value;
 } pll_likelihood_info_t;
 
@@ -96,14 +98,14 @@ typedef struct
 /* functions in pll_optimize.c */
 
 PLL_EXPORT double pll_optimize_parameters_lbfgsb(pll_optimize_options_t * p);
-PLL_EXPORT pll_partition_t * pll_create_partition_fasta (char *file,
+PLL_EXPORT pll_partition_t * pll_partition_fasta_create (const char *file,
                                                          int states,
                                                          int n_rate_matrices,
                                                          int n_rate_cats,
                                                          int attributes,
                                                          int rooted,
                                                          int tip_count,
-                                                         char **tipnames);
+                                                         const char **tipnames);
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                                pll_optimize_options_t * params,
                                                pll_utree_t * tree,
