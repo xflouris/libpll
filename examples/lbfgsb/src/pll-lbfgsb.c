@@ -36,8 +36,16 @@
 #define OPTIMIZE_PINV         0
 
 /* tolerances */
-#define OPT_EPSILON       1e-2
-#define OPT_PARAM_EPSILON 1e-4
+#define OPT_EPSILON       1e-1
+#define OPT_PARAM_EPSILON 1e-1
+
+static void fatal (const char * format, ...) __attribute__ ((noreturn));
+
+/* a callback function for performing a full traversal */
+static int cb_full_traversal(pll_utree_t * node)
+{
+  return 1;
+}
 
 static void set_missing_branch_length_recursive (pll_utree_t * tree,
                                                  double length)
@@ -65,8 +73,8 @@ static void set_missing_branch_length_recursive (pll_utree_t * tree,
 /* branch lengths not present in the newick file get a value of 0.000001 */
 static void set_missing_branch_length (pll_utree_t * tree, double length)
 {
-  set_missing_branch_length_recursive (tree, 0.000001);
-  set_missing_branch_length_recursive (tree->back, 0.000001);
+  set_missing_branch_length_recursive (tree, length);
+  set_missing_branch_length_recursive (tree->back, length);
 }
 
 static void fatal (const char * format, ...)
@@ -107,7 +115,7 @@ static int * build_model_symmetries (const char * modelmatrix)
 int main (int argc, char * argv[])
 {
 
-  int i, tip_count;
+  int i, tip_count, nodes_count, branch_count, inner_nodes_count;
   pll_partition_t * partition;
   pll_operation_t * operations = NULL;
   double * branch_lengths = NULL;
@@ -115,45 +123,54 @@ int main (int argc, char * argv[])
   pll_optimize_options_t params;
   time_t start_time, end_time;
   int parameters_to_optimize;
-  int edge_pmatrix_index;
-  int clv1;
-  int scaler1;
-  int clv2;
-  int scaler2;
 
   pll_utree_t * tree;
-  char ** tipnames;
+  pll_utree_t ** travbuffer;
   int * data;
   int * subst_params_symmetries;
+
+  int matrix_count, ops_count;
 
   if (argc != 4)
     fatal (" syntax: %s [newick] [fasta] [model]", argv[0]);
 
-  tree = pll_parse_newick_utree (argv[1], &tip_count);
+  tree = pll_utree_parse_newick(argv[1], &tip_count);
+  nodes_count = 2*tip_count - 2;
+  branch_count = 2*tip_count - 3;
+  inner_nodes_count = tip_count - 2;
 
   /* fix all missing branch lengths to 0.00001 */
   set_missing_branch_length (tree, 0.00001);
 
-  /*  obtain an array of pointers to tip names */
-  tipnames = pll_query_utree_tipnames (tree, tip_count);
+  /*  obtain an array of pointers to tip nodes */
+    pll_utree_t ** tipnodes = (pll_utree_t  **)calloc((size_t)tip_count,
+                                                      sizeof(pll_utree_t *));
+    pll_utree_query_tipnodes(tree, tipnodes);
 
   /* create a libc hash table of size tip_count */
-  hcreate (tip_count);
+  hcreate ((size_t)tip_count);
 
   /* populate a libc hash table with tree tip labels */
-  data = (int *) malloc (tip_count * sizeof(int));
+  data = (int *) malloc ((size_t)tip_count * sizeof(int));
   for (i = 0; i < tip_count; ++i)
   {
     data[i] = i;
     ENTRY entry;
-    entry.key = tipnames[i];
+    entry.key = tipnodes[i]->label;
     entry.data = (void *) (data + i);
     hsearch (entry, ENTER);
   }
 
-  partition = pll_create_partition_fasta (argv[2], STATES, 1, RATE_CATS,
-  PLL_ATTRIB_ARCH_SSE,
-                                          0, tip_count, 0);
+  partition = pll_partition_fasta_create (
+      argv[2],
+      STATES,
+      1,
+      RATE_CATS,
+      PLL_ATTRIB_ARCH_SSE,
+      0,
+      tip_count,
+      0);
+
   if (!partition)
     fatal ("Error %d: %s\n", pll_errno, pll_errmsg);
 
@@ -162,7 +179,7 @@ int main (int argc, char * argv[])
 
   /* we no longer need these two arrays (keys and values of hash table... */
   free (data);
-  free (tipnames);
+  free (tipnodes);
 
   subst_params_symmetries = build_model_symmetries (argv[3]);
   printf ("Model: ");
@@ -170,9 +187,27 @@ int main (int argc, char * argv[])
     printf ("%d", subst_params_symmetries[i]);
   printf ("\n");
 
-  pll_traverse_utree (tree, tip_count, &branch_lengths, &matrix_indices,
-                      &operations, &edge_pmatrix_index, &clv1, &scaler1, &clv2,
-                      &scaler2);
+  travbuffer = (pll_utree_t **)malloc((size_t)nodes_count * sizeof(pll_utree_t *));
+  branch_lengths = (double *)malloc((size_t)branch_count * sizeof(double));
+  matrix_indices = (int *)malloc((size_t)branch_count * sizeof(int));
+  operations = (pll_operation_t *)malloc((size_t)inner_nodes_count *
+                                                sizeof(pll_operation_t));
+  /* perform a postorder traversal of the unrooted tree */
+  int traversal_size = pll_utree_traverse (tree, cb_full_traversal, travbuffer);
+
+  if (traversal_size == -1)
+    fatal("Function pll_utree_traverse() requires inner nodes as parameters");
+
+  /* given the computed traversal descriptor, generate the operations
+     structure, and the corresponding probability matrix indices that
+     may need recomputing */
+  pll_utree_create_operations(travbuffer,
+                              traversal_size,
+                              branch_lengths,
+                              matrix_indices,
+                              operations,
+                              &matrix_count,
+                              &ops_count);
 
   /* initialize the array of base frequencies */
   double frequencies[4] =
@@ -205,10 +240,15 @@ int main (int argc, char * argv[])
 
   pll_update_partials (partition, operations, tip_count - 2);
 
-  double logl = pll_compute_edge_loglikelihood (partition, clv1, scaler1, clv2,
-                                                scaler2, edge_pmatrix_index, 0);
+  double logl = pll_compute_edge_loglikelihood (partition,
+                                                tree->clv_index,
+                                                tree->scaler_index,
+                                                tree->back->clv_index,
+                                                tree->back->scaler_index,
+                                                tree->pmatrix_index,
+                                                0);
 
-  char * newick = pll_write_newick_utree(tree);
+  char * newick = pll_utree_export_newick(tree);
   printf("Starting tree: %s\n", newick);
   free(newick);
   printf ("Log-L: %f\n", logl);
@@ -221,11 +261,11 @@ int main (int argc, char * argv[])
   params.lk_params.alpha_value = 0.1;
   params.lk_params.freqs_index = 0;
   params.lk_params.rooted = 0;
-  params.lk_params.where.unrooted_t.parent_clv_index = clv1;
-  params.lk_params.where.unrooted_t.parent_scaler_index = scaler1;
-  params.lk_params.where.unrooted_t.child_clv_index = clv2;
-  params.lk_params.where.unrooted_t.child_scaler_index = scaler2;
-  params.lk_params.where.unrooted_t.edge_pmatrix_index = edge_pmatrix_index;
+  params.lk_params.where.unrooted_t.parent_clv_index = tree->clv_index;
+  params.lk_params.where.unrooted_t.parent_scaler_index = tree->scaler_index;
+  params.lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
+  params.lk_params.where.unrooted_t.child_scaler_index = tree->back->scaler_index;
+  params.lk_params.where.unrooted_t.edge_pmatrix_index = tree->pmatrix_index;
 
   /* optimization parameters */
   params.params_index = 0;
@@ -236,7 +276,7 @@ int main (int argc, char * argv[])
   parameters_to_optimize =
       (OPTIMIZE_SUBST_PARAMS * PLL_PARAMETER_SUBST_RATES) |
       (OPTIMIZE_ALPHA * PLL_PARAMETER_ALPHA) |
-      (OPTIMIZE_BRANCHES * PLL_PARAMETER_BRANCH_LENGTHS) |
+      (OPTIMIZE_BRANCHES * PLL_PARAMETER_BRANCHES_ALL) |
       (OPTIMIZE_PINV * PLL_PARAMETER_PINV) |
       (OPTIMIZE_FREQS * PLL_PARAMETER_FREQUENCIES);
 
@@ -268,16 +308,25 @@ int main (int argc, char * argv[])
       free (params.freq_ratios);
     }
 
-    if (parameters_to_optimize & PLL_PARAMETER_BRANCH_LENGTHS)
+    if (parameters_to_optimize & PLL_PARAMETER_BRANCHES_ALL)
     {
-      params.which_parameters = PLL_PARAMETER_SINGLE_BRANCH;
+      params.which_parameters = PLL_PARAMETER_BRANCHES_SINGLE;
       cur_logl = pll_optimize_branch_lengths_iterative (&params, tree, 1);
-      params.lk_params.branch_lengths[0] = branch_lengths[0];
-      params.lk_params.where.unrooted_t.parent_clv_index = clv1;
-      params.lk_params.where.unrooted_t.parent_scaler_index = scaler1;
-      params.lk_params.where.unrooted_t.child_clv_index = clv2;
-      params.lk_params.where.unrooted_t.child_scaler_index = scaler2;
-      params.lk_params.where.unrooted_t.edge_pmatrix_index = edge_pmatrix_index;
+
+      /* reset variables */
+      //params.lk_params.branch_lengths[0] = branch_lengths[0];
+      pll_utree_create_operations(travbuffer,
+                                  traversal_size,
+                                  branch_lengths,
+                                  matrix_indices,
+                                  operations,
+                                  &matrix_count,
+                                  &ops_count);
+      params.lk_params.where.unrooted_t.parent_clv_index = tree->clv_index;
+      params.lk_params.where.unrooted_t.parent_scaler_index = tree->scaler_index;
+      params.lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
+      params.lk_params.where.unrooted_t.child_scaler_index = tree->back->scaler_index;
+      params.lk_params.where.unrooted_t.edge_pmatrix_index = tree->pmatrix_index;
 
       printf ("  %5ld s [branches]: %f\n", time (NULL) - start_time,
               cur_logl);
@@ -325,16 +374,17 @@ int main (int argc, char * argv[])
           partition->subst_params[0][3], partition->subst_params[0][4],
           partition->subst_params[0][5]);
 
-  newick = pll_write_newick_utree(tree);
+  newick = pll_utree_export_newick(tree);
   printf("Final tree: %s\n", newick);
   free(newick);
   printf ("Final Log-L: %f\n", logl);
 
   /* CLEAN */
 
-  pll_destroy_utree (tree);
-  pll_destroy_partition (partition);
+  pll_utree_destroy (tree);
+  pll_partition_destroy (partition);
 
+  free (travbuffer);
   free (subst_params_symmetries);
   free (branch_lengths);
   free (matrix_indices);

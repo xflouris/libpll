@@ -25,7 +25,7 @@ typedef int logical;
 #define TRUE_  (1)
 #define FALSE_ (0)
 
-#if DEBUG
+#ifdef DEBUG
     #define DBG(fmt, ...) printf(fmt, ##__VA_ARGS__);
 #else
     #define DBG(fmt, ...)
