@@ -248,6 +248,9 @@ pll_utree_t * pll_utree_parse_newick(const char * filename, int * tip_count)
 {
   struct pll_utree * tree;
 
+  /* reset tip count */
+  tip_cnt = 0;
+
   tree = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
 
   pll_utree_in = fopen(filename, "r");

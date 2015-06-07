@@ -164,6 +164,9 @@ pll_rtree_t * pll_rtree_parse_newick(const char * filename, int * tip_count)
 {
   struct pll_rtree * tree;
 
+  /* reset tip count */
+  tip_cnt = 0;
+
   tree = (pll_rtree_t *)calloc(1, sizeof(pll_rtree_t));
 
   pll_rtree_in = fopen(filename, "r");
