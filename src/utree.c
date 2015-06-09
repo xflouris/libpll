@@ -262,19 +262,9 @@ PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
      at each node the callback function is called to decide whether we
      are going to traversing the subtree rooted at the specific node */
 
-
   utree_traverse(root->back, root, cbtrav, &index, outbuffer);
   utree_traverse(root, NULL, cbtrav, &index, outbuffer);
-/*
-  if (cbtrav(root, prev))
-  {
-    utree_traverse(root->next->back, root, cbtrav, &index, outbuffer);
 
-    utree_traverse(root->next->next->back, root, cbtrav, &index, outbuffer);
-
-    outbuffer[index++] = root;
-  }
-*/
   return index;
 }
 
