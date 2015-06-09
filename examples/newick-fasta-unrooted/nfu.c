@@ -13,7 +13,7 @@ typedef struct
 } node_info_t;
 
 /* a callback function for performing a full traversal */
-static int cb_full_traversal(pll_utree_t * node)
+static int cb_full_traversal(pll_utree_t * node, pll_utree_t * prev)
 {
   return 1;
 }
@@ -263,6 +263,7 @@ int main(int argc, char * argv[])
 
   /* perform a postorder traversal of the unrooted tree */
   int traversal_size = pll_utree_traverse(tree,
+                                          NULL,
                                           cb_full_traversal,
                                           travbuffer);
   if (traversal_size == -1)

@@ -365,7 +365,8 @@ PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options);
 PLL_EXPORT char * pll_utree_export_newick(pll_utree_t * root);
 
 PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
-                                  int (*cbtrav)(pll_utree_t *),
+                                  pll_utree_t * prev,
+                                  int (*cbtrav)(pll_utree_t *, pll_utree_t *),
                                   pll_utree_t ** outbuffer);
 
 PLL_EXPORT int pll_utree_query_tipnodes(pll_utree_t * root,

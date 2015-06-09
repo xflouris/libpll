@@ -77,7 +77,7 @@ const char * protein_models_names_list[PROT_MODELS_COUNT] =
 };
 
 /* a callback function for performing a full traversal */
-static int cb_full_traversal(pll_utree_t * node)
+static int cb_full_traversal(pll_utree_t * node, pll_utree_t * prev)
 {
   return 1;
 }
@@ -305,6 +305,7 @@ int main(int argc, char * argv[])
   /* compute a partial traversal starting from the randomly selected 
      inner node */
   int traversal_size = pll_utree_traverse(tree, 
+                                          NULL,
                                           cb_full_traversal, 
                                           travbuffer);
   if (traversal_size == -1)

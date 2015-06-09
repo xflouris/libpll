@@ -219,32 +219,33 @@ PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
 }
 
 static void utree_traverse(pll_utree_t * node,
-                           int (*cbtrav)(pll_utree_t *),
+                           pll_utree_t * prev,
+                           int (*cbtrav)(pll_utree_t *, pll_utree_t *),
                            int * index,
                            pll_utree_t ** outbuffer)
 {
   if (!node->next)
   {
-    if (cbtrav(node))
+    if (cbtrav(node, prev))
     {
       outbuffer[*index] = node;
       *index = *index + 1;
     }
     return;
   }
-  
-  if (cbtrav(node->next->back))
-    utree_traverse(node->next->back, cbtrav, index, outbuffer);
+  if (!cbtrav(node, prev))
+    return;
+  utree_traverse(node->next->back, node, cbtrav, index, outbuffer);
 
-  if (cbtrav(node->next->next->back))
-    utree_traverse(node->next->next->back, cbtrav, index, outbuffer);
+  utree_traverse(node->next->next->back, node, cbtrav, index, outbuffer);
 
   outbuffer[*index] = node;
   *index = *index + 1;
 }
 
 PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
-                                  int (*cbtrav)(pll_utree_t *),
+                                  pll_utree_t * prev,
+                                  int (*cbtrav)(pll_utree_t *, pll_utree_t *),
                                   pll_utree_t ** outbuffer)
 {
   int index = 0;
@@ -263,16 +264,14 @@ PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
      are going to traversing the subtree rooted at the specific node */
 
 
-  if (cbtrav(root->back))
-    utree_traverse(root->back, cbtrav, &index, outbuffer);
+  if (cbtrav(root->back, prev))
+    utree_traverse(root->back, root, cbtrav, &index, outbuffer);
 
-  if (cbtrav(root))
+  if (cbtrav(root, prev))
   {
-    if (cbtrav(root->next->back))
-      utree_traverse(root->next->back, cbtrav, &index, outbuffer);
+    utree_traverse(root->next->back, root, cbtrav, &index, outbuffer);
 
-    if (cbtrav(root->next->next->back))
-      utree_traverse(root->next->next->back, cbtrav, &index, outbuffer);
+    utree_traverse(root->next->next->back, root, cbtrav, &index, outbuffer);
 
     outbuffer[index++] = root;
   }
