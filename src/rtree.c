@@ -204,11 +204,8 @@ static void rtree_traverse(pll_rtree_t * node,
   }
   if (!cbtrav(node, prev))
     return;
-  if (cbtrav(node->left, prev))
-    rtree_traverse(node->left, node, cbtrav, index, outbuffer);
-
-  if (cbtrav(node->right, prev))
-    rtree_traverse(node->right, node, cbtrav, index, outbuffer);
+  rtree_traverse(node->left, node, cbtrav, index, outbuffer);
+  rtree_traverse(node->right, node, cbtrav, index, outbuffer);
 
   outbuffer[*index] = node;
   *index = *index + 1;
