@@ -9,6 +9,7 @@
 /* a callback function for performing a full traversal */
 static int cb_full_traversal(pll_rtree_t * node, pll_rtree_t * prev)
 {
+  printf("cb_partial_traversal called for %ld  (left = %ld right = %ld)\n", (long)node, (long)node->left, (long)node->right);
   return 1;
 }
 
