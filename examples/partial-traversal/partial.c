@@ -331,7 +331,6 @@ int main(int argc, char * argv[])
     /* compute a partial traversal starting from the randomly selected 
        inner node */
     int traversal_size = pll_utree_traverse(node, 
-                                            NULL,
                                             cb_partial_traversal, 
                                             travbuffer);
     if (traversal_size == -1)

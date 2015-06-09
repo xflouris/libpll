@@ -7,7 +7,7 @@
 #define RATE_CATS 4
 
 /* a callback function for performing a full traversal */
-static int cb_full_traversal(pll_rtree_t * node)
+static int cb_full_traversal(pll_rtree_t * node, pll_rtree_t * prev)
 {
   return 1;
 }

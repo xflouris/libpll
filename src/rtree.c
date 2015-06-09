@@ -188,32 +188,34 @@ PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
 }
 
 static void rtree_traverse(pll_rtree_t * node,
-                           int (*cbtrav)(pll_rtree_t *),
+                           pll_rtree_t * prev,
+                           int (*cbtrav)(pll_rtree_t *, pll_rtree_t *),
                            int * index,
                            pll_rtree_t ** outbuffer)
 {
   if (!node->left)
   {
-    if (cbtrav(node))
+    if (cbtrav(node, prev))
     {
       outbuffer[*index] = node;
       *index = *index + 1;
     }
     return;
   }
+  if (!cbtrav(node, prev))
+    return;
+  if (cbtrav(node->left, prev))
+    rtree_traverse(node->left, node, cbtrav, index, outbuffer);
 
-  if (cbtrav(node->left))
-    rtree_traverse(node->left, cbtrav, index, outbuffer);
-
-  if (cbtrav(node->right))
-    rtree_traverse(node->right, cbtrav, index, outbuffer);
+  if (cbtrav(node->right, prev))
+    rtree_traverse(node->right, node, cbtrav, index, outbuffer);
 
   outbuffer[*index] = node;
   *index = *index + 1;
 }
 
 int pll_rtree_traverse(pll_rtree_t * root,
-                       int (*cbtrav)(pll_rtree_t *),
+                       int (*cbtrav)(pll_rtree_t *, pll_rtree_t *),
                        pll_rtree_t ** outbuffer)
 {
   int index = 0;
@@ -230,17 +232,7 @@ int pll_rtree_traverse(pll_rtree_t * root,
      at each node the callback function is called to decide whether we
      are going to traversing the subtree rooted at the specific node */
 
-  if (cbtrav(root))
-  {
-    if (cbtrav(root->left))
-      rtree_traverse(root->left, cbtrav, &index, outbuffer);
-
-    if (cbtrav(root->right))
-      rtree_traverse(root->right, cbtrav, &index, outbuffer);
-
-    outbuffer[index++] = root;
-  }
-
+  rtree_traverse(root, NULL, cbtrav, &index, outbuffer);
   return index;
 }
 

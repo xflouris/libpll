@@ -263,7 +263,6 @@ int main(int argc, char * argv[])
 
   /* perform a postorder traversal of the unrooted tree */
   int traversal_size = pll_utree_traverse(tree,
-                                          NULL,
                                           cb_full_traversal,
                                           travbuffer);
   if (traversal_size == -1)
