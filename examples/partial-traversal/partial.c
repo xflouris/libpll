@@ -15,6 +15,7 @@ typedef struct
 /* a callback function for performing a partial traversal */
 static int cb_partial_traversal(pll_utree_t * node, pll_utree_t * prev)
 {
+  printf("cb_partial_traversal called for %ld  (back = %ld next = %ld)\n", (long)node, (long)node->back, (long)node->next);
   node_info_t * node_info;
 
   /* if we don't want tips in the traversal we must return 0 here. For now,
