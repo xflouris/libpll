@@ -186,7 +186,7 @@ double pll_compute_root_loglikelihood(pll_partition_t * partition,
           + inv_site_lk * prop_invar;
     }
 
-    logl += log (site_lk);
+    logl += log (site_lk) * partition->pattern_weights[i];
 
     /* scale log-likelihood of site if needed */
     if (scaler && scaler[i])
@@ -265,7 +265,7 @@ double pll_compute_edge_loglikelihood(pll_partition_t * partition,
     scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
     scale_factors += (child_scaler) ? child_scaler[n] : 0;
 
-    logl += log(site_lk);
+    logl += log(site_lk) * partition->pattern_weights[n];
     if (scale_factors)
       logl += scale_factors * log(PLL_SCALE_THRESHOLD);
   }
