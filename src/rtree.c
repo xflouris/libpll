@@ -118,6 +118,30 @@ void pll_rtree_show_ascii(pll_rtree_t * tree, int options)
   free(active_node_order);
 }
 
+static char * rtree_export_newick_recursive(pll_rtree_t * root)
+{
+  char * newick;
+
+  if (!root) return NULL;
+
+  if (!(root->left) || !(root->right))
+    asprintf(&newick, "%s:%f", root->label, root->length);
+  else
+  {
+    char * subtree1 = rtree_export_newick_recursive(root->left);
+    char * subtree2 = rtree_export_newick_recursive(root->right);
+
+    asprintf(&newick, "(%s,%s)%s:%f", subtree1,
+                                      subtree2,
+                                      root->label ? root->label : "",
+                                      root->length);
+    free(subtree1);
+    free(subtree2);
+  }
+
+  return newick;
+}
+
 PLL_EXPORT char * pll_rtree_export_newick(pll_rtree_t * root)
 {
   char * newick;
@@ -128,13 +152,13 @@ PLL_EXPORT char * pll_rtree_export_newick(pll_rtree_t * root)
     asprintf(&newick, "%s:%f", root->label, root->length);
   else
   {
-    char * subtree1 = pll_rtree_export_newick(root->left);
-    char * subtree2 = pll_rtree_export_newick(root->right);
+    char * subtree1 = rtree_export_newick_recursive(root->left);
+    char * subtree2 = rtree_export_newick_recursive(root->right);
 
-    asprintf(&newick, "(%s,%s)%s:%f", subtree1,
-                                      subtree2,
-                                      root->label ? root->label : "",
-                                      root->length);
+    asprintf(&newick, "(%s,%s)%s:%f;", subtree1,
+                                       subtree2,
+                                       root->label ? root->label : "",
+                                       root->length);
     free(subtree1);
     free(subtree2);
   }
