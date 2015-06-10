@@ -180,6 +180,7 @@ typedef struct pll_rtree
   int pmatrix_index;
   struct pll_rtree * left;
   struct pll_rtree * right;
+  struct pll_rtree * parent;
 
   void * data;
 } pll_rtree_t;
