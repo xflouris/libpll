@@ -219,32 +219,31 @@ PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
 }
 
 static void utree_traverse(pll_utree_t * node,
-                           pll_utree_t * prev,
-                           int (*cbtrav)(pll_utree_t *, pll_utree_t *),
+                           int (*cbtrav)(pll_utree_t *),
                            int * index,
                            pll_utree_t ** outbuffer)
 {
   if (!node->next)
   {
-    if (cbtrav(node, prev))
+    if (cbtrav(node))
     {
       outbuffer[*index] = node;
       *index = *index + 1;
     }
     return;
   }
-  if (!cbtrav(node, prev))
+  if (!cbtrav(node))
     return;
-  utree_traverse(node->next->back, node, cbtrav, index, outbuffer);
+  utree_traverse(node->next->back, cbtrav, index, outbuffer);
 
-  utree_traverse(node->next->next->back, node, cbtrav, index, outbuffer);
+  utree_traverse(node->next->next->back, cbtrav, index, outbuffer);
 
   outbuffer[*index] = node;
   *index = *index + 1;
 }
 
 PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
-                                  int (*cbtrav)(pll_utree_t *, pll_utree_t *),
+                                  int (*cbtrav)(pll_utree_t *),
                                   pll_utree_t ** outbuffer)
 {
   int index = 0;
@@ -262,8 +261,8 @@ PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
      at each node the callback function is called to decide whether we
      are going to traversing the subtree rooted at the specific node */
 
-  utree_traverse(root->back, root, cbtrav, &index, outbuffer);
-  utree_traverse(root, NULL, cbtrav, &index, outbuffer);
+  utree_traverse(root->back, cbtrav, &index, outbuffer);
+  utree_traverse(root, cbtrav, &index, outbuffer);
 
   return index;
 }

@@ -188,31 +188,30 @@ PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
 }
 
 static void rtree_traverse(pll_rtree_t * node,
-                           pll_rtree_t * prev,
-                           int (*cbtrav)(pll_rtree_t *, pll_rtree_t *),
+                           int (*cbtrav)(pll_rtree_t *),
                            int * index,
                            pll_rtree_t ** outbuffer)
 {
   if (!node->left)
   {
-    if (cbtrav(node, prev))
+    if (cbtrav(node))
     {
       outbuffer[*index] = node;
       *index = *index + 1;
     }
     return;
   }
-  if (!cbtrav(node, prev))
+  if (!cbtrav(node))
     return;
-  rtree_traverse(node->left, node, cbtrav, index, outbuffer);
-  rtree_traverse(node->right, node, cbtrav, index, outbuffer);
+  rtree_traverse(node->left, cbtrav, index, outbuffer);
+  rtree_traverse(node->right, cbtrav, index, outbuffer);
 
   outbuffer[*index] = node;
   *index = *index + 1;
 }
 
 int pll_rtree_traverse(pll_rtree_t * root,
-                       int (*cbtrav)(pll_rtree_t *, pll_rtree_t *),
+                       int (*cbtrav)(pll_rtree_t *),
                        pll_rtree_t ** outbuffer)
 {
   int index = 0;
@@ -229,7 +228,7 @@ int pll_rtree_traverse(pll_rtree_t * root,
      at each node the callback function is called to decide whether we
      are going to traversing the subtree rooted at the specific node */
 
-  rtree_traverse(root, NULL, cbtrav, &index, outbuffer);
+  rtree_traverse(root, cbtrav, &index, outbuffer);
   return index;
 }
 

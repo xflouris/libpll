@@ -13,7 +13,7 @@ typedef struct
 } node_info_t;
 
 /* a callback function for performing a partial traversal */
-static int cb_partial_traversal(pll_utree_t * node, pll_utree_t * prev)
+static int cb_partial_traversal(pll_utree_t * node)
 {
   node_info_t * node_info;
 

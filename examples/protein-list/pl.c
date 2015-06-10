@@ -77,7 +77,7 @@ const char * protein_models_names_list[PROT_MODELS_COUNT] =
 };
 
 /* a callback function for performing a full traversal */
-static int cb_full_traversal(pll_utree_t * node, pll_utree_t * prev)
+static int cb_full_traversal(pll_utree_t * node)
 {
   return 1;
 }
