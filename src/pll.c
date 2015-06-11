@@ -38,6 +38,8 @@ static void dealloc_partition_data(pll_partition_t * partition)
     free(partition->prop_invar);
   if (partition->invariant)
     free(partition->invariant);
+  if (!partition->pattern_weights)
+    free(partition->pattern_weights);
 
   if (partition->scale_buffer)
     for (i = 0; i < partition->scale_buffers; ++i)
@@ -79,6 +81,9 @@ static void dealloc_partition_data(pll_partition_t * partition)
       free(partition->frequencies[i]);
   free(partition->frequencies);
 
+  if (partition->pattern_weights)
+    free(partition->pattern_weights);
+
   free(partition);
 }
 
@@ -118,6 +123,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(int tips,
 
   partition->prop_invar = NULL;
   partition->invariant = NULL;
+  partition->pattern_weights = NULL;
 
   partition->eigenvecs = NULL;
   partition->inv_eigenvecs = NULL;
@@ -289,6 +295,15 @@ PLL_EXPORT pll_partition_t * pll_partition_create(int tips,
     dealloc_partition_data(partition);
     return PLL_FAILURE;
   }
+
+  /* site weights */
+  partition->pattern_weights = (int *)malloc(partition->sites * sizeof(int));
+  if (!partition->pattern_weights)
+  {
+    dealloc_partition_data(partition);
+    return PLL_FAILURE;
+  }
+  for (i = 0; i < partition->sites; ++i) partition->pattern_weights[i] = 1;
   
   /* scale_buffer */
   partition->scale_buffer = (unsigned int **)calloc(partition->scale_buffers,
@@ -372,4 +387,13 @@ PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
     }
     clv += partition->states;
   }
+}
+
+PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
+                                        const int * pattern_weights)
+{
+  int i;
+
+  for (i = 0; i < partition->sites; ++i)
+    partition->pattern_weights[i] = pattern_weights[i];
 }
