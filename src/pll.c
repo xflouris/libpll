@@ -81,6 +81,9 @@ static void dealloc_partition_data(pll_partition_t * partition)
       free(partition->frequencies[i]);
   free(partition->frequencies);
 
+  if (partition->pattern_weights)
+    free(partition->pattern_weights);
+
   free(partition);
 }
 
