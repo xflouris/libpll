@@ -322,24 +322,34 @@ void pll_update_prob_matrices(pll_partition_t * partition,
     {
       pmatrix = partition->pmatrix[matrix_indices[i]] + n*states*states;
 
-      /* exponentiate eigenvalues */
-      for (j = 0; j < states; ++j)
-        expd[j] = exp(eigenvals[j] * rates[n] * branch_lengths[i] 
-                                   / (1.0 - prop_invar));
+      /* if branch length is zero then set the p-matrix to identity matrix */
+      if (!branch_lengths[i])
+      {
+        for (j = 0; j < states; ++j)
+          for (k = 0; k < states; ++k)
+            pmatrix[j*states+k] = (j == k) ? 1 : 0;
+      }
+      else
+      {
+        /* exponentiate eigenvalues */
+        for (j = 0; j < states; ++j)
+          expd[j] = exp(eigenvals[j] * rates[n] * branch_lengths[i] 
+                                     / (1.0 - prop_invar));
 
-      for (j = 0; j < states; ++j)
-        for (k = 0; k < states; ++k)
-          temp[j*states+k] = inv_eigenvecs[j*states+k] * expd[k];
-      
-      for (j = 0; j < states; ++j)
-        for (k = 0; k < states; ++k)
-        {
-          pmatrix[j*states+k] = 0;
-          for (m = 0; m < states; ++m)
+        for (j = 0; j < states; ++j)
+          for (k = 0; k < states; ++k)
+            temp[j*states+k] = inv_eigenvecs[j*states+k] * expd[k];
+        
+        for (j = 0; j < states; ++j)
+          for (k = 0; k < states; ++k)
           {
-            pmatrix[j*states+k] += temp[j*states+m] * eigenvecs[m*states+k];
+            pmatrix[j*states+k] = 0;
+            for (m = 0; m < states; ++m)
+            {
+              pmatrix[j*states+k] += temp[j*states+m] * eigenvecs[m*states+k];
+            }
           }
-        }
+      }
     }
   }
   free(expd);
