@@ -1,0 +1,124 @@
+Number of tip/leaf nodes in tree: 246
+Number of inner nodes in tree: 244
+Total number of nodes in tree: 490
+Number of branches in tree: 489
+
+Computing logL between CLV 261 and 22 - (pmatrix 22 with branch length 0.068631)
+Traversal size: 490
+Operations: 244
+Matrices: 489
+Log-L: -131248.949029
+
+Computing logL between CLV 323 and 89 - (pmatrix 89 with branch length 0.032210)
+Traversal size: 25
+Operations: 19
+Matrices: 24
+Log-L: -131248.949029
+
+Computing logL between CLV 247 and 4 - (pmatrix 4 with branch length 0.057557)
+Traversal size: 23
+Operations: 19
+Matrices: 22
+Log-L: -131248.949029
+
+Computing logL between CLV 261 and 22 - (pmatrix 22 with branch length 0.068631)
+Traversal size: 21
+Operations: 15
+Matrices: 20
+Log-L: -131248.949029
+
+Computing logL between CLV 303 and 70 - (pmatrix 70 with branch length 0.013641)
+Traversal size: 25
+Operations: 17
+Matrices: 24
+Log-L: -131248.949029
+
+Computing logL between CLV 386 and 362 - (pmatrix 362 with branch length 0.034756)
+Traversal size: 19
+Operations: 15
+Matrices: 19
+Log-L: -131248.949029
+
+Computing logL between CLV 439 and 429 - (pmatrix 429 with branch length 0.000919)
+Traversal size: 12
+Operations: 11
+Matrices: 12
+Log-L: -131248.949029
+
+Computing logL between CLV 312 and 308 - (pmatrix 308 with branch length 0.010677)
+Traversal size: 14
+Operations: 13
+Matrices: 14
+Log-L: -131248.949029
+
+Computing logL between CLV 314 and 313 - (pmatrix 313 with branch length 0.035080)
+Traversal size: 4
+Operations: 3
+Matrices: 4
+Log-L: -131248.949029
+
+Computing logL between CLV 362 and 386 - (pmatrix 362 with branch length 0.034756)
+Traversal size: 10
+Operations: 9
+Matrices: 10
+Log-L: -131248.949029
+
+Computing logL between CLV 389 and 157 - (pmatrix 157 with branch length 0.069860)
+Traversal size: 12
+Operations: 8
+Matrices: 11
+Log-L: -131248.949029
+
+Computing logL between CLV 403 and 404 - (pmatrix 403 with branch length 0.000001)
+Traversal size: 19
+Operations: 13
+Matrices: 19
+Log-L: -131248.949029
+
+Computing logL between CLV 383 and 151 - (pmatrix 151 with branch length 0.073875)
+Traversal size: 16
+Operations: 13
+Matrices: 15
+Log-L: -131248.949029
+
+Computing logL between CLV 443 and 453 - (pmatrix 443 with branch length 0.056269)
+Traversal size: 10
+Operations: 9
+Matrices: 10
+Log-L: -131248.949029
+
+Computing logL between CLV 416 and 454 - (pmatrix 416 with branch length 0.056195)
+Traversal size: 2
+Operations: 2
+Matrices: 2
+Log-L: -131248.949029
+
+Computing logL between CLV 395 and 163 - (pmatrix 163 with branch length 0.001681)
+Traversal size: 10
+Operations: 7
+Matrices: 9
+Log-L: -131248.949029
+
+Computing logL between CLV 320 and 319 - (pmatrix 319 with branch length 0.000290)
+Traversal size: 16
+Operations: 11
+Matrices: 16
+Log-L: -131248.949029
+
+Computing logL between CLV 450 and 449 - (pmatrix 449 with branch length 0.015555)
+Traversal size: 15
+Operations: 13
+Matrices: 15
+Log-L: -131248.949029
+
+Computing logL between CLV 263 and 264 - (pmatrix 263 with branch length 0.000001)
+Traversal size: 16
+Operations: 14
+Matrices: 16
+Log-L: -131248.949029
+
+Computing logL between CLV 298 and 297 - (pmatrix 297 with branch length 0.000001)
+Traversal size: 13
+Operations: 10
+Matrices: 13
+Log-L: -131248.949029
