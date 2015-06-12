@@ -40,6 +40,8 @@ static double recomp_iterative (pll_optimize_options_t * params,
 
   lnl = prev_lnl;
 
+  assert(tree->clv_index > params->lk_params.partition->tips);
+
   /* set Branch Length */
   assert(tree->length == tree->back->length);
   params->lk_params.branch_lengths[0] = tree->length;
@@ -72,7 +74,7 @@ static double recomp_iterative (pll_optimize_options_t * params,
 
   DBG("forward lnL: %f (%f)\n", lnl, info1->branch_length);
 
-  if (tree->next)
+  if (tree->back->next)
   {
     pll_operation_t new_op;
 
@@ -103,7 +105,7 @@ static double recomp_iterative (pll_optimize_options_t * params,
     pll_update_partials (params->lk_params.partition, &new_op, 1);
 
     /* eval */
-    recomp_iterative (params, tree->next->back, lnl);
+    recomp_iterative (params, tree->back->next, lnl);
 
     /* set CLV */
     new_op.parent_clv_index = tree->clv_index;
@@ -132,7 +134,7 @@ static double recomp_iterative (pll_optimize_options_t * params,
     pll_update_partials (params->lk_params.partition, &new_op, 1);
 
     /* eval */
-    recomp_iterative (params, tree->next->next->back, lnl);
+    recomp_iterative (params, tree->back->next->next, lnl);
 
     /* reset CLV */
     new_op.parent_clv_index = tree->clv_index;
@@ -218,29 +220,33 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
             subst_rates[j] = next_value;
           }
       }
-      pll_set_subst_params (partition, 0, subst_rates);
       xptr += n_subst_free_params;
     }
     else
     {
       memcpy (subst_rates, xptr, ((size_t)n_subst_rates - 1) * sizeof(double));
       subst_rates[n_subst_rates - 1] = 1.0;
+      xptr += n_subst_rates-1;
     }
+
+    pll_set_subst_params (partition, 0, subst_rates);
     free (subst_rates);
   }
   /* update stationary frequencies */
   if (params->which_parameters & PLL_PARAMETER_FREQUENCIES)
   {
     int i;
+    int n_states = partition->states;
     double sum_ratios = 1.0;
-    for (i = 0; i < (partition->states - 1); ++i)
+    double *freqs = (double *) malloc ((size_t) n_states * sizeof(double));
+    for (i = 0; i < (n_states - 1); ++i)
       sum_ratios += xptr[i];
-    for (i = 0; i < (partition->states - 1); ++i)
-      partition->frequencies[params->lk_params.freqs_index][i] = xptr[i]
-          / sum_ratios;
-    partition->frequencies[params->lk_params.freqs_index][partition->states - 1] =
-        1.0 / sum_ratios;
-    xptr += (partition->states - 1);
+    for (i = 0; i < (n_states - 1); ++i)
+      freqs[i] = xptr[i] / sum_ratios;
+    freqs[n_states - 1] = 1.0 / sum_ratios;
+    pll_set_frequencies (partition, params->params_index, freqs);
+    free (freqs);
+    xptr += (n_states - 1);
   }
   /* update proportion of invariant parameters */
   if (params->which_parameters & PLL_PARAMETER_PINV)
@@ -305,7 +311,7 @@ static double compute_lnl_unrooted (pll_optimize_options_t * params, double *x)
   pll_partition_t * partition = params->lk_params.partition;
   double score;
 
-  if (!set_x_to_parameters(params, x))
+  if (x && !set_x_to_parameters(params, x))
   {
     return -INFINITY;
   }
@@ -583,17 +589,34 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
 
       n_subst_rates = partition->states * (partition->states - 1) / 2;
       if (params->subst_params_symmetries)
+      {
         n_subst_free_params = v_int_max (params->subst_params_symmetries,
                                          n_subst_rates);
+      }
       else
+      {
         n_subst_free_params = n_subst_rates;
+      }
 
+      int current_rate = 0;
       for (i = 0; i < n_subst_free_params; i++)
       {
         nbd_ptr[i] = PLL_LBFGSB_BOUND_BOTH;
         l_ptr[i] = 0.001;
         u_ptr[i] = 1000.;
-        x[i] = partition->subst_params[params->params_index][i];
+        int j = i;
+        if (params->subst_params_symmetries)
+        {
+          if (params->subst_params_symmetries[n_subst_rates-1] == current_rate)
+            current_rate++;
+          for (j=0; j<n_subst_rates; j++)
+          {
+            if (params->subst_params_symmetries[j] == current_rate)
+              break;
+          }
+          current_rate++;
+        }
+        x[i] = partition->subst_params[params->params_index][j];
       }
       nbd_ptr += n_subst_free_params;
       l_ptr += n_subst_free_params;
@@ -681,6 +704,8 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
           + 12 * (size_t)max_corrections * ((size_t)max_corrections + 1),
       sizeof(double));
 
+  double ini_score = compute_lnl_unrooted (params, 0);
+
   int continue_opt = 1;
   while (continue_opt)
   {
@@ -716,15 +741,21 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
         /* reset variable */
         x[i] = temp;
       }
-      if (!set_x_to_parameters (params, x))
-      {
-        return -INFINITY;
-      }
+//      if (!set_x_to_parameters (params, x))
+//      {
+//        return -INFINITY;
+//      }
     }
     else if (*task != NEW_X)
     {
       continue_opt = 0;
     }
+  }
+
+  if (score > ini_score)
+  {
+    printf("SCORESFAILED %f %f\n", ini_score, score);
+    exit(1);
   }
 
   free (iwa);
@@ -738,6 +769,11 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
   return score;
 } /* pll_optimize_parameters_lbfgsb */
 
+static int cb_full_traversal(pll_utree_t * node)
+{
+    return 1;
+}
+
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                               pll_optimize_options_t * params,
                                               pll_utree_t * tree,
@@ -750,9 +786,38 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
 
   for (i=0; i<smoothings; i++)
   {
-    lnl = recomp_iterative (params, tree, PLL_OPT_LNL_UNLIKELY);
-    lnl = recomp_iterative (params, tree->back, lnl);
+    if (tree->clv_index > params->lk_params.partition->tips)
+      lnl = recomp_iterative (params, tree, PLL_OPT_LNL_UNLIKELY);
+    if (tree->back->clv_index > params->lk_params.partition->tips)
+      lnl = recomp_iterative (params, tree->back, lnl);
   }
 
-  return -1 * lnl;
+//  pll_utree_t ** travbuffer = (pll_utree_t **)malloc((2*params->lk_params.partition->tips - 2) * sizeof(pll_utree_t *));
+//                  int traversal_size = pll_utree_traverse (tree,
+//                                                           cb_full_traversal,
+//                                                           travbuffer);
+//                  int matrix_count, ops_count;
+//                  pll_utree_create_operations(travbuffer,
+//                                              traversal_size,
+//                                              params->lk_params.branch_lengths,
+//                                              params->lk_params.matrix_indices,
+//                                              params->lk_params.operations,
+//                                              &matrix_count,
+//                                              &ops_count);
+//                  free(travbuffer);
+//                  params->lk_params.where.unrooted_t.parent_clv_index = tree->clv_index;
+//                  params->lk_params.where.unrooted_t.parent_scaler_index = tree->scaler_index;
+//                  params->lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
+//                  params->lk_params.where.unrooted_t.child_scaler_index = tree->back->scaler_index;
+//                  params->lk_params.where.unrooted_t.edge_pmatrix_index = tree->pmatrix_index;
+//
+//                  pll_update_prob_matrices(params->lk_params.partition,
+//                                           params->params_index, params->lk_params.matrix_indices,
+//                                           params->lk_params.branch_lengths, matrix_count);
+//                  pll_update_partials(params->lk_params.partition, params->lk_params.operations, ops_count);
+//                  printf("%f\n", lnl);
+//                  lnl = compute_lnl_unrooted(params, 0);
+//                  printf("%f\n", lnl);
+
+  return -1*lnl;
 } /* pll_optimize_branch_lengths_iterative */
