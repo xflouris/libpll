@@ -109,6 +109,7 @@ typedef struct pll_partition
   double ** frequencies;
   double * prop_invar;
   int * invariant;
+  int * pattern_weights;
 
   int * eigen_decomp_valid;
   double ** eigenvecs;
@@ -179,6 +180,7 @@ typedef struct pll_rtree
   int pmatrix_index;
   struct pll_rtree * left;
   struct pll_rtree * right;
+  struct pll_rtree * parent;
 
   void * data;
 } pll_rtree_t;
@@ -259,6 +261,8 @@ PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
                                 int tip_index,
                                 const double * clv);
 
+PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
+                                        const int * pattern_weights);
 
 /* functions in dlist.c */
 

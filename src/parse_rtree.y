@@ -76,7 +76,12 @@ input: OPAR subtree COMMA subtree CPAR optional_label optional_length SEMICOLON
   tree->right  = $4;
   tree->label  = $6;
   tree->length = $7 ? atof($7) : 0;
+  tree->parent = NULL;
   free($7);
+
+  tree->left->parent  = tree;
+  tree->right->parent = tree;
+
 };
 
 subtree: OPAR subtree COMMA subtree CPAR optional_label optional_length
@@ -87,6 +92,10 @@ subtree: OPAR subtree COMMA subtree CPAR optional_label optional_length
   $$->label  = $6;
   $$->length = $7 ? atof($7) : 0;
   free($7);
+
+  $$->left->parent  = $$;
+  $$->right->parent = $$;
+
 }
        | label optional_length
 {
@@ -163,6 +172,9 @@ static void assign_indices(pll_rtree_t * root, int tip_count)
 pll_rtree_t * pll_rtree_parse_newick(const char * filename, int * tip_count)
 {
   struct pll_rtree * tree;
+
+  /* reset tip count */
+  tip_cnt = 0;
 
   tree = (pll_rtree_t *)calloc(1, sizeof(pll_rtree_t));
 

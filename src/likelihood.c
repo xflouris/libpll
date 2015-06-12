@@ -166,18 +166,6 @@ double pll_compute_root_loglikelihood(pll_partition_t * partition,
     site_lk = term / rates;
 
     /* account for invariant sites */
-    /* @MTH: This is not quite right, at least it does not cover
-        all of the corner cases, if the library is intending
-        to deal with partial ambiguity.
-      It is possible for a DNA site to be all N's and Y's.
-      This could be dealt with by expanding partition->frequencies
-        to deal with ambiguity codes, and then allowing 
-        partition->invariant to index that large state space.
-      Not sure if it is worth it...
-      Depending on the preprocessing, it may be necessary to deal with
-        the all missing case too (those could be removed before scoring
-        as their likelihood contribution is always 1.0)
-    */
     if (prop_invar > 0)
     {
       inv_site_lk = (partition->invariant[i] == -1) ?
@@ -186,7 +174,7 @@ double pll_compute_root_loglikelihood(pll_partition_t * partition,
           + inv_site_lk * prop_invar;
     }
 
-    logl += log (site_lk);
+    logl += log (site_lk) * partition->pattern_weights[i];
 
     /* scale log-likelihood of site if needed */
     if (scaler && scaler[i])
@@ -252,7 +240,6 @@ double pll_compute_edge_loglikelihood(pll_partition_t * partition,
     site_lk = terma / rates;
 
     /* account for invariant sites */
-    /* See @MTH comment above */
     if (prop_invar > 0)
     {
       inv_site_lk = (partition->invariant[n] == -1) ? 
@@ -265,7 +252,7 @@ double pll_compute_edge_loglikelihood(pll_partition_t * partition,
     scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
     scale_factors += (child_scaler) ? child_scaler[n] : 0;
 
-    logl += log(site_lk);
+    logl += log(site_lk) * partition->pattern_weights[n];
     if (scale_factors)
       logl += scale_factors * log(PLL_SCALE_THRESHOLD);
   }

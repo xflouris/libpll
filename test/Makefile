@@ -28,7 +28,7 @@ OBJFILES = $(patsubst src/%.c, obj/%, $(CFILES))
 DATADIR = testdata
 RESULTDIR = result
 
-DEPFILES = worms16s.fas small.fas
+DEPFILES = worms16s.fas small.fas small.tree 246x4465.fas 246x4465.tree
 REQFILES = $(patsubst %, $(DATADIR)/%, $(DEPFILES))
 ASSETS = https://raw.githubusercontent.com/xflouris/assets/master/libpll
 

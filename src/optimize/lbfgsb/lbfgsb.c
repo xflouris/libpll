@@ -22,7 +22,7 @@
 
 static int c__1 = 1;
 
-#ifdef DEBG
+#ifdef DEBUG
 static int prn1lb (int *n, int *m, double *l, double *u, double *x, int *iprint,
                    double *epsmch);
 static int prn2lb (int *n, double *x, double *f, double *g, int *iprint,
@@ -1009,7 +1009,7 @@ L1000:
     return 0;
 } /* mainlb */
 
-#ifdef DEBG
+#ifdef DEBUG
 /*
  * prints the input data, initial point, upper and lower bounds of
  * each variable, machine precision, as well as the headings of the output.
