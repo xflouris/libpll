@@ -1,13 +1,15 @@
 #include "pll.h"
+#include "rng.h"
+
 #include <stdarg.h>
 #include <search.h>
-#include <time.h>
 
 #define STATES    4
 #define RATE_CATS 4
 
 #define FASTAFILE "testdata/246x4465.fas"
 #define TREEFILE  "testdata/246x4465.tree"
+
 typedef struct
 {
   int clv_valid;
@@ -40,7 +42,7 @@ static int cb_partial_traversal(pll_utree_t * node)
     node_info->clv_valid = 1;
     return 1;
   }
-  
+ 
   /* if the data element was already there and the CLV on this direction is
      set, i.e. the CLV is valid, we instruct the traversal routine not to
      traverse the subtree rooted in this node/direction by returning 0 */
@@ -304,24 +306,19 @@ int main(int argc, char * argv[])
                                                 sizeof(pll_utree_t *));
   pll_utree_query_innernodes(tree, inner_nodes_list);
 
-
   /* get random directions for each inner node */
   for (i = 0; i < inner_nodes_count; ++i)
   {
-    r = rand() % 3;
+    r = RAND % 3;
     for (j = 0; j < r; j++)
       inner_nodes_list[i] = inner_nodes_list[i]->next;
   }
-
-  /* initialize the random number generator for randomly 
-     selecting inner nodes (fixed seed) */
-  srand(12345);
 
   double cmplogl = 0.0;
   for (i = 0; i < 20; ++i)
   {
     /* randomly select an inner node */
-    r = rand() % inner_nodes_count;
+    r = RAND % inner_nodes_count;
     pll_utree_t * node = inner_nodes_list[r];
 
     /* compute a partial traversal starting from the randomly selected 
