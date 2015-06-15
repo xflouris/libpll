@@ -40,7 +40,6 @@ static double recomp_iterative (pll_optimize_options_t * params,
 
   lnl = prev_lnl;
 
-  assert(tree->clv_index > params->lk_params.partition->tips);
 
   /* set Branch Length */
   assert(tree->length == tree->back->length);
@@ -74,7 +73,7 @@ static double recomp_iterative (pll_optimize_options_t * params,
 
   DBG("forward lnL: %f (%f)\n", lnl, info1->branch_length);
 
-  if (tree->back->next)
+  if (tree->next)
   {
     pll_operation_t new_op;
 
@@ -105,7 +104,7 @@ static double recomp_iterative (pll_optimize_options_t * params,
     pll_update_partials (params->lk_params.partition, &new_op, 1);
 
     /* eval */
-    recomp_iterative (params, tree->back->next, lnl);
+    recomp_iterative (params, tree->next->back, lnl);
 
     /* set CLV */
     new_op.parent_clv_index = tree->clv_index;
@@ -134,7 +133,7 @@ static double recomp_iterative (pll_optimize_options_t * params,
     pll_update_partials (params->lk_params.partition, &new_op, 1);
 
     /* eval */
-    recomp_iterative (params, tree->back->next->next, lnl);
+    recomp_iterative (params, tree->next->next->back, lnl);
 
     /* reset CLV */
     new_op.parent_clv_index = tree->clv_index;
@@ -752,12 +751,6 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     }
   }
 
-  if (score > ini_score)
-  {
-    printf("SCORESFAILED %f %f\n", ini_score, score);
-    exit(1);
-  }
-
   free (iwa);
   free (wa);
   free (x);
@@ -786,9 +779,9 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
 
   for (i=0; i<smoothings; i++)
   {
-    if (tree->clv_index > params->lk_params.partition->tips)
+    //if (tree->clv_index > params->lk_params.partition->tips)
       lnl = recomp_iterative (params, tree, PLL_OPT_LNL_UNLIKELY);
-    if (tree->back->clv_index > params->lk_params.partition->tips)
+    //if (tree->back->clv_index > params->lk_params.partition->tips)
       lnl = recomp_iterative (params, tree->back, lnl);
   }
 
