@@ -410,6 +410,21 @@ PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
                                             int * matrix_count,
                                             int * ops_count);
 
+/* functions in core_likelihood.c */
+
+PLL_EXPORT void pll_core_update_partial(unsigned int states,
+                                        unsigned int sites,
+                                        unsigned int rate_cats,
+                                        double * parent_clv,
+                                        unsigned int * parent_scaler,
+                                        const double * left_clv,
+                                        const double * right_clv,
+                                        const double * left_matrix,
+                                        const double * right_matrix,
+                                        const unsigned int * left_scaler,
+                                        const unsigned int * right_scaler,
+                                        unsigned int attrib);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

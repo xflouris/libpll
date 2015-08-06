@@ -42,7 +42,9 @@ static void update_partials(pll_partition_t * partition,
   {
     lmat = left_matrix;
     rmat = right_matrix;
-    scaling = 1;
+
+    scaling = (scaler) ? 1 : 0;
+
     for (k = 0; k < partition->rate_cats; ++k)
     {
       for (i = 0; i < states; ++i)
