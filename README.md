@@ -107,6 +107,10 @@ Below is a list of available functions in the current version.
 * `int pll_utree_traverse(pll_utree_t * tree, int (*cbtrav)(pll_utree_t *), pll_utree_t ** outbuffer);`
 * `int pll_rtree_traverse(pll_rtree_t * tree, int (*cbtrav)(pll_rtree_t *), pll_rtree_t ** outbuffer);`
 
+### Core functions
+
+* `void pll_core_update_partial(unsigned int states, unsigned int sites, unsigned int rate_cats, double * parent_clv, unsigned int * parent_scaler, const double * left_clv, const double * right_clv, const double * left_matrix, const double * right_matrix, const unsigned int * left_scaler, const unsigned int * right_scaler, unsigned int attrib);`
+
 ### Auxiliary functions
 
 * `int pll_compute_gamma_cats(double alpha, int categories, double * output_rates);`
@@ -127,23 +131,24 @@ The code is currently licensed under the [GNU Affero General Public License vers
 
 The code is written in C.
 
-    File         | Description
------------------|----------------
-**fasta.c**      | Functions for parsing FASTA files.
-**gamma.c**      | Functions related to Gamma (&Gamma;) function.
-**lex_rtree.l**  | Lexical analyzer parsing newick rooted trees.
-**lex_utree.l**  | Lexical analyzer parsing newick unrooted trees.
-**likelihood.c** | Likelihood computation functions.
-**list.c**       | (Doubly) Linked-list implementations.
-**Makefile**     | Makefile.
-**maps.c**       | Character mapping arrays for converting sequences to the internal representation.
-**models.c**     | Model parameters related functions.
-**output.c**     | Functions for output in terminal (i.e. conditional likelihood arrays, probability matrices).
-**pll.c**        | Functions for setting PLL partitions (instances).
-**rtree.c**      | Rooted tree manipulation functions.
-**utree.c**      | Unrooted tree manipulation functions.
-**parse_rtree.y**| Functions for parsing rooted trees in newick format.
-**parse_utree.y**| Functions for parsing unrooted trees in newick format.
+    File              | Description
+----------------------|----------------
+**fasta.c**           | Functions for parsing FASTA files.
+**gamma.c**           | Functions related to Gamma (&Gamma;) function.
+**lex_rtree.l**       | Lexical analyzer parsing newick rooted trees.
+**lex_utree.l**       | Lexical analyzer parsing newick unrooted trees.
+**likelihood.c**      | Likelihood computation functions.
+**core_likelihood.c** | Core likelihood functions that do not require partition instances.
+**list.c**            | (Doubly) Linked-list implementations.
+**Makefile**          | Makefile.
+**maps.c**            | Character mapping arrays for converting sequences to the internal representation.
+**models.c**          | Model parameters related functions.
+**output.c**          | Functions for output in terminal (i.e. conditional likelihood arrays, probability matrices).
+**pll.c**             | Functions for setting PLL partitions (instances).
+**rtree.c**           | Rooted tree manipulation functions.
+**utree.c**           | Unrooted tree manipulation functions.
+**parse_rtree.y**     | Functions for parsing rooted trees in newick format.
+**parse_utree.y**     | Functions for parsing unrooted trees in newick format.
 
 ## Bugs
 
@@ -155,6 +160,7 @@ However, mistakes may happen. All bug reports are highly appreciated.
 * Tom&aacute;&scaron; Flouri
 * Diego Darriba
 * Kassian Kobert
+* Mark T. Holder
 * Alexandros Stamatakis
 
 ## Contributing to libpll
