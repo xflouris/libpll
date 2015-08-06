@@ -3,12 +3,12 @@
 /* encodes the sequence in a TACG order (CLVs and p-matrix). Note that it
    would be more elegant to do it with a map, i.e. create a pll_map_nt_tacg
    but we use this example to demonstrate pll_set_tip_clv instead */
-double * encode_tacg(const char * seq)
+static double * encode_tacg(const char * seq)
 {
   const int states = 4;
-  int i,j;
+  size_t i,j;
 
-  int len = strlen(seq);
+  size_t len = strlen(seq);
 
   double * enc = (double *)malloc(states * len * sizeof(double));
   for (i = 0, j = 0; i < len; ++i)
@@ -159,7 +159,7 @@ double * encode_tacg(const char * seq)
 
 int main(int argc, char * argv[])
 {
-  int i;
+  unsigned int i;
   pll_partition_t * partition;
   pll_operation_t * operations;
 
@@ -184,7 +184,7 @@ int main(int argc, char * argv[])
 
   /* To be used together with branch_lengths to map branch lengths to 
      probability matrices */
-  int matrix_indices[5] = { 0, 1, 2, 3, 4};
+  unsigned int matrix_indices[5] = { 0, 1, 2, 3, 4};
 
   /* substitution rates for the GTR model */
   double subst_params[6] = {1,1,1,1,1,1};

@@ -2,7 +2,7 @@
 
 int main(int argc, char * argv[])
 {
-  int i;
+  unsigned int i;
   pll_partition_t * partition;
   pll_operation_t * operations;
   int alpha = 1;
@@ -26,7 +26,7 @@ int main(int argc, char * argv[])
 
   /* To be used together with branch_lengths to map branch lengths to 
      probability matrices */
-  int matrix_indices[5] = { 0, 1, 2, 3, 4};
+  unsigned int matrix_indices[5] = { 0, 1, 2, 3, 4};
 
   /* substitution rates for the GTR model */
   double subst_params[6] = {1,1,1,1,1,1};

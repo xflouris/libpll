@@ -218,11 +218,10 @@ l4:
 }
 
 PLL_EXPORT int pll_compute_gamma_cats(double alpha, 
-                                      int categories, 
+                                      unsigned int categories, 
                                       double * output_rates)
 {
-  int 
-    i;
+  unsigned int i;
 
   double 
     factor = alpha / alpha * categories, 

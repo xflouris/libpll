@@ -28,7 +28,7 @@ static void dealloc_partition_data(pll_partition_t * partition);
 
 static void dealloc_partition_data(pll_partition_t * partition)
 {
-  int i;
+  unsigned int i;
 
   if (!partition) return;
 
@@ -87,22 +87,22 @@ static void dealloc_partition_data(pll_partition_t * partition)
   free(partition);
 }
 
-PLL_EXPORT pll_partition_t * pll_partition_create(int tips,
-                                                  int clv_buffers,
-                                                  int states,
-                                                  int sites,
-                                                  int rate_matrices,
-                                                  int prob_matrices,
-                                                  int rate_cats,
-                                                  int scale_buffers,
+PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
+                                                  unsigned int clv_buffers,
+                                                  unsigned int states,
+                                                  unsigned int sites,
+                                                  unsigned int rate_matrices,
+                                                  unsigned int prob_matrices,
+                                                  unsigned int rate_cats,
+                                                  unsigned int scale_buffers,
                                                   int attributes)
 {
-  int i;
+  unsigned int i;
 
   pll_partition_t * partition = (pll_partition_t *)malloc(sizeof(pll_partition_t));
   if (!partition) return PLL_FAILURE;
 
-  int alignment = PLL_ALIGNMENT_CPU;
+  size_t alignment = PLL_ALIGNMENT_CPU;
 #ifdef HAVE_SSE
   if (attributes | PLL_ATTRIBUTE_SSE) alignment = PLL_ALIGNMENT_SSE;
 #endif
@@ -297,7 +297,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(int tips,
   }
 
   /* site weights */
-  partition->pattern_weights = (int *)malloc(partition->sites * sizeof(int));
+  partition->pattern_weights = (unsigned int *)malloc(partition->sites *
+                                                      sizeof(unsigned int));
   if (!partition->pattern_weights)
   {
     dealloc_partition_data(partition);
@@ -333,12 +334,12 @@ PLL_EXPORT void pll_partition_destroy(pll_partition_t * partition)
 }
 
 PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition, 
-                                  int tip_index,
+                                  unsigned int tip_index,
                                   const unsigned int * map,
                                   const char * sequence)
 {
   unsigned int c;
-  int i,j;
+  unsigned int i,j;
   double * tipclv = partition->clv[tip_index];
 
   /* iterate through sites */
@@ -372,10 +373,10 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
 }
 
 PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
-                                int tip_index,
+                                unsigned int tip_index,
                                 const double * clv)
 {
-  int i,j;
+  unsigned int i,j;
   double * tipclv = partition->clv[tip_index];
 
   for (i = 0; i < partition->sites; ++i)
@@ -390,10 +391,9 @@ PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
 }
 
 PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
-                                        const int * pattern_weights)
+                                        const unsigned int * pattern_weights)
 {
-  int i;
-
-  for (i = 0; i < partition->sites; ++i)
-    partition->pattern_weights[i] = pattern_weights[i];
+  memcpy(partition->pattern_weights, 
+         pattern_weights,
+         sizeof(unsigned int)*partition->sites);
 }

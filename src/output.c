@@ -24,12 +24,12 @@
 static void unscale(double * prob, unsigned int times);
 
 void pll_show_pmatrix(pll_partition_t * partition, 
-                      int index, 
-                      int float_precision)
+                      unsigned int index, 
+                      unsigned int float_precision)
 {
-  int i,j,k;
+  unsigned int i,j,k;
   double * pmatrix;
-  int states = partition->states; 
+  unsigned int states = partition->states; 
 
   for (k = 0; k < partition->rate_cats; ++k)
   {
@@ -53,17 +53,17 @@ static void unscale(double * prob, unsigned int times)
 }
 
 void pll_show_clv(pll_partition_t * partition,
-                  int clv_index,
+                  unsigned int clv_index,
                   int scaler_index,
-                  int float_precision)
+                  unsigned int float_precision)
 {
-  int i,j,k;
+  unsigned int i,j,k;
 
   double * clv = partition->clv[clv_index];
   unsigned int * scaler = (scaler_index == PLL_SCALE_BUFFER_NONE) ?
                           NULL : partition->scale_buffer[scaler_index];
-  int states = partition->states;
-  int rates = partition->rate_cats;
+  unsigned int states = partition->states;
+  unsigned int rates = partition->rate_cats;
   double prob;
 
   printf ("[ ");

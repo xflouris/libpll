@@ -89,17 +89,17 @@
 
 typedef struct pll_partition
 {
-  int tips;
-  int clv_buffers;
-  int states;
-  int sites;
-  int rate_matrices;
-  int prob_matrices;
-  int rate_cats;
-  int scale_buffers;
+  unsigned int tips;
+  unsigned int clv_buffers;
+  unsigned int states;
+  unsigned int sites;
+  unsigned int rate_matrices;
+  unsigned int prob_matrices;
+  unsigned int rate_cats;
+  unsigned int scale_buffers;
   int attributes;
 
-  size_t alignment;
+  unsigned int alignment;
 
   double ** clv;
   double ** pmatrix;
@@ -109,7 +109,7 @@ typedef struct pll_partition
   double ** frequencies;
   double * prop_invar;
   int * invariant;
-  int * pattern_weights;
+  unsigned int * pattern_weights;
 
   int * eigen_decomp_valid;
   double ** eigenvecs;
@@ -122,13 +122,13 @@ typedef struct pll_partition
 
 typedef struct pll_operation
 {
-  int parent_clv_index;
+  unsigned int parent_clv_index;
   int parent_scaler_index;
-  int child1_clv_index;
-  int child1_matrix_index;
+  unsigned int child1_clv_index;
+  unsigned int child1_matrix_index;
   int child1_scaler_index;
-  int child2_clv_index;
-  int child2_matrix_index;
+  unsigned int child2_clv_index;
+  unsigned int child2_matrix_index;
   int child2_scaler_index;
 } pll_operation_t;
 
@@ -162,9 +162,9 @@ typedef struct pll_utree
 {
   char * label;
   double length;
-  int clv_index;
+  unsigned int clv_index;
   int scaler_index;
-  int pmatrix_index;
+  unsigned int pmatrix_index;
   struct pll_utree * next;
   struct pll_utree * back;
 
@@ -175,9 +175,9 @@ typedef struct pll_rtree
 {
   char * label;
   double length;
-  int clv_index;
+  unsigned int clv_index;
   int scaler_index;
-  int pmatrix_index;
+  unsigned int pmatrix_index;
   struct pll_rtree * left;
   struct pll_rtree * right;
   struct pll_rtree * parent;
@@ -240,29 +240,29 @@ extern "C" {
 
 /* functions in pll.c */
 
-PLL_EXPORT pll_partition_t * pll_partition_create(int tips,
-                                                  int clv_buffers,
-                                                  int states,
-                                                  int sites,
-                                                  int rate_matrices,
-                                                  int prob_matrices,
-                                                  int rate_cats,
-                                                  int scale_buffers,
+PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
+                                                  unsigned int clv_buffers,
+                                                  unsigned int states,
+                                                  unsigned int sites,
+                                                  unsigned int rate_matrices,
+                                                  unsigned int prob_matrices,
+                                                  unsigned int rate_cats,
+                                                  unsigned int scale_buffers,
                                                   int attributes);
 
 PLL_EXPORT void pll_partition_destroy(pll_partition_t * partition);
 
 PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition, 
-                                  int tip_index, 
+                                  unsigned int tip_index, 
                                   const unsigned int * map,
                                   const char * sequence);
 
 PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
-                                int tip_index,
+                                unsigned int tip_index,
                                 const double * clv);
 
 PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
-                                        const int * pattern_weights);
+                                        const unsigned int * pattern_weights);
 
 /* functions in dlist.c */
 
@@ -273,63 +273,63 @@ PLL_EXPORT int pll_dlist_prepend(pll_dlist_t ** dlist, void * data);
 /* functions in models.c */
 
 PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition, 
-                                     int params_index, 
+                                     unsigned int params_index, 
                                      const double * params);
 
 PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
-                                    int params_index,
+                                    unsigned int params_index,
                                     const double * frequencies);
 
 PLL_EXPORT void pll_set_category_rates(pll_partition_t * partition,
                                        const double * rates);
 
 PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
-                                         int params_index, 
-                                         int * matrix_indices, 
+                                         unsigned int params_index, 
+                                         unsigned int * matrix_indices, 
                                          double * branch_lengths, 
-                                         int count);
+                                         unsigned int count);
 
 PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition);
 
 PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition,
-                                                     int params_index,
+                                                     unsigned int params_index,
                                                      double prop_invar);
 
 /* functions in likelihood.c */
 
 PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
                                     const pll_operation_t * operations,
-                                    int count);
+                                    unsigned int count);
 
 PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
-                                                 int clv_index,
+                                                 unsigned int clv_index,
                                                  int scaler_index,
-                                                 int freqs_index);
+                                                 unsigned int freqs_index);
 
 PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
-                                                 int parent_clv_index,
+                                                 unsigned int parent_clv_index,
                                                  int parent_scaler_index,
-                                                 int child_clv_index,
+                                                 unsigned int child_clv_index,
                                                  int child_scaler_index,
-                                                 int matrix_index,
-                                                 int freqs_index);
+                                                 unsigned int matrix_index,
+                                                 unsigned int freqs_index);
 
 /* functions in gamma.c */
 
 PLL_EXPORT int pll_compute_gamma_cats(double alpha,
-                                      int categories,
+                                      unsigned int categories,
                                       double * output_rates);
 
 /* functions in output.c */
 
 PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition,
-                                 int index,
-                                 int float_precision);
+                                 unsigned int index,
+                                 unsigned int float_precision);
 
 PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
-                             int clv_index,
+                             unsigned int clv_index,
                              int scaler_index,
-                             int float_precision);
+                             unsigned int float_precision);
 
 /* functions in fasta.c */
 
@@ -351,14 +351,14 @@ PLL_EXPORT int pll_fasta_rewind(pll_fasta_t * fd);
 /* functions in parse_rtree.y */
 
 PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
-                                                int * tip_count);
+                                                unsigned int * tip_count);
 
 PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root);
 
 /* functions in parse_utree.y */
 
 PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
-                                                int * tip_count);
+                                                unsigned int * tip_count);
 
 PLL_EXPORT void pll_utree_destroy(pll_utree_t * root);
 
@@ -379,12 +379,12 @@ PLL_EXPORT int pll_utree_query_innernodes(pll_utree_t * root,
                                           pll_utree_t ** node_list);
 
 PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
-                                            int trav_buffer_size,
+                                            unsigned int trav_buffer_size,
                                             double * branches,
-                                            int * pmatrix_indices,
+                                            unsigned int * pmatrix_indices,
                                             pll_operation_t * ops,
-                                            int * matrix_count,
-                                            int * ops_count);
+                                            unsigned int * matrix_count,
+                                            unsigned int * ops_count);
 
 /* functions in rtree.c */
 
@@ -403,12 +403,12 @@ PLL_EXPORT int pll_rtree_query_innernodes(pll_rtree_t * root,
                                           pll_rtree_t ** node_list);
 
 PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
-                                            int trav_buffer_size,
+                                            unsigned int trav_buffer_size,
                                             double * branches,
-                                            int * pmatrix_indices,
+                                            unsigned int * pmatrix_indices,
                                             pll_operation_t * ops,
-                                            int * matrix_count,
-                                            int * ops_count);
+                                            unsigned int * matrix_count,
+                                            unsigned int * ops_count);
 
 /* functions in core_likelihood.c */
 

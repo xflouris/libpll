@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2015 Diego Darriba
+    Copyright (C) 2015 Diego Darriba, Tomas Flouri
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -26,17 +26,17 @@
 
 #define FLOAT_PRECISION 5
 
-double titv = 2.5;
+static double titv = 2.5;
 
-  double alpha[NUM_ALPHAS] = {0.1, 0.5, 0.75, 1, 1.5, 5, 10, 50, 100};
-  int n_cat_gamma[NUM_CATS] = {1, 2, 4, 8, 16};
+static double alpha[NUM_ALPHAS] = {0.1, 0.5, 0.75, 1, 1.5, 5, 10, 50, 100};
+static unsigned int n_cat_gamma[NUM_CATS] = {1, 2, 4, 8, 16};
 
 int main(int argc, char * argv[])
 {
-  int i,j, k;
+  unsigned int i,j, k;
   double lk_scores[NUM_ALPHAS * NUM_CATS];
-  int n_sites     = 20;
-  int n_tips      = 5;
+  unsigned int n_sites = 20;
+  unsigned int n_tips = 5;
   pll_operation_t * operations;
 
   operations = (pll_operation_t *)malloc(4* sizeof(pll_operation_t));
@@ -80,7 +80,7 @@ int main(int argc, char * argv[])
                                      0,           /* scale buffers */
                                      1);          /* attributes */
 
-    if (partition == PLL_FAILURE) 
+    if (!partition) 
     {
       printf("Fail creating partition");
       continue;
@@ -88,7 +88,7 @@ int main(int argc, char * argv[])
 
     double branch_lengths[4] = { 0.1, 0.2, 1, 1};
     double frequencies[4] = { 0.3, 0.4, 0.1, 0.2 };
-    int matrix_indices[4] = { 0, 1, 2, 3 };
+    unsigned int matrix_indices[4] = { 0, 1, 2, 3 };
     double subst_params[6] = {1,titv,1,1,titv,1};
 
     pll_set_frequencies(partition, 0, frequencies);

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2015 Diego Darriba
+    Copyright (C) 2015 Diego Darriba, Tomas Flouri
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -25,19 +25,19 @@
 
 #define FLOAT_PRECISION 5
 
-double titv[NUM_TESTS] = { 
+static double titv[NUM_TESTS] = { 
     0.175, 1, 1.5, 2.25, 2.725, 4, 7.125, 8.19283745, 9.73647382, 10 
 };
 
 int main(int argc, char * argv[])
 {
-  int i,j;
+  unsigned int i,j;
   double lk_scores[NUM_TESTS];
 
   double alpha    = 1.0;
-  int n_cat_gamma = 4;
-  int n_sites     = 20;
-  int n_tips      = 5;
+  unsigned int n_cat_gamma = 4;
+  unsigned int n_sites     = 20;
+  unsigned int n_tips      = 5;
 
   pll_partition_t * partition;
   pll_operation_t * operations;
@@ -52,7 +52,7 @@ int main(int argc, char * argv[])
                                    1);          /* attributes */
   double branch_lengths[4] = { 0.1, 0.2, 1, 1};
   double frequencies[4] = { 0.3, 0.4, 0.1, 0.2 };
-  int matrix_indices[4] = { 0, 1, 2, 3 };
+  unsigned int matrix_indices[4] = { 0, 1, 2, 3 };
   double subst_params[6] = {1,1,1,1,1,1};
   double rate_cats[4];
 

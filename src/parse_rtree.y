@@ -25,7 +25,7 @@ extern int pll_rtree_lex();
 extern FILE * pll_rtree_in;
 extern void pll_rtree_lex_destroy();
 
-static int tip_cnt = 0;
+static unsigned int tip_cnt = 0;
 
 void pll_rtree_destroy(pll_rtree_t * root)
 {
@@ -117,8 +117,8 @@ number: NUMBER   { $$=$1;};
 %%
 
 static void recursive_assign_indices(pll_rtree_t * node,
-                                     int * tip_clv_index,
-                                     int * inner_clv_index,
+                                     unsigned int * tip_clv_index,
+                                     unsigned int * inner_clv_index,
                                      int * inner_scaler_index)
 {
   if (!node->left)
@@ -148,10 +148,10 @@ static void recursive_assign_indices(pll_rtree_t * node,
   *inner_scaler_index = *inner_scaler_index + 1;
 }
 
-static void assign_indices(pll_rtree_t * root, int tip_count)
+static void assign_indices(pll_rtree_t * root, unsigned int tip_count)
 {
-  int tip_clv_index = 0;
-  int inner_clv_index = tip_count;
+  unsigned int tip_clv_index = 0;
+  unsigned int inner_clv_index = tip_count;
   int inner_scaler_index = 0;
 
   recursive_assign_indices(root->left,
@@ -166,10 +166,13 @@ static void assign_indices(pll_rtree_t * root, int tip_count)
 
   root->clv_index = inner_clv_index;
   root->scaler_index = inner_scaler_index;
-  root->pmatrix_index = -1;
+
+  /* root gets any number for pmatrix since it will never be used */
+  root->pmatrix_index = 0; 
 }
 
-pll_rtree_t * pll_rtree_parse_newick(const char * filename, int * tip_count)
+pll_rtree_t * pll_rtree_parse_newick(const char * filename,
+                                     unsigned int * tip_count)
 {
   struct pll_rtree * tree;
 
