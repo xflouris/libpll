@@ -49,17 +49,17 @@ static int dlist_insert(pll_dlist_t ** dlist, void * data, int insert_end)
 
 }
 
-int pll_dlist_append(pll_dlist_t ** dlist, void * data)
+PLL_EXPORT int pll_dlist_append(pll_dlist_t ** dlist, void * data)
 {
   return dlist_insert(dlist, data, 1);
 }
 
-int pll_dlist_prepend(pll_dlist_t ** dlist, void * data)
+PLL_EXPORT int pll_dlist_prepend(pll_dlist_t ** dlist, void * data)
 {
   return dlist_insert(dlist, data, 0);
 }
 
-int pll_dlist_remove(pll_dlist_t ** dlist, void * data)
+PLL_EXPORT int pll_dlist_remove(pll_dlist_t ** dlist, void * data)
 {
   for (; (*dlist) && (*dlist)->data != data; dlist = &((*dlist)->next));
 

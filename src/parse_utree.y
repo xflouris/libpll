@@ -45,7 +45,7 @@ static void dealloc_tree_recursive(pll_utree_t * node)
   free(node);
 }
 
-void pll_utree_destroy(pll_utree_t * root)
+PLL_EXPORT void pll_utree_destroy(pll_utree_t * root)
 {
   if (!root) return;
   if (!(root->next))
@@ -244,8 +244,8 @@ static void assign_indices(pll_utree_t * node, unsigned int tip_count)
   node->next->next->pmatrix_index = node->next->next->back->pmatrix_index;
 }
 
-pll_utree_t * pll_utree_parse_newick(const char * filename,
-                                     unsigned int * tip_count)
+PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
+                                                unsigned int * tip_count)
 {
   struct pll_utree * tree;
 

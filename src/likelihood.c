@@ -79,9 +79,9 @@ static void update_partials(pll_partition_t * partition,
   }
 }
 
-void pll_update_partials(pll_partition_t * partition,
-                         const pll_operation_t * operations,
-                         unsigned int count)
+PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
+                                    const pll_operation_t * operations,
+                                    unsigned int count)
 {
   unsigned int i,j;
 
@@ -129,10 +129,10 @@ void pll_update_partials(pll_partition_t * partition,
   }
 }
 
-double pll_compute_root_loglikelihood(pll_partition_t * partition, 
-                                      unsigned int clv_index, 
-                                      int scaler_index,
-                                      unsigned int freqs_index)
+PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
+                                                 unsigned int clv_index,
+                                                 int scaler_index,
+                                                 unsigned int freqs_index)
 {
   unsigned int i,j,k;
 
@@ -186,13 +186,13 @@ double pll_compute_root_loglikelihood(pll_partition_t * partition,
   return logl;
 }
 
-double pll_compute_edge_loglikelihood(pll_partition_t * partition, 
-                                      unsigned int parent_clv_index, 
-                                      int parent_scaler_index,
-                                      unsigned int child_clv_index, 
-                                      int child_scaler_index,
-                                      unsigned int matrix_index,
-                                      unsigned int freqs_index)
+PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
+                                                 unsigned int parent_clv_index,
+                                                 int parent_scaler_index,
+                                                 unsigned int child_clv_index,
+                                                 int child_scaler_index,
+                                                 unsigned int matrix_index,
+                                                 unsigned int freqs_index)
 {
   unsigned int n,i,j,k;
   double logl = 0;

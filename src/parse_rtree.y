@@ -27,7 +27,7 @@ extern void pll_rtree_lex_destroy();
 
 static unsigned int tip_cnt = 0;
 
-void pll_rtree_destroy(pll_rtree_t * root)
+PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root)
 {
   if (!root) return;
 
@@ -171,8 +171,8 @@ static void assign_indices(pll_rtree_t * root, unsigned int tip_count)
   root->pmatrix_index = 0; 
 }
 
-pll_rtree_t * pll_rtree_parse_newick(const char * filename,
-                                     unsigned int * tip_count)
+PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
+                                                unsigned int * tip_count)
 {
   struct pll_rtree * tree;
 

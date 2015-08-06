@@ -14,8 +14,9 @@ properties:
 * 64-bit multi-threaded design that handles very large datasets.
 * easy to use and well-documented.
 * SIMD implementations of time-consuming parts.
-* Comparably fast likelihood computations as RAxML (Stamatakis 2014).
+* comparably fast likelihood computations as RAxML (Stamatakis 2014).
 * generic and clean design.
+* Linux, Mac, and Microsoft Windows compatibility.
 
 ## Compilation instructions
 
@@ -34,6 +35,9 @@ and cross-platform library.
 The library can be compiled using the included Makefile:
 
 `make`
+
+Microsoft Windows compatibility was tested with a cross-compiler and seems to
+work out-of-the-box using [MingW](http://www.mingw.org/).
 
 ## Available functionality
 
@@ -114,6 +118,8 @@ Below is a list of available functions in the current version.
 ### Auxiliary functions
 
 * `int pll_compute_gamma_cats(double alpha, unsigned int categories, double * output_rates);`
+* `void * pll_aligned_alloc(size_t size, size_t alignment);`
+* `void pll_aligned_free(void * ptr);`
 
 ## Usage examples
 

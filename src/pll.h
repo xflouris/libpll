@@ -31,11 +31,11 @@
 
 /* platform specific */
 
-#ifndef __APPLE__
+#if (!defined(__APPLE__) && !defined(__WIN32__) && !defined(__WIN64__))
 #include <sys/sysinfo.h>
 #endif
 
-#ifdef _WIN32
+#if (defined(__WIN32__) || defined(__WIN64__))
 #define PLL_EXPORT __declspec(dllexport)
 #else
 #define PLL_EXPORT
@@ -264,7 +264,7 @@ PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
 PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
                                         const unsigned int * pattern_weights);
 
-/* functions in dlist.c */
+/* functions in list.c */
 
 PLL_EXPORT int pll_dlist_append(pll_dlist_t ** dlist, void * data);
 PLL_EXPORT int pll_dlist_remove(pll_dlist_t ** dlist, void * data);
@@ -294,6 +294,10 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition);
 PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition,
                                                      unsigned int params_index,
                                                      double prop_invar);
+
+PLL_EXPORT void * pll_aligned_alloc(size_t size, size_t alignment);
+
+PLL_EXPORT void pll_aligned_free(void * ptr);
 
 /* functions in likelihood.c */
 

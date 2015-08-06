@@ -106,7 +106,7 @@ static unsigned int tree_indend_level(pll_utree_t * tree, unsigned int indend)
   return (a > b ? a : b);
 }
 
-void pll_utree_show_ascii(pll_utree_t * tree, int options)
+PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options)
 {
   unsigned int a, b;
   

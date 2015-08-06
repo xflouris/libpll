@@ -246,11 +246,11 @@ static double ** create_ratematrix(double * params,
   return qmatrix;
 }
 
-void pll_update_prob_matrices(pll_partition_t * partition, 
-                              unsigned int params_index, 
-                              unsigned int * matrix_indices, 
-                              double * branch_lengths, 
-                              unsigned int count)
+PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
+                                         unsigned int params_index, 
+                                         unsigned int * matrix_indices, 
+                                         double * branch_lengths, 
+                                         unsigned int count)
 {
   unsigned int i,j,k,m,n;
   double *e, *d;
@@ -357,9 +357,9 @@ void pll_update_prob_matrices(pll_partition_t * partition,
 }
 
 
-void pll_set_frequencies(pll_partition_t * partition, 
-                         unsigned int params_index, 
-                         const double * frequencies)
+PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
+                                    unsigned int params_index, 
+                                    const double * frequencies)
 {
   memcpy(partition->frequencies[params_index], 
          frequencies, 
@@ -367,15 +367,15 @@ void pll_set_frequencies(pll_partition_t * partition,
   partition->eigen_decomp_valid[params_index] = 0;
 }
 
-void pll_set_category_rates(pll_partition_t * partition,
-                            const double * rates)
+PLL_EXPORT void pll_set_category_rates(pll_partition_t * partition,
+                                       const double * rates)
 {
   memcpy(partition->rates, rates, partition->rate_cats*sizeof(double));
 }
 
-void pll_set_subst_params(pll_partition_t * partition, 
-                          unsigned int params_index, 
-                          const double * params)
+PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition,
+                                     unsigned int params_index,
+                                     const double * params)
 {
   unsigned int count = partition->states * (partition->states-1) / 2;
 
