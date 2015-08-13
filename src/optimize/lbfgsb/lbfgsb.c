@@ -19,6 +19,7 @@
  */
 #include "lbfgsb.h"
 #include <time.h>
+#include <assert.h>
 
 static int c__1 = 1;
 
@@ -45,6 +46,8 @@ int setulb(int *n, int *m, double *x,
 	iwa, int *task, int *iprint, int *csave, logical *lsave,
 	int *isave, double *dsave) /* ftnlen task_len, ftnlen csave_len) */
 {
+    int i;
+
     /* System generated locals */
     int i__1;
 
@@ -224,6 +227,13 @@ int setulb(int *n, int *m, double *x,
 
     ************
     */
+
+#ifndef NDEBUG
+    /* assert that the lower bounds are greater or equal than the LBFGS ERROR */
+    for (i=0; i<*n;i++)
+      assert(!(nbd[i]==1 || nbd[i]==2) || l[i]>=PLL_LBFGSB_ERROR);
+#endif
+
 /* -jlm-jn */
     /* Parameter adjustments */
     --iwa;

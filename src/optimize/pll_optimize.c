@@ -630,7 +630,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
       for (i = 0; i < n_freqs_free_params; i++)
       {
         nbd_ptr[i] = PLL_LBFGSB_BOUND_BOTH;
-        l_ptr[i] = 0.00001;
+        l_ptr[i] = PLL_LBFGSB_ERROR;
         u_ptr[i] = 1000;
         x[check_n + i] = params->freq_ratios[i];
       }
@@ -642,7 +642,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     if (params->which_parameters & PLL_PARAMETER_PINV)
     {
       *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
-      *l_ptr = 0.0;
+      *l_ptr = PLL_LBFGSB_ERROR;
       *u_ptr = 0.99;
       x[check_n] = partition->prop_invar[params->params_index];
       check_n += 1;
@@ -683,7 +683,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
       for (i = 0; i < num_branch_lengths; i++)
       {
         nbd_ptr[i] = PLL_LBFGSB_BOUND_LOWER;
-        l_ptr[i] = 0.00001;
+        l_ptr[i] = 0.0001;
         x[check_n + i] = params->lk_params.branch_lengths[i];
       }
       check_n += num_branch_lengths;
@@ -702,8 +702,6 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
       (2 * (size_t)max_corrections + 5) * (size_t)num_variables
           + 12 * (size_t)max_corrections * ((size_t)max_corrections + 1),
       sizeof(double));
-
-  double ini_score = compute_lnl_unrooted (params, 0);
 
   int continue_opt = 1;
   while (continue_opt)
@@ -725,11 +723,10 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
       double h, temp;
       for (i = 0; i < num_variables; i++)
       {
-        double ERROR_X = 1.0e-4;
         temp = x[i];
-        h = ERROR_X * fabs (temp);
+        h = PLL_LBFGSB_ERROR * fabs (temp);
         if (h < 1e-12)
-          h = ERROR_X;
+          h = PLL_LBFGSB_ERROR;
 
         x[i] = temp + h;
         h = x[i] - temp;
@@ -740,10 +737,8 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
         /* reset variable */
         x[i] = temp;
       }
-//      if (!set_x_to_parameters (params, x))
-//      {
-//        return -INFINITY;
-//      }
+      if (!set_x_to_parameters (params, x))
+        return -INFINITY;
     }
     else if (*task != NEW_X)
     {
@@ -761,11 +756,6 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
 
   return score;
 } /* pll_optimize_parameters_lbfgsb */
-
-static int cb_full_traversal(pll_utree_t * node)
-{
-    return 1;
-}
 
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                               pll_optimize_options_t * params,

@@ -20,6 +20,8 @@
 #ifndef LBFGSB_H
 #define LBFGSB_H
 
+#define PLL_LBFGSB_ERROR             1.0e-4
+
 typedef int ftnlen;
 typedef int logical;
 #define TRUE_  (1)

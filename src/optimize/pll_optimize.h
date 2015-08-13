@@ -42,9 +42,9 @@
 #define PLL_LBFGSB_BOUND_BOTH  2
 #define PLL_LBFGSB_BOUND_UPPER 3
 
-#define PLL_OPT_MIN_BRANCH_LEN       1e-8
-#define PLL_OPT_DEFAULT_BRANCH_LEN   1e-8
-#define PLL_OPT_LNL_UNLIKELY       -1e+80
+#define PLL_OPT_MIN_BRANCH_LEN       1.0e-4
+#define PLL_OPT_DEFAULT_BRANCH_LEN   1.0e-2
+#define PLL_OPT_LNL_UNLIKELY         -1e+80
 
 /* error codes */
 
