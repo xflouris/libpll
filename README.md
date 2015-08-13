@@ -47,8 +47,8 @@ Below is a list of available functions in the current version.
 
 ### Partition (instance) manipulation
 
-* `pll_partition_t * pll_create_partition(int tips, int clv_buffers, int states, int sites, int rate_matrices, int prob_matrices, int rate_cats, int scale_buffers, int attributes);`
-* `int pll_destroy_partition(pll_partition_t * partition);`
+* `pll_partition_t * pll_partition_create(int tips, int clv_buffers, int states, int sites, int rate_matrices, int prob_matrices, int rate_cats, int scale_buffers, int attributes);`
+* `void pll_partition_destroy(pll_partition_t * partition);`
 
 ### Linked lists
 
@@ -59,24 +59,25 @@ Below is a list of available functions in the current version.
 ### Models setup
 
 * `void pll_set_subst_params(pll_partition_t * partition, int params_index, const double * params);`
-* `void pll_set_frequencies(pll_partition_t * partition, pll_partition_t * partition, int params_index, const double * frequencies);`
+* `void pll_set_frequencies(pll_partition_t * partition, int params_index, const double * frequencies);`
 * `void pll_set_category_rates(pll_partition_t * partition, const double * rates);`
-* `void pll_update_prob_matrices(pll_partition_t * partition, int params_index, int * matrix_indices, double * branch_lenghts);`
+* `void pll_update_prob_matrices(pll_partition_t * partition, int params_index, int * matrix_indices, double * branch_lenghts, int count);`
 * `int pll_set_tip_states(pll_partition_t * partition, int tip_index, const unsigned int * map, const char * sequence);`
 * `void pll_set_tip_clv(pll_partition_t * partition, int tip_index, const double * clv);`
+* `void pll_set_pattern_weights(pll_partition_t * partition, const int * pattern_weights);`
 * `int pll_update_invariant_sites_proportion(pll_partition_t * partition, int params_index, double prop_invar);`
 * `int pll_update_invariant_sites(pll_partition_t * partition);`
 
 ### Likelihood computation
 
 * `void pll_update_partials(pll_partition_t * partition, const pll_operation_t * operations, int count);`
-* `double pll_compute_root_loglikelihood(pll_partition_t * partition, int clv_index, int freqs_index);`
-* `double pll_compute_edge_loglikelihood(pll_partition_t * partition, int parent_clv_index, int child_clv_index, int matrix_index, int freqs_index);`
+* `double pll_compute_root_loglikelihood(pll_partition_t * partition, int clv_index, int scaler_index, int freqs_index);`
+* `double pll_compute_edge_loglikelihood(pll_partition_t * partition, int parent_clv_index, int parent_scaler_index, int child_clv_index, int child_scaler_index, int matrix_index, int freqs_index);`
 
 ### Output functions
 
 * `void pll_show_pmatrix(pll_partition_t * partition, int index, int float_precision);`
-* `void pll_show_clv(pll_partition_t * partition, int index, int float_precision);`
+* `void pll_show_clv(pll_partition_t * partition, int index, int scaler_index, int float_precision);`
 
 ### Functions for parsing files
 
@@ -85,27 +86,36 @@ Below is a list of available functions in the current version.
 * `void pll_fasta_close(pll_fasta_t * fd);`
 * `long pll_fasta_getfilesize(pll_fasta_t * fd);`
 * `long pll_fasta_getfilepos(pll_fasta_t * fd);`
-* `pll_utree_t * pll_parse_newick_utree(const char * filename, int * tip_count);`
-* `pll_rtree_t * pll_parse_newick_rtree(const char * filename, int * tip_count);`
-* `void pll_destroy_utree(pll_utree_t * root);`
-* `void pll_destroy_rtree(pll_rtree_t * root);`
+* `int pll_fasta_rewind(pll_fasta_t * fd);`
+* `pll_utree_t * pll_utree_parse_newick(const char * filename, int * tip_count);`
+* `pll_rtree_t * pll_rtree_parse_newick(const char * filename, int * tip_count);`
+* `void pll_utree_destroy(pll_utree_t * root);`
+* `void pll_rtree_destroy(pll_rtree_t * root);`
 
 ### Tree manipulation functions
 
-* `void pll_show_ascii_utree(pll_utree_t * tree);`
-* `void pll_show_ascii_rtree(pll_rtree_t * tree);`
-* `char * pll_write_newick_utree(pll_utree_t * root);`
-* `char * pll_write_newick_rtree(pll_rtree_t * root);`
-* `char ** pll_query_utree_tipnames(pll_utree_t * tree, int tips);`
-* `char ** pll_query_rtree_tipnames(pll_rtree_t * tree, int tips);`
-* `void pll_traverse_utree(pll_utree_t * tree, int tips, double ** branch_lengths, int ** indices, pll_operation_t ** ops, int * edge_pmatrix_index, int * edge_node1_clv_index, int * edge_node2_clv_index);`
-* `void pll_traverse_rtree(pll_rtree_t * tree, int tips, double ** branch_lengths, int ** indices, pll_operation_t ** ops, int * root_clv_index, int * root_scaler_index);`
+* `void pll_utree_show_ascii(pll_utree_t * tree);`
+* `void pll_rtree_show_ascii(pll_rtree_t * tree);`
+* `char * pll_utree_export_newick(pll_utree_t * root);`
+* `char * pll_rtree_exprot_newick(pll_rtree_t * root);`
+* `int pll_utree_query_tipnodes(pll_utree_t * root, pll_utree_t ** node_list);`
+* `int pll_utree_query_innernodes(pll_utree_t * root, pll_utree_t ** node_list);`
+* `void pll_utree_create_operations(pll_utree_t ** trav_buffer, int trav_buffer_size, double * branches, int * pmatrix_indices, pll_operation_t * ops, int * matrix_count, int * ops_count);`
+* `int pll_rtree_query_tipnodes(pll_rtree_t * root, pll_rtree_t ** node_list);`
+* `int pll_rtree_query_innernodes(pll_rtree_t * root, pll_rtree_t ** node_list);`
+* `void pll_rtree_create_operations(pll_utree_t ** trav_buffer, int trav_buffer_size, double * branches, int * pmatrix_indices, pll_operation_t * ops, int * matrix_count, int * ops_count);`
+* `int pll_utree_traverse(pll_utree_t * tree, int (*cbtrav)(pll_utree_t *), pll_utree_t ** outbuffer);`
+* `int pll_rtree_traverse(pll_rtree_t * tree, int (*cbtrav)(pll_rtree_t *), pll_rtree_t ** outbuffer);`
 
 ### Auxiliary functions
 
 * `int pll_compute_gamma_cats(double alpha, int categories, double * output_rates);`
 
 ## Usage examples
+
+Please refer to the [wiki page](https://github.com/xflouris/libpll/wiki) and/or the [examples directory](https://github.com/xflouris/libpll/tree/master/examples).
+
+## Documentation
 
 Please refer to the [wiki page](https://github.com/xflouris/libpll/wiki).
 
