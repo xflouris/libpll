@@ -6,6 +6,8 @@
 #define STATES    4
 #define RATE_CATS 4
 
+static void fatal(const char * format, ...) __attribute__ ((noreturn));
+
 /* a callback function for performing a full traversal */
 static int cb_full_traversal(pll_rtree_t * node)
 {
@@ -32,8 +34,8 @@ static void set_missing_branch_length(pll_rtree_t * tree, double length)
 {
   if (tree)
   {
-    set_missing_branch_length_recursive(tree->left,  0.000001);
-    set_missing_branch_length_recursive(tree->right, 0.000001);
+    set_missing_branch_length_recursive(tree->left,  length);
+    set_missing_branch_length_recursive(tree->right, length);
   }
 }
 
@@ -49,10 +51,10 @@ static void fatal(const char * format, ...)
 
 int main(int argc, char * argv[])
 {
-  int i;
-  int tip_nodes_count, inner_nodes_count, nodes_count, branch_count;
-  int matrix_count, ops_count;
-  int * matrix_indices;
+  unsigned int i;
+  unsigned int tip_nodes_count, inner_nodes_count, nodes_count, branch_count;
+  unsigned int matrix_count, ops_count;
+  unsigned int * matrix_indices;
   double * branch_lengths;
   pll_partition_t * partition;
   pll_operation_t * operations;
@@ -62,6 +64,8 @@ int main(int argc, char * argv[])
     fatal(" syntax: %s [newick] [fasta]", argv[0]);
 
   pll_rtree_t * tree = pll_rtree_parse_newick(argv[1], &tip_nodes_count);
+  if (!tree)
+    fatal("Tree must be an rooted binary tree");
   
   /* fix all missing branch lengths (i.e. those that did not appear in the 
      newick) to 0.000001 */
@@ -98,7 +102,8 @@ int main(int argc, char * argv[])
   hcreate(tip_nodes_count);
 
   /* populate a libc hash table with tree tip labels */
-  int * data = (int *)malloc(tip_nodes_count * sizeof(int));
+  unsigned int * data = (unsigned int *)malloc(tip_nodes_count *
+                                               sizeof(unsigned int));
   for (i = 0; i < tip_nodes_count; ++i)
   {
     data[i] = i;
@@ -129,6 +134,10 @@ int main(int argc, char * argv[])
   {
     if (i >= tip_nodes_count)
       fatal("FASTA file contains more sequences than expected");
+
+    /* assert that sequence length is not longer than the number unsigned int
+       can store */
+    assert(!(seqlen & ((unsigned long)(~0) ^ (unsigned int)(~0))));
 
     if (sites != -1 && sites != seqlen)
       fatal("FASTA file does not contain equal size sequences\n");
@@ -169,7 +178,7 @@ int main(int argc, char * argv[])
   partition = pll_partition_create(tip_nodes_count,
                                    inner_nodes_count,
                                    STATES,
-                                   sites,
+                                   (unsigned int)sites,
                                    1,
                                    branch_count,
                                    RATE_CATS,
@@ -188,7 +197,7 @@ int main(int argc, char * argv[])
     if (!found)
       fatal("Sequence with header %s does not appear in the tree", hdr);
         
-    int tip_clv_index = *((int *)(found->data));
+    unsigned int tip_clv_index = *((unsigned int *)(found->data));
 
     pll_set_tip_states(partition, tip_clv_index, pll_map_nt, seqdata[i]);
   }
@@ -218,7 +227,7 @@ int main(int argc, char * argv[])
 
 
   branch_lengths = (double *)malloc(branch_count * sizeof(double));
-  matrix_indices = (int *)malloc(branch_count * sizeof(int));
+  matrix_indices = (unsigned int *)malloc(branch_count * sizeof(unsigned int));
   operations = (pll_operation_t *)malloc(inner_nodes_count *
                                                 sizeof(pll_operation_t));
 
@@ -234,7 +243,7 @@ int main(int argc, char * argv[])
      structure, and the corresponding probability matrix indices that
      may need recomputing */
   pll_rtree_create_operations(travbuffer,
-                              traversal_size,
+                              (unsigned int)traversal_size,
                               branch_lengths,
                               matrix_indices,
                               operations,

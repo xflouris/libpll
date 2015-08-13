@@ -25,7 +25,7 @@ extern int pll_utree_lex();
 extern FILE * pll_utree_in;
 extern void pll_utree_lex_destroy();
 
-static int tip_cnt = 0;
+static unsigned int tip_cnt = 0;
 
 static void dealloc_tree_recursive(pll_utree_t * node)
 {
@@ -45,7 +45,7 @@ static void dealloc_tree_recursive(pll_utree_t * node)
   free(node);
 }
 
-void pll_utree_destroy(pll_utree_t * root)
+PLL_EXPORT void pll_utree_destroy(pll_utree_t * root)
 {
   if (!root) return;
   if (!(root->next))
@@ -171,8 +171,8 @@ number: NUMBER   { $$=$1;};
 %%
 
 static void recursive_assign_indices(pll_utree_t * node,
-                                    int * tip_clv_index,
-                                    int * inner_clv_index,
+                                    unsigned int * tip_clv_index,
+                                    unsigned int * inner_clv_index,
                                     int * inner_scaler_index)
 {
   if (!node->next)
@@ -210,10 +210,10 @@ static void recursive_assign_indices(pll_utree_t * node,
   *inner_scaler_index = *inner_scaler_index + 1;
 }
 
-static void assign_indices(pll_utree_t * node, int tip_count)
+static void assign_indices(pll_utree_t * node, unsigned int tip_count)
 {
-  int tip_clv_index = 0;
-  int inner_clv_index = tip_count;
+  unsigned int tip_clv_index = 0;
+  unsigned int inner_clv_index = tip_count;
   int inner_scaler_index = 0;
 
   recursive_assign_indices(node->back,
@@ -244,7 +244,8 @@ static void assign_indices(pll_utree_t * node, int tip_count)
   node->next->next->pmatrix_index = node->next->next->back->pmatrix_index;
 }
 
-pll_utree_t * pll_utree_parse_newick(const char * filename, int * tip_count)
+PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
+                                                unsigned int * tip_count)
 {
   struct pll_utree * tree;
 

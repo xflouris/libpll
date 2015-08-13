@@ -21,9 +21,9 @@
 
 #include "pll.h"
 
-static int mytqli(double *d, double *e, const int n, double **z)
+static int mytqli(double *d, double *e, const unsigned int n, double **z)
 {
-  int     m, l, iter, i, k;
+  unsigned int     m, l, iter, i, k;
   double  s, r, p, g, f, dd, c, b;
    
   for (i = 2; i <= n; i++)
@@ -97,9 +97,9 @@ static int mytqli(double *d, double *e, const int n, double **z)
  }
 
 
-static void mytred2(double **a, const int n, double *d, double *e)
+static void mytred2(double **a, const unsigned int n, double *d, double *e)
 {
-  int     l, k, j, i;
+  unsigned int     l, k, j, i;
   double  scale, hh, h, g, f; 
 
   for (i = n; i > 1; i--)
@@ -181,14 +181,14 @@ static void mytred2(double **a, const int n, double *d, double *e)
 complex checking when to dealloc */
 static double ** create_ratematrix(double * params, 
                                    double * frequencies, 
-                                   int states)
+                                   unsigned int states)
 {
-  int i,j,k,success;
+  unsigned int i,j,k,success;
 
   double ** qmatrix;
 
   /* normalize substitution parameters */
-  int params_count = (states*states - states) / 2;
+  unsigned int params_count = (states*states - states) / 2;
   double * params_normalized = (double *)malloc(sizeof(double) * params_count);
   if (!params_normalized) return NULL;
   memcpy(params_normalized,params,params_count*sizeof(double));
@@ -246,13 +246,13 @@ static double ** create_ratematrix(double * params,
   return qmatrix;
 }
 
-void pll_update_prob_matrices(pll_partition_t * partition, 
-                              int params_index, 
-                              int * matrix_indices, 
-                              double * branch_lengths, 
-                              int count)
+PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
+                                         unsigned int params_index, 
+                                         unsigned int * matrix_indices, 
+                                         double * branch_lengths, 
+                                         unsigned int count)
 {
-  int i,j,k,m,n;
+  unsigned int i,j,k,m,n;
   double *e, *d;
   double ** a;
   double * expd;
@@ -268,7 +268,7 @@ void pll_update_prob_matrices(pll_partition_t * partition,
 
   double prop_invar = partition->prop_invar[params_index];
 
-  int states = partition->states;
+  unsigned int states = partition->states;
 
   /* check whether we have cached an eigen decomposition. If not, compute it */
   if (!partition->eigen_decomp_valid[params_index])
@@ -357,9 +357,9 @@ void pll_update_prob_matrices(pll_partition_t * partition,
 }
 
 
-void pll_set_frequencies(pll_partition_t * partition, 
-                         int params_index, 
-                         const double * frequencies)
+PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
+                                    unsigned int params_index, 
+                                    const double * frequencies)
 {
   memcpy(partition->frequencies[params_index], 
          frequencies, 
@@ -367,17 +367,18 @@ void pll_set_frequencies(pll_partition_t * partition,
   partition->eigen_decomp_valid[params_index] = 0;
 }
 
-void pll_set_category_rates(pll_partition_t * partition,
-                            const double * rates)
+PLL_EXPORT void pll_set_category_rates(pll_partition_t * partition,
+                                       const double * rates)
 {
   memcpy(partition->rates, rates, partition->rate_cats*sizeof(double));
 }
 
-void pll_set_subst_params(pll_partition_t * partition, 
-                          int params_index, 
-                          const double * params)
+PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition,
+                                     unsigned int params_index,
+                                     const double * params)
 {
-  int count = partition->states * (partition->states-1) / 2;
+  unsigned int count = partition->states * (partition->states-1) / 2;
+
   memcpy(partition->subst_params[params_index], params, count*sizeof(double));
   partition->eigen_decomp_valid[params_index] = 0;
 
@@ -385,7 +386,7 @@ void pll_set_subst_params(pll_partition_t * partition,
 }
 
 PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition,
-                                                     int params_index,
+                                                     unsigned int params_index,
                                                      double prop_invar) 
 {
   if (prop_invar < 0 || prop_invar >= 1) 
@@ -405,9 +406,9 @@ PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition
 
 PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition) 
 {
-  int i,j,k;
+  unsigned int i,j,k;
   double * tipclv;
-  int state;
+  unsigned int state;
 
   if (!partition->invariant) 
   {
@@ -422,8 +423,8 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
     {
       state = 0;
       for (k = 0; k < partition->states; ++k)
-        state |= ((int)tipclv[k] << k);
-      if (__builtin_popcount(state) < partition->states)
+        state |= ((unsigned int)tipclv[k] << k);
+      if ((unsigned int)__builtin_popcount(state) < partition->states)
         partition->invariant[j] |= state;
       tipclv += (partition->rate_cats * partition->states);
     }
@@ -432,10 +433,10 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
   /* if all basecalls at current site are the same and not degenerate set the 
      index in invariant to the frequency index of the basecall, otherwise -1 */
   for (i = 0; i < partition->sites; ++i)
-    if (__builtin_popcount(partition->invariant[i]) > 1)
+    if (__builtin_popcount((unsigned int)(partition->invariant[i])) > 1)
       partition->invariant[i] = -1;
     else
-      partition->invariant[i] = __builtin_ctz(partition->invariant[i]);
+      partition->invariant[i] = __builtin_ctz((unsigned int)(partition->invariant[i]));
   
   return PLL_SUCCESS;
 }

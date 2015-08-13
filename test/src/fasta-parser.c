@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2015 Diego Darriba
+ Copyright (C) 2015 Diego Darriba, Tomas Flouri
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU Affero General Public License as
@@ -30,7 +30,7 @@
 #define N_TAXA_SMALL 5
 #define N_SITES 491
 
-int failtest ()
+static int failtest()
 {
   pll_fasta_t * fp;
   fp = pll_fasta_open ("unexistent-file", pll_map_fasta);
@@ -39,9 +39,9 @@ int failtest ()
   return PLL_SUCCESS;
 }
 
-int bigtest ()
+static int bigtest()
 {
-  int i;
+  unsigned int i;
   char * seq, *header;
   long seq_len, header_len, seqno;
   pll_fasta_t * fp;
@@ -101,9 +101,9 @@ int bigtest ()
   return PLL_SUCCESS;
 }
 
-int smalltest ()
+static int smalltest ()
 {
-  int i;
+  unsigned int i;
   char * seq, *header;
   long seq_len, header_len, seqno;
   pll_fasta_t * fp;
@@ -111,16 +111,14 @@ int smalltest ()
   pll_operation_t * operations;
   double rate_cats[4];
 
-  int num_sites = 4 * N_SITES;
+  unsigned int num_sites = 4 * N_SITES;
 
   double branch_lengths[4] =
     { 0.1, 0.2, 1, 1 };
   double frequencies[4] =
     { 0.1, 0.2, 0.3, 0.4 };
-  int matrix_indices[4] =
-    { 0, 1, 2, 3 };
-  double subst_params[6] =
-    { 1, 5, 1, 1, 5, 1 };
+  unsigned int matrix_indices[4] = { 0, 1, 2, 3 };
+  double subst_params[6] = { 1, 5, 1, 1, 5, 1 };
 
   partition = pll_partition_create(N_TAXA_SMALL, 4,
                                    N_STATES,
