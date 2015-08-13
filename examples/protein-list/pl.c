@@ -7,7 +7,9 @@
 #define RATE_CATS 4
 #define PROT_MODELS_COUNT 19
 
-const double * protein_models_rates_list[PROT_MODELS_COUNT] =
+static void fatal(const char * format, ...) __attribute__ ((noreturn));
+
+static const double * protein_models_rates_list[PROT_MODELS_COUNT] =
  {
    pll_aa_rates_dayhoff,
    pll_aa_rates_lg,
@@ -30,7 +32,7 @@ const double * protein_models_rates_list[PROT_MODELS_COUNT] =
    pll_aa_rates_stmtrev
  };
 
-const double * protein_models_freqs_list[PROT_MODELS_COUNT] =
+static const double * protein_models_freqs_list[PROT_MODELS_COUNT] =
  {
    pll_aa_freqs_dayhoff,
    pll_aa_freqs_lg,
@@ -53,7 +55,7 @@ const double * protein_models_freqs_list[PROT_MODELS_COUNT] =
    pll_aa_freqs_stmtrev
  };
 
-const char * protein_models_names_list[PROT_MODELS_COUNT] =
+static const char * protein_models_names_list[PROT_MODELS_COUNT] =
 {
    "DAYHOFF",
    "LG",
@@ -108,8 +110,8 @@ static void set_missing_branch_length_recursive(pll_utree_t * tree,
 /* branch lengths not present in the newick file get a value of 0.000001 */
 static void set_missing_branch_length(pll_utree_t * tree, double length)
 {
-  set_missing_branch_length_recursive(tree, 0.000001);
-  set_missing_branch_length_recursive(tree->back, 0.000001);
+  set_missing_branch_length_recursive(tree, length);
+  set_missing_branch_length_recursive(tree->back, length);
 }
 
 static void fatal(const char * format, ...)
@@ -124,10 +126,10 @@ static void fatal(const char * format, ...)
 
 int main(int argc, char * argv[])
 {
-  int i;
-  int tip_nodes_count, inner_nodes_count, nodes_count, branch_count;
-  int matrix_count, ops_count;
-  int * matrix_indices;
+  unsigned int i;
+  unsigned int tip_nodes_count, inner_nodes_count, nodes_count, branch_count;
+  unsigned int matrix_count, ops_count;
+  unsigned int * matrix_indices;
   double * branch_lengths;
   pll_partition_t * partition;
   pll_operation_t * operations;
@@ -180,7 +182,8 @@ int main(int argc, char * argv[])
   hcreate(tip_nodes_count);
 
   /* populate a libc hash table with tree tip labels */
-  int * data = (int *)malloc(tip_nodes_count * sizeof(int));
+  unsigned int * data = (unsigned int *)malloc(tip_nodes_count * 
+                                               sizeof(unsigned int));
   for (i = 0; i < tip_nodes_count; ++i)
   {
     data[i] = i;
@@ -251,7 +254,7 @@ int main(int argc, char * argv[])
   partition = pll_partition_create(tip_nodes_count,
                                    inner_nodes_count,
                                    STATES,
-                                   sites,
+                                   (unsigned int)sites,
                                    1,
                                    branch_count,
                                    RATE_CATS,
@@ -270,7 +273,7 @@ int main(int argc, char * argv[])
     if (!found)
       fatal("Sequence with header %s does not appear in the tree", hdr);
         
-    int tip_clv_index = *((int *)(found->data));
+    unsigned int tip_clv_index = *((unsigned int *)(found->data));
 
     pll_set_tip_states(partition, tip_clv_index, pll_map_nt, seqdata[i]);
   }
@@ -298,7 +301,7 @@ int main(int argc, char * argv[])
 
 
   branch_lengths = (double *)malloc(branch_count * sizeof(double));
-  matrix_indices = (int *)malloc(branch_count * sizeof(int));
+  matrix_indices = (unsigned int *)malloc(branch_count * sizeof(unsigned int));
   operations = (pll_operation_t *)malloc(inner_nodes_count * 
                                                 sizeof(pll_operation_t));
 
@@ -314,7 +317,7 @@ int main(int argc, char * argv[])
      structure, and the corresponding probability matrix indices that 
      may need recomputing */
   pll_utree_create_operations(travbuffer,
-                              traversal_size,
+                              (unsigned int)traversal_size,
                               branch_lengths,
                               matrix_indices,
                               operations,

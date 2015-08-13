@@ -96,23 +96,23 @@ static void print_tree_recurse(pll_utree_t * tree,
 
 }
 
-static int tree_indend_level(pll_utree_t * tree, int indend)
+static unsigned int tree_indend_level(pll_utree_t * tree, unsigned int indend)
 {
   if (!tree->next) return indend+1;
 
-  int a = tree_indend_level(tree->next->back,       indend+1);
-  int b = tree_indend_level(tree->next->next->back, indend+1);
+  unsigned int a = tree_indend_level(tree->next->back,       indend+1);
+  unsigned int b = tree_indend_level(tree->next->next->back, indend+1);
 
   return (a > b ? a : b);
 }
 
-void pll_utree_show_ascii(pll_utree_t * tree, int options)
+PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options)
 {
-  int a, b;
+  unsigned int a, b;
   
   a = tree_indend_level(tree->back,1);
   b = tree_indend_level(tree,0);
-  int max_indend_level = (a > b ? a : b);
+  unsigned int max_indend_level = (a > b ? a : b);
 
 
   int * active_node_order = (int *)malloc((max_indend_level+1) * sizeof(int));
@@ -129,20 +129,35 @@ void pll_utree_show_ascii(pll_utree_t * tree, int options)
 static char * newick_utree_recurse(pll_utree_t * root)
 {
   char * newick;
-
+  int size_alloced;
+  assert(root != NULL);
   if (!root->next)
-    asprintf(&newick, "%s:%f", root->label, root->length);
+    size_alloced = asprintf(&newick, "%s:%f", root->label, root->length);
   else
   {
     char * subtree1 = newick_utree_recurse(root->next->back);
+    if (subtree1 == NULL)
+      return NULL;
     char * subtree2 = newick_utree_recurse(root->next->next->back);
-
-    asprintf(&newick, "(%s,%s)%s:%f", subtree1,
-                                      subtree2,
-                                      root->label ? root->label : "",
-                                      root->length);
+    if (subtree2 == NULL)
+    {
+      free(subtree1);
+      return NULL;
+    }
+    size_alloced = asprintf(&newick,
+                            "(%s,%s)%s:%f",
+                            subtree1,
+                            subtree2,
+                            root->label ? root->label : "",
+                            root->length);
     free(subtree1);
     free(subtree2);
+  }
+  if (size_alloced < 0)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "memory allocation during newick export failed");
+    return NULL;
   }
 
   return newick;
@@ -151,36 +166,56 @@ static char * newick_utree_recurse(pll_utree_t * root)
 PLL_EXPORT char * pll_utree_export_newick(pll_utree_t * root)
 {
   char * newick;
-
+  int size_alloced;
   if (!root) return NULL;
 
   char * subtree1 = newick_utree_recurse(root->back);
+  if (subtree1 == NULL)
+    return NULL;
   char * subtree2 = newick_utree_recurse(root->next->back);
+  if (subtree2 == NULL)
+  {
+    free(subtree1);
+    return NULL;
+  }
   char * subtree3 = newick_utree_recurse(root->next->next->back);
+  if (subtree3 == NULL)
+  {
+    free(subtree1);
+    free(subtree2);
+    return NULL;
+  }
 
-  asprintf(&newick, "(%s,%s,%s)%s:%f;", subtree1,
-                                        subtree2,
-                                        subtree3,
-                                        root->label ? root->label : "",
-                                        root->length);
+  size_alloced = asprintf(&newick,
+                          "(%s,%s,%s)%s:%f;",
+                          subtree1,
+                          subtree2,
+                          subtree3,
+                          root->label ? root->label : "",
+                          root->length);
   free(subtree1);
   free(subtree2);
   free(subtree3);
+  if (size_alloced < 0)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "memory allocation during newick export failed");
+    return NULL;
+  }
 
   return (newick);
-
 }
 
 PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
-                                            int trav_buffer_size,
+                                            unsigned int trav_buffer_size,
                                             double * branches,
-                                            int * pmatrix_indices,
+                                            unsigned int * pmatrix_indices,
                                             pll_operation_t * ops,
-                                            int * matrix_count,
-                                            int * ops_count)
+                                            unsigned int * matrix_count,
+                                            unsigned int * ops_count)
 {
   pll_utree_t * node;
-  int i;
+  unsigned int i;
 
   *ops_count = 0;
   *matrix_count = 0;

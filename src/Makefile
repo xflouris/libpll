@@ -38,7 +38,9 @@ PROG=libpll.so
 
 all: $(PROG)
 
-OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o parse_utree.o parse_rtree.o lex_utree.o lex_rtree.o utree.o rtree.o
+OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o \
+     parse_utree.o parse_rtree.o lex_utree.o lex_rtree.o utree.o rtree.o \
+     core_likelihood.o
 
 $(PROG): $(OBJS)
 	$(CC) -shared -Wl,-soname,$@ -o $@ $+

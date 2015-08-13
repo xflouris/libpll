@@ -29,20 +29,22 @@ static void update_partials(pll_partition_t * partition,
                             const double * right_matrix,
                             unsigned int * scaler)
 {
-  int i,j,k,n;
+  unsigned int i,j,k,n;
   int scaling;
 
   const double * lmat;
   const double * rmat;
 
-  int states = partition->states;
-  int span = states * partition->rate_cats;
+  unsigned int states = partition->states;
+  unsigned int span = states * partition->rate_cats;
 
   for (n = 0; n < partition->sites; ++n)
   {
     lmat = left_matrix;
     rmat = right_matrix;
-    scaling = 1;
+
+    scaling = (scaler) ? 1 : 0;
+
     for (k = 0; k < partition->rate_cats; ++k)
     {
       for (i = 0; i < states; ++i)
@@ -77,11 +79,11 @@ static void update_partials(pll_partition_t * partition,
   }
 }
 
-void pll_update_partials(pll_partition_t * partition,
-                         const pll_operation_t * operations,
-                         int count)
+PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
+                                    const pll_operation_t * operations,
+                                    unsigned int count)
 {
-  int i,j;
+  unsigned int i,j;
 
   unsigned int * parent_scaler;
   unsigned int * c1_scaler;
@@ -127,18 +129,18 @@ void pll_update_partials(pll_partition_t * partition,
   }
 }
 
-double pll_compute_root_loglikelihood(pll_partition_t * partition, 
-                                      int clv_index, 
-                                      int scaler_index,
-                                      int freqs_index)
+PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
+                                                 unsigned int clv_index,
+                                                 int scaler_index,
+                                                 unsigned int freqs_index)
 {
-  int i,j,k;
+  unsigned int i,j,k;
 
   double logl = 0;
   double term;
   const double * clv = partition->clv[clv_index];
-  int rates = partition->rate_cats;
-  int states = partition->states;
+  unsigned int rates = partition->rate_cats;
+  unsigned int states = partition->states;
   const double * freqs = partition->frequencies[freqs_index];
   double prop_invar = partition->prop_invar[freqs_index];
   double site_lk, inv_site_lk;
@@ -184,15 +186,15 @@ double pll_compute_root_loglikelihood(pll_partition_t * partition,
   return logl;
 }
 
-double pll_compute_edge_loglikelihood(pll_partition_t * partition, 
-                                      int parent_clv_index, 
-                                      int parent_scaler_index,
-                                      int child_clv_index, 
-                                      int child_scaler_index,
-                                      int matrix_index,
-                                      int freqs_index)
+PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
+                                                 unsigned int parent_clv_index,
+                                                 int parent_scaler_index,
+                                                 unsigned int child_clv_index,
+                                                 int child_scaler_index,
+                                                 unsigned int matrix_index,
+                                                 unsigned int freqs_index)
 {
-  int n,i,j,k;
+  unsigned int n,i,j,k;
   double logl = 0;
   double terma, termb;
   double site_lk, inv_site_lk;
@@ -202,9 +204,9 @@ double pll_compute_edge_loglikelihood(pll_partition_t * partition,
   const double * freqs = partition->frequencies[freqs_index];
   const double * pmatrix = partition->pmatrix[matrix_index];
   double prop_invar = partition->prop_invar[freqs_index];
-  int states = partition->states;
-  int rates = partition->rate_cats;
-  int scale_factors;
+  unsigned int states = partition->states;
+  unsigned int rates = partition->rate_cats;
+  unsigned int scale_factors;
 
   unsigned int * parent_scaler;
   unsigned int * child_scaler;

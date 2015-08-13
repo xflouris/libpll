@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2015 Diego Darriba
+    Copyright (C) 2015 Diego Darriba, Tomas Flouri
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -25,7 +25,6 @@
 
 #define N_PROT_MODELS 19
 #define N_STATES 20
-#define N_PROT_RATES 190
 
 #define FLOAT_PRECISION 5
 
@@ -73,7 +72,7 @@
 
 int main(int argc, char * argv[])
 {
-  int i, cur_model;
+  unsigned int i, cur_model;
 
 
   pll_partition_t * partition;
@@ -92,7 +91,7 @@ int main(int argc, char * argv[])
                                    1);
   
   double branch_lengths[4] = { 0.1, 0.2, 1, 1};
-  int matrix_indices[4] = { 0, 1, 2, 3 };
+  unsigned int matrix_indices[4] = { 0, 1, 2, 3 };
 
   double * rate_cats = (double *) malloc(N_CAT_GAMMA * sizeof(double));
 
