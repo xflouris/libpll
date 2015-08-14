@@ -171,9 +171,9 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
   pll_partition_t * partition = params->lk_params.partition;
   pll_operation_t * operations = params->lk_params.operations;
   double * branch_lengths = params->lk_params.branch_lengths;
-  int * matrix_indices = params->lk_params.matrix_indices;
-  int params_index = params->params_index;
-  int n_branches, n_inner_nodes;
+  unsigned int * matrix_indices = params->lk_params.matrix_indices;
+  unsigned int params_index = params->params_index;
+  unsigned int n_branches, n_inner_nodes;
   double * xptr = x;
 
   if (params->lk_params.rooted)
