@@ -43,6 +43,7 @@ static double recomp_iterative (pll_optimize_options_t * params,
 
   /* set Branch Length */
   assert(tree->length == tree->back->length);
+
   params->lk_params.branch_lengths[0] = tree->length;
   params->lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
   params->lk_params.where.unrooted_t.child_scaler_index = tree->back->scaler_index;
@@ -51,6 +52,10 @@ static double recomp_iterative (pll_optimize_options_t * params,
   params->lk_params.where.unrooted_t.edge_pmatrix_index = tree->pmatrix_index;
 
   new_lnl = -1 * pll_optimize_parameters_lbfgsb(params);
+
+  /* ensure that new_lnl is not NaN */
+  assert (new_lnl == new_lnl);
+
   if (new_lnl < lnl)
   {
     pll_update_prob_matrices(params->lk_params.partition,
@@ -132,7 +137,7 @@ static double recomp_iterative (pll_optimize_options_t * params,
 #endif
     pll_update_partials (params->lk_params.partition, &new_op, 1);
 
-    /* eval */
+   /* eval */
     recomp_iterative (params, tree->next->next->back, lnl);
 
     /* reset CLV */
@@ -645,6 +650,8 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
       *l_ptr = PLL_LBFGSB_ERROR;
       *u_ptr = 0.99;
       x[check_n] = partition->prop_invar[params->params_index];
+      if (x[check_n] < PLL_LBFGSB_ERROR)
+        x[check_n] = 0.5;
       check_n += 1;
       nbd_ptr++;
       l_ptr++;
@@ -653,7 +660,8 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     if (params->which_parameters & PLL_PARAMETER_ALPHA)
     {
       *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
-      *l_ptr = 0.020001;
+      /* minimum alpha + error offset */
+      *l_ptr = 0.02 + PLL_LBFGSB_ERROR;
       *u_ptr = 100.0;
       x[check_n] = params->lk_params.alpha_value;
       check_n += 1;
@@ -720,6 +728,9 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
 
       score = compute_lnl_unrooted (params, x);
 
+      /* ensure that score is not NaN */
+      assert (score == score);
+
       double h, temp;
       for (i = 0; i < num_variables; i++)
       {
@@ -753,7 +764,6 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
   free (lower_bounds);
   free (upper_bounds);
   free (bound_type);
-
   return score;
 } /* pll_optimize_parameters_lbfgsb */
 
@@ -769,9 +779,7 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
 
   for (i=0; i<smoothings; i++)
   {
-    //if (tree->clv_index > params->lk_params.partition->tips)
       lnl = recomp_iterative (params, tree, PLL_OPT_LNL_UNLIKELY);
-    //if (tree->back->clv_index > params->lk_params.partition->tips)
       lnl = recomp_iterative (params, tree->back, lnl);
   }
 
