@@ -661,7 +661,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     {
       *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
       /* minimum alpha + error offset */
-      *l_ptr = 0.02 + PLL_LBFGSB_ERROR;
+      *l_ptr = 0.02001 + PLL_LBFGSB_ERROR;
       *u_ptr = 100.0;
       x[check_n] = params->lk_params.alpha_value;
       check_n += 1;
