@@ -67,13 +67,13 @@ typedef struct
   union {
       struct {
         unsigned int root_clv_index;
-        unsigned int scaler_index;
+        int scaler_index;
       } rooted_t;
       struct {
         unsigned int parent_clv_index;
-        unsigned int parent_scaler_index;
+        int parent_scaler_index;
         unsigned int child_clv_index;
-        unsigned int child_scaler_index;
+        int child_scaler_index;
         unsigned int edge_pmatrix_index;
       } unrooted_t;
     } where;

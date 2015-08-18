@@ -244,7 +244,10 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
     double sum_ratios = 1.0;
     double *freqs = (double *) malloc ((size_t) n_states * sizeof(double));
     for (i = 0; i < (n_states - 1); ++i)
+    {
+      assert(xptr[i] == xptr[i]);
       sum_ratios += xptr[i];
+    }
     for (i = 0; i < (n_states - 1); ++i)
       freqs[i] = xptr[i] / sum_ratios;
     freqs[n_states - 1] = 1.0 / sum_ratios;
@@ -255,6 +258,7 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
   /* update proportion of invariant parameters */
   if (params->which_parameters & PLL_PARAMETER_PINV)
   {
+    assert(xptr[0] == xptr[0]);
     if (!pll_update_invariant_sites_proportion (partition,
                                                 params_index,
                                                 xptr[0]))
@@ -268,6 +272,7 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
   }
   if (params->which_parameters & PLL_PARAMETER_ALPHA)
   {
+    assert(xptr[0] == xptr[0]);
     /* assign discrete rates */
     double * rate_cats;
     rate_cats = malloc((size_t)partition->rate_cats * sizeof(double));
@@ -291,7 +296,8 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
   }
   if (params->which_parameters & PLL_PARAMETER_BRANCHES_SINGLE)
    {
-     /* assign branch lengths */
+     assert(xptr[0] == xptr[0]);
+     /* assign branch length */
      *branch_lengths = *xptr;
      pll_update_prob_matrices (partition,
                          0,
@@ -531,7 +537,25 @@ PLL_EXPORT pll_partition_t * pll_partition_fasta_create (const char *file,
         return PLL_FAILURE;
       }
 
-      pll_set_tip_states (partition, tip_clv_index, pll_map_nt, seqdata[i]);
+      int set_states;
+      if (states == 4)
+      {
+        set_states = pll_set_tip_states (partition, tip_clv_index, pll_map_nt, seqdata[i]);
+      }
+      else if (states == 20)
+      {
+        set_states = pll_set_tip_states (partition, tip_clv_index, pll_map_aa, seqdata[i]);
+      }
+      else
+      {
+        set_states = PLL_FAILURE;
+      }
+
+      if (set_states == PLL_FAILURE)
+      {
+        pll_partition_destroy(partition);
+        partition = 0;
+      }
     }
 
     /* ...neither the sequences and the headers as they are already
