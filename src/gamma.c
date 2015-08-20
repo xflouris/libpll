@@ -234,7 +234,12 @@ PLL_EXPORT int pll_compute_gamma_cats(double alpha,
   /* numerical instability caused by very small rate[0] values */
   /* induced by low alpha values around 0.01 */
 
-  if (alpha < ALPHA_MIN || categories < 1) return PLL_FAILURE;
+  if (alpha < ALPHA_MIN || categories < 1) 
+  {
+    pll_errno = PLL_ERROR_ALPHA;
+    snprintf(pll_errmsg, 200, "Invalid alpha value (%f)", alpha);
+    return PLL_FAILURE;
+  }
 
   if (categories == 1)
   {

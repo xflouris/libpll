@@ -391,12 +391,18 @@ PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition
 {
   if (prop_invar < 0 || prop_invar >= 1) 
   {
+    pll_errno = PLL_ERROR_PINV;
+    snprintf(pll_errmsg, 200, 
+        "Invalid proportion of invariant sites (%f)", prop_invar);
     return PLL_FAILURE;
   }
 
   if (prop_invar > 0.0 && !partition->invariant)
   {
-      pll_update_invariant_sites(partition);
+      if (!pll_update_invariant_sites(partition))
+      {
+        return PLL_FAILURE;
+      }
   }
 
   partition->prop_invar[params_index] = prop_invar;
