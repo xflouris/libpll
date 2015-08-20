@@ -785,8 +785,8 @@ L333:
                   wy[wy_offset], &sy[sy_offset], &theta, &col, &head, &info);
       }
       if (info != 0) {
-          DBG("[L-BFGS-B]  Nonpositive definiteness in Cholesky factorization in formk;\n");
-          DBG("[L-BFGS-B]    refresh the lbfgs memory and restart the iteration.\n");
+          DBG("[L-BFGS-B]  Nonpositive definiteness in Cholesky factorization in formk;\n", 0);
+          DBG("[L-BFGS-B]    refresh the lbfgs memory and restart the iteration.\n", 0);
           info = 0;
           col = 0;
           head = 1;
@@ -813,8 +813,8 @@ L333:
       if (info != 0) {
           /* singular triangular system detected; */
           /* refresh the lbfgs memory and restart the iteration. */
-          DBG("[L-BFGS-B]  Singular triangular system detected;\n");
-          DBG("[L-BFGS-B]    refresh the lbfgs memory and restart the iteration.\n");
+          DBG("[L-BFGS-B]  Singular triangular system detected;\n", 0);
+          DBG("[L-BFGS-B]    refresh the lbfgs memory and restart the iteration.\n", 0);
           info = 0;
           col = 0;
           head = 1;
@@ -858,8 +858,8 @@ L666:
             goto L999;
         } else {
             /* refresh the lbfgs memory and restart the iteration. */
-            DBG("[L-BFGS-B]  Bad direction in the line search;\n");
-            DBG("[L-BFGS-B]    refresh the lbfgs memory and restart the iteration.\n");
+            DBG("[L-BFGS-B]  Bad direction in the line search;\n", 0);
+            DBG("[L-BFGS-B]    refresh the lbfgs memory and restart the iteration.\n", 0);
             if (info == 0) {
                 --nfgv;
             }
@@ -952,8 +952,8 @@ L777:
     if (info != 0) {
         /* nonpositive definiteness in Cholesky factorization; */
         /* refresh the lbfgs memory and restart the iteration. */
-        DBG("[L-BFGS-B]  Nonpositive definiteness in Cholesky factorization in formt;\n");
-        DBG("[L-BFGS-B]    refresh the lbfgs memory and restart the iteration.\n");
+        DBG("[L-BFGS-B]  Nonpositive definiteness in Cholesky factorization in formt;\n", 0);
+        DBG("[L-BFGS-B]    refresh the lbfgs memory and restart the iteration.\n", 0);
         info = 0;
         col = 0;
         head = 1;

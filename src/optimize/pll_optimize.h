@@ -43,7 +43,11 @@
 #define PLL_LBFGSB_BOUND_UPPER 3
 
 #define PLL_OPT_MIN_BRANCH_LEN       1.0e-4
-#define PLL_OPT_DEFAULT_BRANCH_LEN   1.0e-2
+#define PLL_OPT_DEFAULT_RATE_RATIO        1
+#define PLL_OPT_DEFAULT_FREQ_RATIO        1
+#define PLL_OPT_DEFAULT_PINV            0.5
+#define PLL_OPT_DEFAULT_ALPHA           0.5
+#define PLL_OPT_DEFAULT_BRANCH_LEN      0.1
 #define PLL_OPT_LNL_UNLIKELY         -1e+80
 
 /* error codes */
@@ -51,8 +55,7 @@
 #define PLL_ERROR_TAXA_MISMATCH       101
 #define PLL_ERROR_SEQLEN_MISMATCH     102
 #define PLL_ERROR_ALIGN_UNREADABLE    103
-#define PLL_ERROR_INVALID_PINV        111
-#define PLL_ERROR_INVALID_ALPHA       112
+#define PLL_ERROR_LBFGSB_UNKNOWN      110
 
 /* Structure with information necessary for evaluating the likelihood */
 
@@ -87,7 +90,7 @@ typedef struct
 typedef struct
 {
   pll_likelihood_info_t lk_params;
-  int params_index;
+  unsigned int params_index;
   unsigned int which_parameters;
   double * freq_ratios;
   int * subst_params_symmetries;
@@ -99,12 +102,12 @@ typedef struct
 
 PLL_EXPORT double pll_optimize_parameters_lbfgsb(pll_optimize_options_t * p);
 PLL_EXPORT pll_partition_t * pll_partition_fasta_create (const char *file,
-                                                         int states,
-                                                         int n_rate_matrices,
-                                                         int n_rate_cats,
+                                                         unsigned int states,
+                                                         unsigned int n_rate_matrices,
+                                                         unsigned int n_rate_cats,
                                                          int attributes,
                                                          int rooted,
-                                                         int tip_count,
+                                                         unsigned int tip_count,
                                                          const char **tipnames);
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                                pll_optimize_options_t * params,

@@ -23,6 +23,11 @@
 
 #define UPDATE_SCALERS 0
 
+static int is_nan(double v)
+{
+  return v!=v;
+}
+
 static int v_int_max (int * v, int n)
 {
   int i, max = v[0];
@@ -30,6 +35,11 @@ static int v_int_max (int * v, int n)
     if (v[i] > max)
       max = v[i];
   return max;
+}
+
+static int d_equals(double a, double b)
+{
+  return (fabs(a-b) < 1e-10);
 }
 
 static double recomp_iterative (pll_optimize_options_t * params,
@@ -42,7 +52,7 @@ static double recomp_iterative (pll_optimize_options_t * params,
 
 
   /* set Branch Length */
-  assert(tree->length == tree->back->length);
+  assert(d_equals(tree->length, tree->back->length));
 
   params->lk_params.branch_lengths[0] = tree->length;
   params->lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
@@ -76,8 +86,6 @@ static double recomp_iterative (pll_optimize_options_t * params,
     tree->back->length = params->lk_params.branch_lengths[0];
   }
 
-  DBG("forward lnL: %f (%f)\n", lnl, info1->branch_length);
-
   if (tree->next)
   {
     pll_operation_t new_op;
@@ -92,18 +100,20 @@ static double recomp_iterative (pll_optimize_options_t * params,
     new_op.child2_matrix_index = tree->next->next->back->pmatrix_index;
     new_op.child2_scaler_index = tree->next->next->back->scaler_index;
 #if(UPDATE_SCALERS)
+    int i;
     /* update scalers */
     if (info1->scaler_index != PLL_SCALE_BUFFER_NONE)
     {
       int n = params->lk_params.partition->sites;
       for (i=0; i<n; i++)
-      params->lk_params.partition->scale_buffer[info1->scaler_index][i] =
-                  params->lk_params.partition->scale_buffer[info1->scaler_index][i]
-                      + ((info2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                      params->lk_params.partition->scale_buffer[info2->scaler_index][i] :
-                  0) - ((info_child1->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                      params->lk_params.partition->scale_buffer[info_child1->scaler_index][i] :
-                      0);
+        params->lk_params.partition->scale_buffer[info1->scaler_index][i] =
+            params->lk_params.partition->scale_buffer[info1->scaler_index][i]
+                + ((info2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                    params->lk_params.partition->scale_buffer[info2->scaler_index][i] :
+                    0)
+                - ((info_child1->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                    params->lk_params.partition->scale_buffer[info_child1->scaler_index][i] :
+                    0);
     }
 #endif
     pll_update_partials (params->lk_params.partition, &new_op, 1);
@@ -239,13 +249,13 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
   /* update stationary frequencies */
   if (params->which_parameters & PLL_PARAMETER_FREQUENCIES)
   {
-    int i;
-    int n_states = partition->states;
+    unsigned int i;
+    unsigned int n_states = partition->states;
     double sum_ratios = 1.0;
     double *freqs = (double *) malloc ((size_t) n_states * sizeof(double));
     for (i = 0; i < (n_states - 1); ++i)
     {
-      assert(xptr[i] == xptr[i]);
+      assert(!is_nan(xptr[i]));
       sum_ratios += xptr[i];
     }
     for (i = 0; i < (n_states - 1); ++i)
@@ -255,32 +265,28 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
     free (freqs);
     xptr += (n_states - 1);
   }
-  /* update proportion of invariant parameters */
+  /* update proportion of invariant sites */
   if (params->which_parameters & PLL_PARAMETER_PINV)
   {
-    assert(xptr[0] == xptr[0]);
+    assert(!is_nan(xptr[0]));
     if (!pll_update_invariant_sites_proportion (partition,
                                                 params_index,
                                                 xptr[0]))
     {
-      pll_errno = PLL_ERROR_INVALID_PINV;
-      snprintf (pll_errmsg, 200,
-                        "Invalid proportion of invariant sites: %f", xptr[0]);
       return PLL_FAILURE;
     }
     xptr++;
   }
+  /* update gamma shape parameter */
   if (params->which_parameters & PLL_PARAMETER_ALPHA)
   {
-    assert(xptr[0] == xptr[0]);
+    assert(!is_nan(xptr[0]));
     /* assign discrete rates */
     double * rate_cats;
     rate_cats = malloc((size_t)partition->rate_cats * sizeof(double));
     params->lk_params.alpha_value = xptr[0];
     if (!pll_compute_gamma_cats (xptr[0], partition->rate_cats, rate_cats))
     {
-      pll_errno = PLL_ERROR_INVALID_PINV;
-      snprintf (pll_errmsg, 200, "Invalid alpha shape: %f", xptr[0]);
       return PLL_FAILURE;
     }
     pll_set_category_rates (partition, rate_cats);
@@ -288,15 +294,17 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
     free(rate_cats);
     xptr++;
   }
+  /* update all branch lengths */
   if (params->which_parameters & PLL_PARAMETER_BRANCHES_ALL)
   {
     /* assign branch lengths */
     memcpy (branch_lengths, xptr, (size_t)n_branches * sizeof(double));
     xptr += n_branches;
   }
+  /* update single branch */
   if (params->which_parameters & PLL_PARAMETER_BRANCHES_SINGLE)
    {
-     assert(xptr[0] == xptr[0]);
+    assert(!is_nan(xptr[0]));
      /* assign branch length */
      *branch_lengths = *xptr;
      pll_update_prob_matrices (partition,
@@ -322,9 +330,7 @@ static double compute_lnl_unrooted (pll_optimize_options_t * params, double *x)
   double score;
 
   if (x && !set_x_to_parameters(params, x))
-  {
     return -INFINITY;
-  }
 
   if (params->lk_params.rooted)
   {
@@ -349,9 +355,9 @@ static double compute_lnl_unrooted (pll_optimize_options_t * params, double *x)
   return score;
 } /* compute_lnl_unrooted */
 
-static int count_n_free_variables (pll_optimize_options_t * params)
+static unsigned int count_n_free_variables (pll_optimize_options_t * params)
 {
-  int num_variables = 0;
+  unsigned int num_variables = 0;
   pll_partition_t * partition = params->lk_params.partition;
 
   /* count number of variables for dynamic allocation */
@@ -360,8 +366,8 @@ static int count_n_free_variables (pll_optimize_options_t * params)
     int n_subst_rates = partition->states * (partition->states - 1) / 2;
     num_variables +=
         params->subst_params_symmetries ?
-            v_int_max (params->subst_params_symmetries, n_subst_rates) :
-            n_subst_rates - 1;
+            (unsigned int) v_int_max (params->subst_params_symmetries, n_subst_rates) :
+            (unsigned int) n_subst_rates - 1;
   }
   if (params->which_parameters & PLL_PARAMETER_FREQUENCIES)
     num_variables += partition->states - 1;
@@ -371,7 +377,7 @@ static int count_n_free_variables (pll_optimize_options_t * params)
       != 0;
   if (params->which_parameters & PLL_PARAMETER_BRANCHES_ALL)
   {
-    int num_branch_lengths =
+    unsigned int num_branch_lengths =
         params->lk_params.rooted ?
             (2 * partition->tips - 3) : (2 * partition->tips - 2);
     num_variables += num_branch_lengths;
@@ -387,20 +393,23 @@ static int count_n_free_variables (pll_optimize_options_t * params)
  *           has been already created.
  */
 PLL_EXPORT pll_partition_t * pll_partition_fasta_create (const char *file,
-                                                         int states,
-                                                         int n_rate_matrices,
-                                                         int n_rate_cats,
+                                                         unsigned int states,
+                                                         unsigned int n_rate_matrices,
+                                                         unsigned int n_rate_cats,
                                                          int attributes,
                                                          int rooted,
-                                                         int tip_count,
+                                                         unsigned int tip_count,
                                                          const char **tipnames)
 {
 
-  int i, j;
+  int unsigned i, j;
   pll_partition_t * partition;
+  pll_fasta_t * fp;
+
+  pll_errno = 0;
 
   /* open FASTA file */
-  pll_fasta_t * fp = pll_fasta_open (file, pll_map_fasta);
+  fp = pll_fasta_open (file, pll_map_fasta);
   if (!fp)
     return PLL_FAILURE;
   {
@@ -466,6 +475,7 @@ PLL_EXPORT pll_partition_t * pll_partition_fasta_create (const char *file,
     /* did we stop reading the file because we reached EOF? */
     if (pll_errno != PLL_ERROR_FILE_EOF)
       return PLL_FAILURE;
+    pll_errno = 0;
 
     /* close FASTA file */
     pll_fasta_close (fp);
@@ -487,7 +497,7 @@ PLL_EXPORT pll_partition_t * pll_partition_fasta_create (const char *file,
     partition = pll_partition_create (
         tip_count, rooted ? (tip_count - 1) : (tip_count - 2),
         states,
-        (int) sites,
+        (unsigned int) sites,
         n_rate_matrices,
         rooted ? (2 * tip_count - 2) : (2 * tip_count - 3),
         n_rate_cats,
@@ -509,7 +519,7 @@ PLL_EXPORT pll_partition_t * pll_partition_fasta_create (const char *file,
         {
           if (!strcmp (tipnames[j], headers[i]))
           {
-            tip_clv_index = j;
+            tip_clv_index = (int)j;
             break;
           }
         }
@@ -537,19 +547,47 @@ PLL_EXPORT pll_partition_t * pll_partition_fasta_create (const char *file,
         return PLL_FAILURE;
       }
 
-      int set_states;
-      if (states == 4)
+      const unsigned int * pll_map = 0;
+      switch (states)
       {
-        set_states = pll_set_tip_states (partition, tip_clv_index, pll_map_nt, seqdata[i]);
+        case 4:
+          pll_map = pll_map_nt;
+          break;
+        case 20:
+          pll_map = pll_map_aa;
+          break;
+        default:
+        {
+            /* clean and return */
+            for (j = 0; j < tip_count; ++j)
+            {
+              free (seqdata[j]);
+              free (headers[j]);
+            }
+            free (seqdata);
+            free (headers);
+          return PLL_FAILURE;
+        }
       }
-      else if (states == 20)
-      {
-        set_states = pll_set_tip_states (partition, tip_clv_index, pll_map_aa, seqdata[i]);
-      }
-      else
-      {
-        set_states = PLL_FAILURE;
-      }
+      int set_states = pll_set_tip_states (partition,
+                                           (unsigned int) tip_clv_index,
+                                           pll_map,
+                                           seqdata[i]);
+//      if (states == 4)
+//      {
+//        set_states
+//      }
+//      else if (states == 20)
+//      {
+//        set_states = pll_set_tip_states (partition,
+//                                         (unsigned int) tip_clv_index,
+//                                         pll_map_aa,
+//                                         seqdata[i]);
+//      }
+//      else
+//      {
+//        set_states = PLL_FAILURE;
+//      }
 
       if (set_states == PLL_FAILURE)
       {
@@ -575,20 +613,19 @@ PLL_EXPORT pll_partition_t * pll_partition_fasta_create (const char *file,
 PLL_EXPORT double pll_optimize_parameters_lbfgsb (
                                               pll_optimize_options_t * params)
 {
-  int i;
+  unsigned int i;
   pll_partition_t * partition = params->lk_params.partition;
 
-  /* L-BFGS-B */
-  int max_corrections, num_variables;
+  /* L-BFGS-B parameters */
+  int max_corrections;
+  unsigned int num_variables;
   double score = 0;
   double *x, *g, *lower_bounds, *upper_bounds, *wa;
   int *bound_type, *iwa;
 
-  /*     static char task[60]; */
   int taskValue;
-  int *task = &taskValue; /* must initialize !! */
+  int *task = &taskValue;
 
-  /*     static char csave[60]; */
   int csaveValue;
   int *csave = &csaveValue;
   double dsave[29];
@@ -596,6 +633,12 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
   logical lsave[4];
 
   int iprint = -1;
+
+  pll_errno = 0;
+
+  /* ensure that the 2 branch optimization modes are not set together */
+  assert(!((params->which_parameters & PLL_PARAMETER_BRANCHES_ALL)
+      && (params->which_parameters & PLL_PARAMETER_BRANCHES_SINGLE)));
 
   max_corrections = 5;
   num_variables = count_n_free_variables (params);
@@ -609,17 +652,20 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
   {
     int * nbd_ptr = bound_type;
     double * l_ptr = lower_bounds, *u_ptr = upper_bounds;
-    int check_n = 0;
+    unsigned int check_n = 0;
+
+    /* substitution rate parameters */
     if (params->which_parameters & PLL_PARAMETER_SUBST_RATES)
     {
-      int n_subst_rates;
-      int n_subst_free_params;
+      unsigned int n_subst_rates;
+      unsigned int n_subst_free_params;
 
       n_subst_rates = partition->states * (partition->states - 1) / 2;
       if (params->subst_params_symmetries)
       {
-        n_subst_free_params = v_int_max (params->subst_params_symmetries,
-                                         n_subst_rates);
+        n_subst_free_params =(unsigned int) v_int_max (
+                                         params->subst_params_symmetries,
+                                         (int) n_subst_rates);
       }
       else
       {
@@ -632,7 +678,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
         nbd_ptr[i] = PLL_LBFGSB_BOUND_BOTH;
         l_ptr[i] = 0.001;
         u_ptr[i] = 1000.;
-        int j = i;
+        unsigned int j = i;
         if (params->subst_params_symmetries)
         {
           if (params->subst_params_symmetries[n_subst_rates-1] == current_rate)
@@ -644,16 +690,21 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
           }
           current_rate++;
         }
-        x[i] = partition->subst_params[params->params_index][j];
+        x[check_n + i] = partition->subst_params[params->params_index][j];
+
+        if (x[check_n + i] < *l_ptr || x[check_n + i] > *u_ptr)
+                                   x[check_n + 1] = PLL_OPT_DEFAULT_RATE_RATIO;
       }
       nbd_ptr += n_subst_free_params;
       l_ptr += n_subst_free_params;
       u_ptr += n_subst_free_params;
       check_n += n_subst_free_params;
     }
+
+    /* stationary frequency parameters */
     if (params->which_parameters & PLL_PARAMETER_FREQUENCIES)
     {
-      int n_freqs_free_params;
+      unsigned int n_freqs_free_params;
 
       n_freqs_free_params = params->lk_params.partition->states - 1;
       for (i = 0; i < n_freqs_free_params; i++)
@@ -662,61 +713,87 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
         l_ptr[i] = PLL_LBFGSB_ERROR;
         u_ptr[i] = 1000;
         x[check_n + i] = params->freq_ratios[i];
+
+        if (x[check_n + i] < *l_ptr || x[check_n + i] > *u_ptr)
+                              x[check_n + 1] = PLL_OPT_DEFAULT_FREQ_RATIO;
       }
       check_n += n_freqs_free_params;
       nbd_ptr += n_freqs_free_params;
       l_ptr += n_freqs_free_params;
       u_ptr += n_freqs_free_params;
     }
+
+    /* proportion of invariant sites */
     if (params->which_parameters & PLL_PARAMETER_PINV)
     {
       *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
       *l_ptr = PLL_LBFGSB_ERROR;
       *u_ptr = 0.99;
       x[check_n] = partition->prop_invar[params->params_index];
-      if (x[check_n] < PLL_LBFGSB_ERROR)
-        x[check_n] = 0.5;
+
+      if (x[check_n] < *l_ptr || x[check_n] > *u_ptr)
+                      x[check_n] = PLL_OPT_DEFAULT_PINV;
+
       check_n += 1;
       nbd_ptr++;
       l_ptr++;
       u_ptr++;
     }
+
+    /* gamma shape parameter */
     if (params->which_parameters & PLL_PARAMETER_ALPHA)
     {
       *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
       /* minimum alpha + error offset */
-      *l_ptr = 0.02001 + PLL_LBFGSB_ERROR;
+      *l_ptr = 0.0201 + PLL_LBFGSB_ERROR;
       *u_ptr = 100.0;
       x[check_n] = params->lk_params.alpha_value;
+
+      if (x[check_n] < *l_ptr || x[check_n] > *u_ptr)
+                x[check_n] = PLL_OPT_DEFAULT_ALPHA;
+
       check_n += 1;
       nbd_ptr++;
       l_ptr++;
       u_ptr++;
     }
+
+    /* topology (UNIMPLEMENTED) */
     if (params->which_parameters & PLL_PARAMETER_TOPOLOGY)
     {
       return PLL_FAILURE;
     }
+
+    /* single branch length */
     if (params->which_parameters & PLL_PARAMETER_BRANCHES_SINGLE)
     {
         *nbd_ptr = PLL_LBFGSB_BOUND_LOWER;
-        *l_ptr = PLL_OPT_MIN_BRANCH_LEN;
+        *l_ptr = PLL_OPT_MIN_BRANCH_LEN + PLL_LBFGSB_ERROR;
         x[check_n] = params->lk_params.branch_lengths[0];
+
+        if (x[check_n] < *l_ptr)
+          x[check_n] = PLL_OPT_DEFAULT_BRANCH_LEN;
+
         check_n += 1;
         nbd_ptr++;
         l_ptr++;
         u_ptr++;
     }
+
+    /* all branches */
     if (params->which_parameters & PLL_PARAMETER_BRANCHES_ALL)
     {
-      int num_branch_lengths =
+      unsigned int num_branch_lengths =
           params->lk_params.rooted ?
               (2 * partition->tips - 3) : (2 * partition->tips - 2);
       for (i = 0; i < num_branch_lengths; i++)
       {
         nbd_ptr[i] = PLL_LBFGSB_BOUND_LOWER;
-        l_ptr[i] = 0.0001;
-        x[check_n + i] = params->lk_params.branch_lengths[i];
+        l_ptr[i] = PLL_OPT_MIN_BRANCH_LEN + PLL_LBFGSB_ERROR;
+        x[check_n + i] =
+            params->lk_params.branch_lengths[i] > l_ptr[i]?
+                params->lk_params.branch_lengths[i] :
+                PLL_OPT_DEFAULT_BRANCH_LEN;
       }
       check_n += num_branch_lengths;
       nbd_ptr += num_branch_lengths;
@@ -739,7 +816,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
   while (continue_opt)
   {
     /*     This is the call to the L-BFGS-B code. */
-    setulb (&num_variables, &max_corrections, x, lower_bounds, upper_bounds,
+    setulb ((int *)&num_variables, &max_corrections, x, lower_bounds, upper_bounds,
             bound_type, &score, g, &(params->factr), &(params->pgtol), wa, iwa,
             task, &iprint, csave, lsave, isave, dsave);
     if (IS_FG(*task))
@@ -751,9 +828,8 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
        */
 
       score = compute_lnl_unrooted (params, x);
-
-      /* ensure that score is not NaN */
-      assert (score == score);
+      if (is_nan(score) || d_equals(score, -INFINITY))
+        break;
 
       double h, temp;
       for (i = 0; i < num_variables; i++)
@@ -788,6 +864,17 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
   free (lower_bounds);
   free (upper_bounds);
   free (bound_type);
+
+  if (is_nan(score))
+  {
+    score = -INFINITY;
+    if (!pll_errno)
+    {
+      pll_errno = PLL_ERROR_LBFGSB_UNKNOWN;
+      snprintf(pll_errmsg, 200, "Unknown LBFGSB error");
+    }
+  }
+
   return score;
 } /* pll_optimize_parameters_lbfgsb */
 
@@ -806,33 +893,6 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
       lnl = recomp_iterative (params, tree, PLL_OPT_LNL_UNLIKELY);
       lnl = recomp_iterative (params, tree->back, lnl);
   }
-
-//  pll_utree_t ** travbuffer = (pll_utree_t **)malloc((2*params->lk_params.partition->tips - 2) * sizeof(pll_utree_t *));
-//                  int traversal_size = pll_utree_traverse (tree,
-//                                                           cb_full_traversal,
-//                                                           travbuffer);
-//                  int matrix_count, ops_count;
-//                  pll_utree_create_operations(travbuffer,
-//                                              traversal_size,
-//                                              params->lk_params.branch_lengths,
-//                                              params->lk_params.matrix_indices,
-//                                              params->lk_params.operations,
-//                                              &matrix_count,
-//                                              &ops_count);
-//                  free(travbuffer);
-//                  params->lk_params.where.unrooted_t.parent_clv_index = tree->clv_index;
-//                  params->lk_params.where.unrooted_t.parent_scaler_index = tree->scaler_index;
-//                  params->lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
-//                  params->lk_params.where.unrooted_t.child_scaler_index = tree->back->scaler_index;
-//                  params->lk_params.where.unrooted_t.edge_pmatrix_index = tree->pmatrix_index;
-//
-//                  pll_update_prob_matrices(params->lk_params.partition,
-//                                           params->params_index, params->lk_params.matrix_indices,
-//                                           params->lk_params.branch_lengths, matrix_count);
-//                  pll_update_partials(params->lk_params.partition, params->lk_params.operations, ops_count);
-//                  printf("%f\n", lnl);
-//                  lnl = compute_lnl_unrooted(params, 0);
-//                  printf("%f\n", lnl);
 
   return -1*lnl;
 } /* pll_optimize_branch_lengths_iterative */
