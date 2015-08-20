@@ -70,15 +70,16 @@ int main(int argc, char * argv[])
 
   for (k = 0; k < NUM_CATS; ++k) {
     pll_partition_t * partition;
-    partition = pll_partition_create(n_tips,
-                                     4, /* clv buffers */
-                                     N_STATES_NT, /* number of states */
-                                     n_sites,     /* sequence length */
-                                     1,           /* different rate parameters */
-                                     2*n_tips-3,  /* probability matrices */
-                                     n_cat_gamma[k], /* gamma categories */
-                                     0,           /* scale buffers */
-                                     1);          /* attributes */
+    partition = pll_partition_create(
+                                n_tips,      /* numer of tips */
+                                4,           /* clv buffers */
+                                N_STATES_NT, /* number of states */
+                                n_sites,     /* sequence length */
+                                1,           /* different rate parameters */
+                                2*n_tips-3,  /* probability matrices */
+                                n_cat_gamma[k], /* gamma categories */
+                                0,           /* scale buffers */
+                                1);          /* attributes */
 
     if (!partition) 
     {
@@ -147,13 +148,28 @@ int main(int argc, char * argv[])
       pll_show_clv(partition,7,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
 
       lk_scores[k*NUM_ALPHAS + i] = pll_compute_edge_loglikelihood(partition,
-                                                                   6,
-                                                                   PLL_SCALE_BUFFER_NONE,
-                                                                   7,
-                                                                   PLL_SCALE_BUFFER_NONE,
-                                                                   0,
-                                                                   0);
+                                                         6,
+                                                         PLL_SCALE_BUFFER_NONE,
+                                                         7,
+                                                         PLL_SCALE_BUFFER_NONE,
+                                                         0,
+                                                         0);
     }
+
+    /* test illegal alpha value */
+    double invalid_alpha = 0;
+    double * rate_cats = (double *) malloc(4 * sizeof(double));
+    if (pll_compute_gamma_cats(invalid_alpha, 4, rate_cats) == PLL_FAILURE)
+    {
+      if (pll_errno != PLL_ERROR_ALPHA)
+       printf("Error is %d instead of %d\n", pll_errno, PLL_ERROR_ALPHA);
+    }
+    else
+    {
+       printf("Computing gamma rates for alpha = %f should have failed\n",
+           invalid_alpha);
+    }
+    free (rate_cats);
 
     pll_partition_destroy(partition);
   }
@@ -163,7 +179,8 @@ int main(int argc, char * argv[])
     {
       for (i = 0; i < NUM_ALPHAS; ++i) 
       {
-        printf("ti/tv:alpha(ncats) = %6.2f(%2d)   logL: %17.12f\n", alpha[i], n_cat_gamma[k], lk_scores[k*NUM_ALPHAS + i]);
+        printf("ti/tv:alpha(ncats) = %6.2f(%2d)   logL: %17.12f\n", 
+            alpha[i], n_cat_gamma[k], lk_scores[k*NUM_ALPHAS + i]);
       }
     }
 

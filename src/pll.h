@@ -75,6 +75,9 @@
 #define PLL_ERROR_NEWICK_SYNTAX          8
 #define PLL_ERROR_TIP_DATA_ILLEGAL_STATE 9
 
+#define PLL_ERROR_ALPHA                  101
+#define PLL_ERROR_PINV                   102
+
 /* utree specific */
 
 #define PLL_UTREE_SHOW_LABEL             1 << 0
