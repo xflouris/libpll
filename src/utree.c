@@ -277,13 +277,13 @@ static void utree_traverse(pll_utree_t * node,
   *index = *index + 1;
 }
 
-PLL_EXPORT unsigned int pll_utree_traverse(pll_utree_t * root,
-                                           int (*cbtrav)(pll_utree_t *),
-                                           pll_utree_t ** outbuffer)
+PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
+                                  int (*cbtrav)(pll_utree_t *),
+                                  pll_utree_t ** outbuffer,
+                                  unsigned int * trav_size)
 {
-  unsigned int index = 0;
-
-  if (!root->next) return -1;
+  *trav_size = 0;
+  if (!root->next) return PLL_FAILURE;
 
   /* we will traverse an unrooted tree in the following way
       
@@ -296,10 +296,10 @@ PLL_EXPORT unsigned int pll_utree_traverse(pll_utree_t * root,
      at each node the callback function is called to decide whether we
      are going to traversing the subtree rooted at the specific node */
 
-  utree_traverse(root->back, cbtrav, &index, outbuffer);
-  utree_traverse(root, cbtrav, &index, outbuffer);
+  utree_traverse(root->back, cbtrav, trav_size, outbuffer);
+  utree_traverse(root, cbtrav, trav_size, outbuffer);
 
-  return index;
+  return PLL_SUCCESS;
 }
 
 

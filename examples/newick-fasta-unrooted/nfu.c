@@ -267,17 +267,18 @@ int main(int argc, char * argv[])
                                                 sizeof(pll_operation_t));
 
   /* perform a postorder traversal of the unrooted tree */
-  int traversal_size = pll_utree_traverse(tree,
-                                          cb_full_traversal,
-                                          travbuffer);
-  if (traversal_size == -1)
+  unsigned int traversal_size;
+  if (!pll_utree_traverse(tree,
+                          cb_full_traversal,
+                          travbuffer,
+                          &traversal_size))
     fatal("Function pll_utree_traverse() requires inner nodes as parameters");
 
   /* given the computed traversal descriptor, generate the operations
      structure, and the corresponding probability matrix indices that
      may need recomputing */
   pll_utree_create_operations(travbuffer,
-                              (unsigned int)traversal_size,
+                              traversal_size,
                               branch_lengths,
                               matrix_indices,
                               operations,

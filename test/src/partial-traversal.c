@@ -320,23 +320,26 @@ int main(int argc, char * argv[])
   double cmplogl = 0.0;
   for (i = 0; i < 20; ++i)
   {
+    unsigned int traversal_size;
+
     /* randomly select an inner node */
     r = RAND % inner_nodes_count;
     pll_utree_t * node = inner_nodes_list[r];
 
     /* compute a partial traversal starting from the randomly selected 
        inner node */
-    int traversal_size = pll_utree_traverse(node, 
-                                            cb_partial_traversal, 
-                                            travbuffer);
-    if (traversal_size == -1)
+    
+    if (!pll_utree_traverse(node, 
+                            cb_partial_traversal, 
+                            travbuffer,
+                            &traversal_size))
       fatal("Function pll_utree_traverse() requires inner nodes as parameters");
 
     /* given the computed traversal descriptor, generate the operations 
        structure, and the corresponding probability matrix indices that 
        may need recomputing */
     pll_utree_create_operations(travbuffer,
-                                (unsigned int)traversal_size,
+                                traversal_size,
                                 branch_lengths,
                                 matrix_indices,
                                 operations,
