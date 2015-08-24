@@ -115,21 +115,21 @@ static int * build_model_symmetries (const char * modelmatrix)
 int main (int argc, char * argv[])
 {
 
-  int i, tip_count, nodes_count, branch_count, inner_nodes_count;
+  unsigned int i, tip_count, nodes_count, branch_count, inner_nodes_count;
   pll_partition_t * partition;
   pll_operation_t * operations = NULL;
   double * branch_lengths = NULL;
-  int * matrix_indices = NULL;
+  unsigned int * matrix_indices = NULL;
   pll_optimize_options_t params;
   time_t start_time, end_time;
   int parameters_to_optimize;
 
   pll_utree_t * tree;
   pll_utree_t ** travbuffer;
-  int * data;
+  unsigned int * data;
   int * subst_params_symmetries;
 
-  int matrix_count, ops_count;
+  unsigned int matrix_count, ops_count;
 
   if (argc != 4)
     fatal (" syntax: %s [newick] [fasta] [model]", argv[0]);
@@ -151,7 +151,7 @@ int main (int argc, char * argv[])
   hcreate ((size_t)tip_count);
 
   /* populate a libc hash table with tree tip labels */
-  data = (int *) malloc ((size_t)tip_count * sizeof(int));
+  data = (unsigned int *) malloc ((size_t)tip_count * sizeof(unsigned int));
   for (i = 0; i < tip_count; ++i)
   {
     data[i] = i;
@@ -189,13 +189,15 @@ int main (int argc, char * argv[])
 
   travbuffer = (pll_utree_t **)malloc((size_t)nodes_count * sizeof(pll_utree_t *));
   branch_lengths = (double *)malloc((size_t)branch_count * sizeof(double));
-  matrix_indices = (int *)malloc((size_t)branch_count * sizeof(int));
+  matrix_indices = (unsigned int *)malloc((size_t)branch_count * sizeof(unsigned int));
   operations = (pll_operation_t *)malloc((size_t)inner_nodes_count *
                                                 sizeof(pll_operation_t));
   /* perform a postorder traversal of the unrooted tree */
-  int traversal_size = pll_utree_traverse (tree, cb_full_traversal, travbuffer);
-
-  if (traversal_size == -1)
+  unsigned int traversal_size;
+  if (!pll_utree_traverse (tree,
+                           cb_full_traversal,
+                           travbuffer, &
+                           traversal_size))
     fatal("Function pll_utree_traverse() requires inner nodes as parameters");
 
   /* given the computed traversal descriptor, generate the operations
