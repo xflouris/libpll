@@ -375,15 +375,15 @@ PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options);
 
 PLL_EXPORT char * pll_utree_export_newick(pll_utree_t * root);
 
-PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
-                                  int (*cbtrav)(pll_utree_t *),
-                                  pll_utree_t ** outbuffer);
+PLL_EXPORT unsigned int pll_utree_traverse(pll_utree_t * root,
+                                           int (*cbtrav)(pll_utree_t *),
+                                           pll_utree_t ** outbuffer);
 
-PLL_EXPORT int pll_utree_query_tipnodes(pll_utree_t * root,
-                                        pll_utree_t ** node_list);
+PLL_EXPORT unsigned int pll_utree_query_tipnodes(pll_utree_t * root,
+                                                 pll_utree_t ** node_list);
 
-PLL_EXPORT int pll_utree_query_innernodes(pll_utree_t * root,
-                                          pll_utree_t ** node_list);
+PLL_EXPORT unsigned int pll_utree_query_innernodes(pll_utree_t * root,
+                                                   pll_utree_t ** node_list);
 
 PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
                                             unsigned int trav_buffer_size,
@@ -399,15 +399,15 @@ PLL_EXPORT void pll_rtree_show_ascii(pll_rtree_t * tree, int options);
 
 PLL_EXPORT char * pll_rtree_export_newick(pll_rtree_t * root);
 
-PLL_EXPORT int pll_rtree_traverse(pll_rtree_t * root,
-                                   int (*cbtrav)(pll_rtree_t *),
-                                   pll_rtree_t ** outbuffer);
+PLL_EXPORT unsigned int pll_rtree_traverse(pll_rtree_t * root,
+                                           int (*cbtrav)(pll_rtree_t *),
+                                           pll_rtree_t ** outbuffer);
 
-PLL_EXPORT int pll_rtree_query_tipnodes(pll_rtree_t * root,
-                                        pll_rtree_t ** node_list);
+PLL_EXPORT unsigned int pll_rtree_query_tipnodes(pll_rtree_t * root,
+                                                 pll_rtree_t ** node_list);
 
-PLL_EXPORT int pll_rtree_query_innernodes(pll_rtree_t * root,
-                                          pll_rtree_t ** node_list);
+PLL_EXPORT unsigned int pll_rtree_query_innernodes(pll_rtree_t * root,
+                                                   pll_rtree_t ** node_list);
 
 PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
                                             unsigned int trav_buffer_size,

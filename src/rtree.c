@@ -245,7 +245,7 @@ PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
 
 static void rtree_traverse(pll_rtree_t * node,
                            int (*cbtrav)(pll_rtree_t *),
-                           int * index,
+                           unsigned int * index,
                            pll_rtree_t ** outbuffer)
 {
   if (!node->left)
@@ -266,11 +266,11 @@ static void rtree_traverse(pll_rtree_t * node,
   *index = *index + 1;
 }
 
-int pll_rtree_traverse(pll_rtree_t * root,
-                       int (*cbtrav)(pll_rtree_t *),
-                       pll_rtree_t ** outbuffer)
+unsigned int pll_rtree_traverse(pll_rtree_t * root,
+                                int (*cbtrav)(pll_rtree_t *),
+                                pll_rtree_t ** outbuffer)
 {
-  int index = 0;
+  unsigned int index = 0;
 
   if (!root->left) return -1;
 
@@ -290,7 +290,7 @@ int pll_rtree_traverse(pll_rtree_t * root,
 
 static void rtree_query_tipnodes_recursive(pll_rtree_t * node,
                                            pll_rtree_t ** node_list,
-                                           int * index)
+                                           unsigned int * index)
 {
   if (!node) return;
 
@@ -305,10 +305,10 @@ static void rtree_query_tipnodes_recursive(pll_rtree_t * node,
   rtree_query_tipnodes_recursive(node->right, node_list, index);
 }
 
-PLL_EXPORT int pll_rtree_query_tipnodes(pll_rtree_t * root,
-                                        pll_rtree_t ** node_list)
+PLL_EXPORT unsigned int pll_rtree_query_tipnodes(pll_rtree_t * root,
+                                                 pll_rtree_t ** node_list)
 {
-  int index = 0;
+  unsigned int index = 0;
 
   if (!root) return 0;
   if (!root->left)
@@ -324,8 +324,8 @@ PLL_EXPORT int pll_rtree_query_tipnodes(pll_rtree_t * root,
 }
 
 static void rtree_query_innernodes_recursive(pll_rtree_t * root,
-                                           pll_rtree_t ** node_list,
-                                           int * index)
+                                             pll_rtree_t ** node_list,
+                                             unsigned int * index)
 {
   if (!root) return;
   if (!root->left) return;
@@ -340,10 +340,10 @@ static void rtree_query_innernodes_recursive(pll_rtree_t * root,
   return;
 }
 
-PLL_EXPORT int pll_rtree_query_innernodes(pll_rtree_t * root,
+PLL_EXPORT unsigned int pll_rtree_query_innernodes(pll_rtree_t * root,
                                         pll_rtree_t ** node_list)
 {
-  int index = 0;
+  unsigned int index = 0;
 
   if (!root) return 0;
   if (!root->left) return 0;
