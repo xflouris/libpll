@@ -190,52 +190,52 @@ typedef struct pll_rtree
 
 /* common data */
 
-extern int pll_errno;
-extern char pll_errmsg[200];
-extern const unsigned int pll_map_bin[256];
-extern const unsigned int pll_map_nt[256];
-extern const unsigned int pll_map_aa[256];
-extern const unsigned int pll_map_fasta[256];
+PLL_EXPORT extern int pll_errno;
+PLL_EXPORT extern char pll_errmsg[200];
+PLL_EXPORT extern const unsigned int pll_map_bin[256];
+PLL_EXPORT extern const unsigned int pll_map_nt[256];
+PLL_EXPORT extern const unsigned int pll_map_aa[256];
+PLL_EXPORT extern const unsigned int pll_map_fasta[256];
 
-extern const double pll_aa_rates_dayhoff[190];
-extern const double pll_aa_rates_lg[190];
-extern const double pll_aa_rates_dcmut[190];
-extern const double pll_aa_rates_jtt[190];
-extern const double pll_aa_rates_mtrev[190];
-extern const double pll_aa_rates_wag[190];
-extern const double pll_aa_rates_rtrev[190];
-extern const double pll_aa_rates_cprev[190];
-extern const double pll_aa_rates_vt[190];
-extern const double pll_aa_rates_blosum62[190];
-extern const double pll_aa_rates_mtmam[190];
-extern const double pll_aa_rates_mtart[190];
-extern const double pll_aa_rates_mtzoa[190];
-extern const double pll_aa_rates_pmb[190];
-extern const double pll_aa_rates_hivb[190];
-extern const double pll_aa_rates_hivw[190];
-extern const double pll_aa_rates_jttdcmut[190];
-extern const double pll_aa_rates_flu[190];
-extern const double pll_aa_rates_stmtrev[190];
+PLL_EXPORT extern const double pll_aa_rates_dayhoff[190];
+PLL_EXPORT extern const double pll_aa_rates_lg[190];
+PLL_EXPORT extern const double pll_aa_rates_dcmut[190];
+PLL_EXPORT extern const double pll_aa_rates_jtt[190];
+PLL_EXPORT extern const double pll_aa_rates_mtrev[190];
+PLL_EXPORT extern const double pll_aa_rates_wag[190];
+PLL_EXPORT extern const double pll_aa_rates_rtrev[190];
+PLL_EXPORT extern const double pll_aa_rates_cprev[190];
+PLL_EXPORT extern const double pll_aa_rates_vt[190];
+PLL_EXPORT extern const double pll_aa_rates_blosum62[190];
+PLL_EXPORT extern const double pll_aa_rates_mtmam[190];
+PLL_EXPORT extern const double pll_aa_rates_mtart[190];
+PLL_EXPORT extern const double pll_aa_rates_mtzoa[190];
+PLL_EXPORT extern const double pll_aa_rates_pmb[190];
+PLL_EXPORT extern const double pll_aa_rates_hivb[190];
+PLL_EXPORT extern const double pll_aa_rates_hivw[190];
+PLL_EXPORT extern const double pll_aa_rates_jttdcmut[190];
+PLL_EXPORT extern const double pll_aa_rates_flu[190];
+PLL_EXPORT extern const double pll_aa_rates_stmtrev[190];
 
-extern const double pll_aa_freqs_dayhoff[20];
-extern const double pll_aa_freqs_lg[20];
-extern const double pll_aa_freqs_dcmut[20];
-extern const double pll_aa_freqs_jtt[20];
-extern const double pll_aa_freqs_mtrev[20];
-extern const double pll_aa_freqs_wag[20];
-extern const double pll_aa_freqs_rtrev[20];
-extern const double pll_aa_freqs_cprev[20];
-extern const double pll_aa_freqs_vt[20];
-extern const double pll_aa_freqs_blosum62[20];
-extern const double pll_aa_freqs_mtmam[20];
-extern const double pll_aa_freqs_mtart[20];
-extern const double pll_aa_freqs_mtzoa[20];
-extern const double pll_aa_freqs_pmb[20];
-extern const double pll_aa_freqs_hivb[20];
-extern const double pll_aa_freqs_hivw[20];
-extern const double pll_aa_freqs_jttdcmut[20];
-extern const double pll_aa_freqs_flu[20];
-extern const double pll_aa_freqs_stmtrev[20];
+PLL_EXPORT extern const double pll_aa_freqs_dayhoff[20];
+PLL_EXPORT extern const double pll_aa_freqs_lg[20];
+PLL_EXPORT extern const double pll_aa_freqs_dcmut[20];
+PLL_EXPORT extern const double pll_aa_freqs_jtt[20];
+PLL_EXPORT extern const double pll_aa_freqs_mtrev[20];
+PLL_EXPORT extern const double pll_aa_freqs_wag[20];
+PLL_EXPORT extern const double pll_aa_freqs_rtrev[20];
+PLL_EXPORT extern const double pll_aa_freqs_cprev[20];
+PLL_EXPORT extern const double pll_aa_freqs_vt[20];
+PLL_EXPORT extern const double pll_aa_freqs_blosum62[20];
+PLL_EXPORT extern const double pll_aa_freqs_mtmam[20];
+PLL_EXPORT extern const double pll_aa_freqs_mtart[20];
+PLL_EXPORT extern const double pll_aa_freqs_mtzoa[20];
+PLL_EXPORT extern const double pll_aa_freqs_pmb[20];
+PLL_EXPORT extern const double pll_aa_freqs_hivb[20];
+PLL_EXPORT extern const double pll_aa_freqs_hivw[20];
+PLL_EXPORT extern const double pll_aa_freqs_jttdcmut[20];
+PLL_EXPORT extern const double pll_aa_freqs_flu[20];
+PLL_EXPORT extern const double pll_aa_freqs_stmtrev[20];
 
 #ifdef __cplusplus
 extern "C" {
@@ -375,15 +375,15 @@ PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options);
 
 PLL_EXPORT char * pll_utree_export_newick(pll_utree_t * root);
 
-PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
-                                  int (*cbtrav)(pll_utree_t *),
-                                  pll_utree_t ** outbuffer);
+PLL_EXPORT unsigned int pll_utree_traverse(pll_utree_t * root,
+                                           int (*cbtrav)(pll_utree_t *),
+                                           pll_utree_t ** outbuffer);
 
-PLL_EXPORT int pll_utree_query_tipnodes(pll_utree_t * root,
-                                        pll_utree_t ** node_list);
+PLL_EXPORT unsigned int pll_utree_query_tipnodes(pll_utree_t * root,
+                                                 pll_utree_t ** node_list);
 
-PLL_EXPORT int pll_utree_query_innernodes(pll_utree_t * root,
-                                          pll_utree_t ** node_list);
+PLL_EXPORT unsigned int pll_utree_query_innernodes(pll_utree_t * root,
+                                                   pll_utree_t ** node_list);
 
 PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
                                             unsigned int trav_buffer_size,
@@ -399,15 +399,15 @@ PLL_EXPORT void pll_rtree_show_ascii(pll_rtree_t * tree, int options);
 
 PLL_EXPORT char * pll_rtree_export_newick(pll_rtree_t * root);
 
-PLL_EXPORT int pll_rtree_traverse(pll_rtree_t * root,
-                                   int (*cbtrav)(pll_rtree_t *),
-                                   pll_rtree_t ** outbuffer);
+PLL_EXPORT unsigned int pll_rtree_traverse(pll_rtree_t * root,
+                                           int (*cbtrav)(pll_rtree_t *),
+                                           pll_rtree_t ** outbuffer);
 
-PLL_EXPORT int pll_rtree_query_tipnodes(pll_rtree_t * root,
-                                        pll_rtree_t ** node_list);
+PLL_EXPORT unsigned int pll_rtree_query_tipnodes(pll_rtree_t * root,
+                                                 pll_rtree_t ** node_list);
 
-PLL_EXPORT int pll_rtree_query_innernodes(pll_rtree_t * root,
-                                          pll_rtree_t ** node_list);
+PLL_EXPORT unsigned int pll_rtree_query_innernodes(pll_rtree_t * root,
+                                                   pll_rtree_t ** node_list);
 
 PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
                                             unsigned int trav_buffer_size,
