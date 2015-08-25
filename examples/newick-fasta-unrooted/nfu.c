@@ -196,7 +196,7 @@ int main(int argc, char * argv[])
                                    branch_count,
                                    RATE_CATS,
                                    inner_nodes_count,
-                                   PLL_ATTRIB_ARCH_SSE);
+                                   PLL_ATTRIB_ARCH_CPU);
 
   /* initialize the array of base frequencies */
   double frequencies[4] = { 0.17, 0.19, 0.25, 0.39 };

@@ -22,16 +22,19 @@
 #include "pll.h"
 
 static void update_partials(pll_partition_t * partition,
-                            double * parent_clv,
-                            const double * left_clv,
-                            const double * right_clv,
-                            const double * left_matrix,
-                            const double * right_matrix,
-                            unsigned int * scaler)
+                            const pll_operation_t * op)
 {
   unsigned int i,j,k,n;
   int scaling;
 
+  const double * left_clv = partition->clv[op->child1_clv_index];
+  const double * right_clv = partition->clv[op->child2_clv_index];
+  const double * left_matrix = partition->pmatrix[op->child1_matrix_index];
+  const double * right_matrix = partition->pmatrix[op->child2_matrix_index];
+  double * parent_clv = partition->clv[op->parent_clv_index];
+  unsigned int * scaler = (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE) ?
+                        NULL : partition->scale_buffer[op->parent_scaler_index];
+  
   const double * lmat;
   const double * rmat;
 
@@ -118,14 +121,18 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
           parent_scaler[j] += c2_scaler[j];
       }
     }
-
-    update_partials(partition,
-                    partition->clv[operations[i].parent_clv_index],
-                    partition->clv[operations[i].child1_clv_index],
-                    partition->clv[operations[i].child2_clv_index],
-                    partition->pmatrix[operations[i].child1_matrix_index],
-                    partition->pmatrix[operations[i].child2_matrix_index],
-                    parent_scaler);
+    /* select vectorization method */
+    #ifdef HAVE_AVX
+    if (partition->attributes & PLL_ATTRIB_ARCH_AVX)
+      pll_update_partials_avx(partition, &(operations[i]));
+    else
+    #endif
+    #ifdef HAVE_SSE
+    if (partition->attributes & PLL_ATTRIB_ARCH_SSE)
+      assert(0);
+    else
+    #endif
+      update_partials(partition, &(operations[i]));
   }
 }
 

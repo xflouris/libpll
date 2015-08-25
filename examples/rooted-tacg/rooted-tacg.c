@@ -172,7 +172,7 @@ int main(int argc, char * argv[])
                                    5,       /* How many probability matrices should we allocate */
                                    4,       /* Number of rate categories */
                                    4,       /* How many scale buffers do we want */
-                                   PLL_ATTRIB_ARCH_SSE);        /* various attributes (not yet implemented) */
+                                   PLL_ATTRIB_ARCH_CPU);        /* various attributes (not yet implemented) */
   
   /* initialize an array of two different branch lengths */
   double branch_lengths[5] = { 0.36, 0.722, 0.985, 0.718, 1.44};

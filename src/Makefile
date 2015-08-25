@@ -28,6 +28,7 @@ ifndef CC
 CC = gcc
 endif
 CFLAGS = -D_GNU_SOURCE -fPIC -g -msse3 -O3 $(WARN)
+AVXFLAGS = -mavx
 LINKFLAGS=$(PROFILING)
 LIBS=-lm
 
@@ -40,11 +41,13 @@ all: $(PROG)
 
 OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o \
      parse_utree.o parse_rtree.o lex_utree.o lex_rtree.o utree.o rtree.o \
-     core_likelihood.o
+     core_likelihood.o likelihood_avx.o
 
 $(PROG): $(OBJS)
 	$(CC) -shared -Wl,-soname,$@ -o $@ $+
 
+%_avx.o: %_avx.c
+	$(CC) $(CFLAGS) $(AVXFLAGS) -c -o $@ $<
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
