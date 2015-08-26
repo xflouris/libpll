@@ -513,28 +513,12 @@ PLL_EXPORT pll_partition_t * pll_partition_fasta_create (const char *file,
     {
       int tip_clv_index = -1;
 
-      if (tipnames)
+      for (j = 0; j < tip_count; ++j)
       {
-        for (j = 0; j < tip_count; ++j)
+        if (!strcmp (tipnames[j], headers[i]))
         {
-          if (!strcmp (tipnames[j], headers[i]))
-          {
-            tip_clv_index = (int)j;
-            break;
-          }
-        }
-      }
-      else
-      {
-        ENTRY query;
-        query.key = headers[i];
-        ENTRY * found = NULL;
-
-        found = hsearch (query, FIND);
-
-        if (found)
-        {
-          tip_clv_index = *((int *) (found->data));
+          tip_clv_index = (int) j;
+          break;
         }
       }
 
