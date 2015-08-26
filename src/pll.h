@@ -58,22 +58,25 @@
 
 /* attribute flags */
 
+#define PLL_ATTRIB_ARCH_CPU            0
 #define PLL_ATTRIB_ARCH_SSE       1 << 0
 #define PLL_ATTRIB_ARCH_AVX       1 << 1
 #define PLL_ATTRIB_ARCH_AVX2      1 << 2
 #define PLL_ATTRIB_ARCH_AVX512    1 << 3
+#define PLL_ATTRIB_ARCH_MASK         0xF
 
 /* error codes */
 
-#define PLL_ERROR_FILE_OPEN              1
-#define PLL_ERROR_FILE_SEEK              2
-#define PLL_ERROR_FILE_EOF               3
-#define PLL_ERROR_FASTA_ILLEGALCHAR      4
-#define PLL_ERROR_FASTA_UNPRINTABLECHAR  5
-#define PLL_ERROR_FASTA_INVALIDHEADER    6
-#define PLL_ERROR_MEM_ALLOC              7
-#define PLL_ERROR_NEWICK_SYNTAX          8
-#define PLL_ERROR_TIP_DATA_ILLEGAL_STATE 9
+#define PLL_ERROR_FILE_OPEN                1
+#define PLL_ERROR_FILE_SEEK                2
+#define PLL_ERROR_FILE_EOF                 3
+#define PLL_ERROR_FASTA_ILLEGALCHAR        4
+#define PLL_ERROR_FASTA_UNPRINTABLECHAR    5
+#define PLL_ERROR_FASTA_INVALIDHEADER      6
+#define PLL_ERROR_MEM_ALLOC                7
+#define PLL_ERROR_NEWICK_SYNTAX            8
+#define PLL_ERROR_TIP_DATA_ILLEGAL_STATE   9
+#define PLL_ERROR_MULTIPLE_ARCH           10
 
 #define PLL_ERROR_ALPHA                  101
 #define PLL_ERROR_PINV                   102
@@ -100,9 +103,11 @@ typedef struct pll_partition
   unsigned int prob_matrices;
   unsigned int rate_cats;
   unsigned int scale_buffers;
-  int attributes;
+  unsigned int attributes;
 
-  unsigned int alignment;
+  /* vectorization options */
+  size_t alignment;
+  unsigned int states_padded;
 
   double ** clv;
   double ** pmatrix;
@@ -251,7 +256,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                                                   unsigned int prob_matrices,
                                                   unsigned int rate_cats,
                                                   unsigned int scale_buffers,
-                                                  int attributes);
+                                                  unsigned int attributes);
 
 PLL_EXPORT void pll_partition_destroy(pll_partition_t * partition);
 
@@ -434,6 +439,10 @@ PLL_EXPORT void pll_core_update_partial(unsigned int states,
                                         const unsigned int * right_scaler,
                                         unsigned int attrib);
 
+/* functions in likelihood_avx.c */
+
+void pll_update_partials_avx(pll_partition_t * partition,
+                             const pll_operation_t * op);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

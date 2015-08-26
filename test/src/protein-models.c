@@ -88,7 +88,7 @@ int main(int argc, char * argv[])
                                    8,            /* probability matrices */
                                    N_CAT_GAMMA,       /* rate categories */
                                    1,
-                                   1);
+                                   0);
   
   double branch_lengths[4] = { 0.1, 0.2, 1, 1};
   unsigned int matrix_indices[4] = { 0, 1, 2, 3 };
