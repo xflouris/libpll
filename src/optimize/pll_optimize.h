@@ -100,15 +100,19 @@ typedef struct
 
 /* functions in pll_optimize.c */
 
+/* core brent optimization function */
+PLL_EXPORT double pll_minimize_brent(double xmin,
+                                     double xguess,
+                                     double xmax,
+                                     double tolerance,
+                                     double *fx,
+                                     double *f2x,
+                                     pll_optimize_options_t * params,
+                                     double (*target_funk)(
+                                         pll_optimize_options_t *,
+                                         double));
+PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * p);
 PLL_EXPORT double pll_optimize_parameters_lbfgsb(pll_optimize_options_t * p);
-PLL_EXPORT pll_partition_t * pll_partition_fasta_create (const char *file,
-                                                         unsigned int states,
-                                                         unsigned int n_rate_matrices,
-                                                         unsigned int n_rate_cats,
-                                                         int attributes,
-                                                         int rooted,
-                                                         unsigned int tip_count,
-                                                         const char **tipnames);
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                                pll_optimize_options_t * params,
                                                pll_utree_t * tree,

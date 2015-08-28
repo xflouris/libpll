@@ -42,144 +42,6 @@ static int d_equals(double a, double b)
   return (fabs(a-b) < 1e-10);
 }
 
-static double recomp_iterative (pll_optimize_options_t * params,
-                                pll_utree_t * tree,
-                                double prev_lnl)
-{
-  double lnl, new_lnl;
-
-  lnl = prev_lnl;
-
-
-  /* set Branch Length */
-  assert(d_equals(tree->length, tree->back->length));
-
-  params->lk_params.branch_lengths[0] = tree->length;
-  params->lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
-  params->lk_params.where.unrooted_t.child_scaler_index = tree->back->scaler_index;
-  params->lk_params.where.unrooted_t.parent_clv_index = tree->clv_index;
-  params->lk_params.where.unrooted_t.parent_scaler_index = tree->scaler_index;
-  params->lk_params.where.unrooted_t.edge_pmatrix_index = tree->pmatrix_index;
-
-  new_lnl = -1 * pll_optimize_parameters_lbfgsb(params);
-
-  /* ensure that new_lnl is not NaN */
-  assert (new_lnl == new_lnl);
-
-  if (new_lnl < lnl)
-  {
-    pll_update_prob_matrices(params->lk_params.partition,
-                             params->params_index,
-                             &(tree->pmatrix_index),
-                             &(tree->length),
-                             1);
-    lnl = pll_compute_edge_loglikelihood (params->lk_params.partition,
-                                          tree->back->clv_index, tree->back->scaler_index,
-                                            tree->clv_index, tree->scaler_index,
-                                            tree->pmatrix_index,
-                                            params->lk_params.freqs_index);
-  }
-  else
-  {
-    lnl = new_lnl;
-    tree->length = params->lk_params.branch_lengths[0];
-    tree->back->length = params->lk_params.branch_lengths[0];
-  }
-
-  if (tree->next)
-  {
-    pll_operation_t new_op;
-
-    /* set CLV */
-    new_op.parent_clv_index = tree->clv_index;
-    new_op.parent_scaler_index = tree->scaler_index;
-    new_op.child1_clv_index = tree->back->clv_index;
-    new_op.child1_matrix_index = tree->back->pmatrix_index;
-    new_op.child1_scaler_index = tree->back->scaler_index;
-    new_op.child2_clv_index = tree->next->next->back->clv_index;
-    new_op.child2_matrix_index = tree->next->next->back->pmatrix_index;
-    new_op.child2_scaler_index = tree->next->next->back->scaler_index;
-#if(UPDATE_SCALERS)
-    int i;
-    /* update scalers */
-    if (info1->scaler_index != PLL_SCALE_BUFFER_NONE)
-    {
-      int n = params->lk_params.partition->sites;
-      for (i=0; i<n; i++)
-        params->lk_params.partition->scale_buffer[info1->scaler_index][i] =
-            params->lk_params.partition->scale_buffer[info1->scaler_index][i]
-                + ((info2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                    params->lk_params.partition->scale_buffer[info2->scaler_index][i] :
-                    0)
-                - ((info_child1->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                    params->lk_params.partition->scale_buffer[info_child1->scaler_index][i] :
-                    0);
-    }
-#endif
-    pll_update_partials (params->lk_params.partition, &new_op, 1);
-
-    /* eval */
-    recomp_iterative (params, tree->next->back, lnl);
-
-    /* set CLV */
-    new_op.parent_clv_index = tree->clv_index;
-    new_op.parent_scaler_index = tree->scaler_index;
-    new_op.child1_clv_index = tree->back->clv_index;
-    new_op.child1_matrix_index = tree->back->pmatrix_index;
-    new_op.child1_scaler_index = tree->back->scaler_index;
-    new_op.child2_clv_index = tree->next->back->clv_index;
-    new_op.child2_matrix_index = tree->next->back->pmatrix_index;
-    new_op.child2_scaler_index = tree->next->back->scaler_index;
-#if(UPDATE_SCALERS)
-    /* update scalers */
-    if (info1->scaler_index != PLL_SCALE_BUFFER_NONE)
-    {
-      int n = params->lk_params.partition->sites;
-      for (i = 0; i < n; i++)
-        params->lk_params.partition->scale_buffer[info1->scaler_index][i] =
-            params->lk_params.partition->scale_buffer[info1->scaler_index][i]
-                + ((info2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                params->lk_params.partition->scale_buffer[info2->scaler_index][i] :
-            0) - ((info_child2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                params->lk_params.partition->scale_buffer[info_child2->scaler_index][i] :
-                0);
-    }
-#endif
-    pll_update_partials (params->lk_params.partition, &new_op, 1);
-
-   /* eval */
-    recomp_iterative (params, tree->next->next->back, lnl);
-
-    /* reset CLV */
-    new_op.parent_clv_index = tree->clv_index;
-    new_op.parent_scaler_index = tree->scaler_index;
-    new_op.child1_clv_index = tree->next->back->clv_index;
-    new_op.child1_matrix_index = tree->next->back->pmatrix_index;
-    new_op.child1_scaler_index = tree->next->back->scaler_index;
-    new_op.child2_clv_index = tree->next->next->back->clv_index;
-    new_op.child2_matrix_index = tree->next->next->back->pmatrix_index;
-    new_op.child2_scaler_index = tree->next->next->back->scaler_index;
-#if(UPDATE_SCALERS)
-    /* update scalers */
-       if (info1->scaler_index != PLL_SCALE_BUFFER_NONE)
-       {
-         int n = params->lk_params.partition->sites;
-         for (i = 0; i < n; i++)
-           params->lk_params.partition->scale_buffer[info1->scaler_index][i] =
-                       params->lk_params.partition->scale_buffer[info1->scaler_index][i]
-                           + ((info_child2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                           params->lk_params.partition->scale_buffer[info_child2->scaler_index][i] :
-                       0) - ((info2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                           params->lk_params.partition->scale_buffer[info2->scaler_index][i] :
-                           0);
-       }
-#endif
-    pll_update_partials (params->lk_params.partition, &new_op, 1);
-  }
-
-  return lnl;
-} /* recomp_iterative */
-
 static int set_x_to_parameters(pll_optimize_options_t * params,
                                double *x)
 {
@@ -385,214 +247,255 @@ static unsigned int count_n_free_variables (pll_optimize_options_t * params)
   return num_variables;
 } /* count_n_free_variables */
 
-/**
- * if tip_count == 0, this function reads the file twice. The first
- *           time for getting the number of tips.
- * taxa_list allows mapping the sequences to their respective tips.
- *           if taxa_list == NULL, we assume that a hashing table
- *           has been already created.
- */
-PLL_EXPORT pll_partition_t * pll_partition_fasta_create (const char *file,
-                                                         unsigned int states,
-                                                         unsigned int n_rate_matrices,
-                                                         unsigned int n_rate_cats,
-                                                         int attributes,
-                                                         int rooted,
-                                                         unsigned int tip_count,
-                                                         const char **tipnames)
+
+/******************************************************************************/
+/* BRENT'S OPTIMIZATION */
+/******************************************************************************/
+
+#define ITMAX 100
+#define CGOLD 0.3819660
+#define GOLD 1.618034
+#define GLIMIT 100.0
+#define TINY 1.0e-20
+#define ZEPS 1.0e-10
+#define SHFT(a,b,c,d) (a)=(b);(b)=(c);(c)=(d);
+#define SIGN(a,b) ((b) >= 0.0 ? fabs(a) : -fabs(a))
+
+static double brent_opt (double ax, double bx, double cx, double tol,
+                             double *foptx, double *f2optx, double fax,
+                             double fbx, double fcx,
+                             pll_optimize_options_t * params,
+                             double (*target_funk)(
+                                 pll_optimize_options_t *,
+                                 double))
 {
+  int iter;
+  double a, b, d = 0, etemp, fu, fv, fw, fx, p, q, r, tol1, tol2, u, v, w, x,
+      xm;
+  double xw, wv, vx;
+  double e = 0.0;
 
-  int unsigned i, j;
-  pll_partition_t * partition;
-  pll_fasta_t * fp;
-
-  pll_errno = 0;
-
-  /* open FASTA file */
-  fp = pll_fasta_open (file, pll_map_fasta);
-  if (!fp)
-    return PLL_FAILURE;
+  a = (ax < cx ? ax : cx);
+  b = (ax > cx ? ax : cx);
+  x = bx;
+  fx = fbx;
+  if (fax < fcx)
   {
-    char * seq = NULL;
-    char * hdr = NULL;
-    long seqlen;
-    long hdrlen;
-    long seqno;
-
-    if (!tip_count)
-    {
-      /* get the number of tips */
-      while (pll_fasta_getnext (fp, &hdr, &hdrlen, &seq, &seqlen, &seqno))
-      {
-        free (seq);
-        free (hdr);
-        ++tip_count;
-      }
-
-      /* reset the fasta pointer */
-
-      if (!pll_fasta_rewind (fp))
-      {
-        pll_fasta_close (fp);
-        return PLL_FAILURE;
-      }
-    }
-
-    /* allocate arrays to store FASTA headers and sequences */
-    char ** headers = (char **) calloc ((size_t)tip_count, sizeof(char *));
-    char ** seqdata = (char **) calloc ((size_t)tip_count, sizeof(char *));
-
-    /* read FASTA sequences and make sure they are all of the same length */
-    long sites = -1;
-    for (i = 0; pll_fasta_getnext (fp, &hdr, &hdrlen, &seq, &seqlen, &seqno);
-        ++i)
-    {
-      if (i >= tip_count)
-      {
-        snprintf (pll_errmsg, 200,
-                  "FASTA file contains more sequences than expected");
-        pll_errno = PLL_ERROR_TAXA_MISMATCH;
-        return PLL_FAILURE;
-      }
-
-      if (sites != -1 && sites != seqlen)
-      {
-        snprintf (pll_errmsg, 200,
-                  "FASTA file does not contain equal size sequences");
-        pll_errno = PLL_ERROR_SEQLEN_MISMATCH;
-        return PLL_FAILURE;
-      }
-
-      if (sites == -1)
-      {
-        sites = seqlen;
-      }
-
-      headers[i] = hdr;
-      seqdata[i] = seq;
-    }
-
-    /* did we stop reading the file because we reached EOF? */
-    if (pll_errno != PLL_ERROR_FILE_EOF)
-      return PLL_FAILURE;
-    pll_errno = 0;
-
-    /* close FASTA file */
-    pll_fasta_close (fp);
-
-    if (sites == -1)
-    {
-      snprintf (pll_errmsg, 200, "Unable to read alignment");
-      pll_errno = PLL_ERROR_ALIGN_UNREADABLE;
-      return PLL_FAILURE;
-    }
-
-    if (i != tip_count)
-    {
-      snprintf (pll_errmsg, 200, "Some taxa are missing from FASTA file");
-      pll_errno = PLL_ERROR_TAXA_MISMATCH;
-      return PLL_FAILURE;
-    }
-
-    partition = pll_partition_create (
-        tip_count, rooted ? (tip_count - 1) : (tip_count - 2),
-        states,
-        (unsigned int) sites,
-        n_rate_matrices,
-        rooted ? (2 * tip_count - 2) : (2 * tip_count - 3),
-        n_rate_cats,
-        rooted ? (tip_count - 1) : (tip_count - 2),
-        attributes);
-    if (!partition)
-    {
-      return PLL_FAILURE;
-    }
-
-    /* find sequences and link them with the corresponding taxa */
-    for (i = 0; i < tip_count; ++i)
-    {
-      int tip_clv_index = -1;
-
-      for (j = 0; j < tip_count; ++j)
-      {
-        if (!strcmp (tipnames[j], headers[i]))
-        {
-          tip_clv_index = (int) j;
-          break;
-        }
-      }
-
-      if (tip_clv_index == -1)
-      {
-        snprintf (pll_errmsg, 200,
-                  "Sequence with header %s does not appear in the tree",
-                  headers[i]);
-        pll_errno = PLL_ERROR_TAXA_MISMATCH;
-        return PLL_FAILURE;
-      }
-
-      const unsigned int * pll_map = 0;
-      switch (states)
-      {
-        case 4:
-          pll_map = pll_map_nt;
-          break;
-        case 20:
-          pll_map = pll_map_aa;
-          break;
-        default:
-        {
-            /* clean and return */
-            for (j = 0; j < tip_count; ++j)
-            {
-              free (seqdata[j]);
-              free (headers[j]);
-            }
-            free (seqdata);
-            free (headers);
-          return PLL_FAILURE;
-        }
-      }
-      int set_states = pll_set_tip_states (partition,
-                                           (unsigned int) tip_clv_index,
-                                           pll_map,
-                                           seqdata[i]);
-//      if (states == 4)
-//      {
-//        set_states
-//      }
-//      else if (states == 20)
-//      {
-//        set_states = pll_set_tip_states (partition,
-//                                         (unsigned int) tip_clv_index,
-//                                         pll_map_aa,
-//                                         seqdata[i]);
-//      }
-//      else
-//      {
-//        set_states = PLL_FAILURE;
-//      }
-
-      if (set_states == PLL_FAILURE)
-      {
-        pll_partition_destroy(partition);
-        partition = 0;
-      }
-    }
-
-    /* ...neither the sequences and the headers as they are already
-     present in the form of probabilities in the tip CLVs */
-    for (i = 0; i < tip_count; ++i)
-    {
-      free (seqdata[i]);
-      free (headers[i]);
-    }
-    free (seqdata);
-    free (headers);
+    w = ax;
+    fw = fax;
+    v = cx;
+    fv = fcx;
+  }
+  else
+  {
+    w = cx;
+    fw = fcx;
+    v = ax;
+    fv = fax;
   }
 
-  return partition;
-} /* pll_create_partition_fasta */
+  for (iter = 1; iter <= ITMAX; iter++)
+  {
+    xm = 0.5 * (a + b);
+    tol2 = 2.0 * (tol1 = tol * fabs (x) + ZEPS);
+    if (fabs (x - xm) <= (tol2 - 0.5 * (b - a)))
+    {
+      *foptx = fx;
+      xw = x - w;
+      wv = w - v;
+      vx = v - x;
+      *f2optx = 2.0 * (fv * xw + fx * wv + fw * vx)
+          / (v * v * xw + x * x * wv + w * w * vx);
+      return x;
+    }
+
+    if (fabs (e) > tol1)
+    {
+      r = (x - w) * (fx - fv);
+      q = (x - v) * (fx - fw);
+      p = (x - v) * q - (x - w) * r;
+      q = 2.0 * (q - r);
+      if (q > 0.0)
+        p = -p;
+      q = fabs (q);
+      etemp = e;
+      e = d;
+      if (fabs (p) >= fabs (0.5 * q * etemp) || p <= q * (a - x)
+          || p >= q * (b - x))
+        d = CGOLD * (e = (x >= xm ? a - x : b - x));
+      else
+      {
+        d = p / q;
+        u = x + d;
+        if (u - a < tol2 || b - u < tol2)
+          d = SIGN(tol1, xm - x);
+      }
+    }
+    else
+    {
+      d = CGOLD * (e = (x >= xm ? a - x : b - x));
+    }
+
+    u = (fabs (d) >= tol1 ? x + d : x + SIGN(tol1, d));
+    fu = target_funk (params, u);
+    if (fu <= fx)
+    {
+      if (u >= x)
+        a = x;
+      else
+        b = x;
+
+      SHFT(v, w, x, u)
+      SHFT(fv, fw, fx, fu)
+    }
+    else
+    {
+      if (u < x)
+        a = u;
+      else
+        b = u;
+      if (fu <= fw || w == x)
+      {
+        v = w;
+        w = u;
+        fv = fw;
+        fw = fu;
+      }
+      else if (fu <= fv || v == x || v == w)
+      {
+        v = u;
+        fv = fu;
+      }
+    }
+  }
+
+  *foptx = fx;
+  xw = x - w;
+  wv = w - v;
+  vx = v - x;
+  *f2optx = 2.0 * (fv * xw + fx * wv + fw * vx)
+      / (v * v * xw + x * x * wv + w * w * vx);
+
+  return x;
+}
+
+static double brent_target(pll_optimize_options_t * p, double x)
+{
+  return compute_lnl_unrooted(p, &x);
+}
+
+/* most of the code for Brent optimization taken from IQ-Tree
+ * http://www.cibiv.at/software/iqtree
+ * --------------------------------------------------------------------------
+ * Bui Quang Minh, Minh Anh Thi Nguyen, and Arndt von Haeseler (2013)
+ * Ultrafast approximation for phylogenetic bootstrap.
+ * Mol. Biol. Evol., 30:1188-1195. (free reprint, DOI: 10.1093/molbev/mst024) */
+PLL_EXPORT double pll_minimize_brent(double xmin,
+                                     double xguess,
+                                     double xmax,
+                                     double tolerance,
+                                     double *fx,
+                                     double *f2x,
+                                     pll_optimize_options_t * params,
+                                     double (*target_funk)(
+                                         pll_optimize_options_t *,
+                                         double))
+{
+  double eps, optx, ax, bx, cx, fa, fb, fc;
+  /* not converged error flag */
+
+  /* first attempt to bracketize minimum */
+  if (xguess < xmin)
+    xguess = xmin;
+  if (xguess > xmax)
+    xguess = xmax;
+  eps = xguess * tolerance * 50.0;
+  ax = xguess - eps;
+  if (ax < xmin)
+    ax = xmin;
+  bx = xguess;
+  cx = xguess + eps;
+  if (cx > xmax)
+    cx = xmax;
+
+  /* check if this works */
+  fa = target_funk (params, ax);
+  fb = target_funk (params, bx);
+  fc = target_funk (params, cx);
+
+  /* if it works use these borders else be conservative */
+  if ((fa < fb) || (fc < fb))
+  {
+    if (ax != xmin)
+      fa = target_funk (params, xmin);
+    if (cx != xmax)
+      fc = target_funk (params, xmax);
+    ax = xmin;
+    cx = xmax;
+  }
+
+  optx = brent_opt (ax, bx, cx, tolerance, fx, f2x, fa, fb, fc, params,
+                    target_funk);
+  if (*fx > fb) // if worse, return initial value
+  {
+    *fx = target_funk (params, bx);
+    return bx;
+  }
+
+  return optx; /* return optimal x */
+}
+
+PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * params)
+{
+  double score = 0;
+
+  /* Brent parameters */
+  double xmin;
+  double xguess;
+  double xmax;
+  double tolerance;
+  double f2x;
+
+  tolerance = params->pgtol;
+  switch (params->which_parameters)
+  {
+    case PLL_PARAMETER_ALPHA:
+      xmin = 0.0201 + PLL_LBFGSB_ERROR;
+      xmax = 100.0;
+      xguess = params->lk_params.alpha_value;
+      if (xguess < xmin || xguess > xmax)
+         xguess = PLL_OPT_DEFAULT_ALPHA;
+      break;
+    case PLL_PARAMETER_PINV:
+      xmin = PLL_LBFGSB_ERROR;
+      xmax = 0.99;
+      xguess = params->lk_params.partition->prop_invar[params->params_index];
+      if (xguess < xmin || xguess > xmax)
+         xguess = PLL_OPT_DEFAULT_PINV;
+      break;
+    case PLL_PARAMETER_BRANCHES_SINGLE:
+      xmin = PLL_OPT_MIN_BRANCH_LEN + PLL_LBFGSB_ERROR;
+      xmax = 2;
+      xguess = params->lk_params.branch_lengths[0];
+      if (xguess < xmin || xguess > xmax)
+        xguess = PLL_OPT_DEFAULT_BRANCH_LEN;
+//      //TODO: Temporarily unavailable
+//      assert(0);
+      break;
+    default:
+      /* unavailable or multiple parameter */
+      return -INFINITY;
+  }
+
+  double xres = pll_minimize_brent(xmin, xguess, xmax, tolerance, &score, &f2x,
+                             params, &brent_target);
+  score = brent_target(params, xres);
+  return score;
+}
+
+/******************************************************************************/
+/* L-BFGS-B OPTIMIZATION */
+/******************************************************************************/
 
 PLL_EXPORT double pll_optimize_parameters_lbfgsb (
                                               pll_optimize_options_t * params)
@@ -661,7 +564,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
       {
         nbd_ptr[i] = PLL_LBFGSB_BOUND_BOTH;
         l_ptr[i] = 0.001;
-        u_ptr[i] = 1000.;
+        u_ptr[i] = 100.;
         unsigned int j = i;
         if (params->subst_params_symmetries)
         {
@@ -861,6 +764,154 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
 
   return score;
 } /* pll_optimize_parameters_lbfgsb */
+
+/******************************************************************************/
+/* GENERIC */
+/******************************************************************************/
+
+#define USE_LBFGS 0
+
+static double recomp_iterative (pll_optimize_options_t * params,
+                                pll_utree_t * tree,
+                                double prev_lnl)
+{
+  double lnl, new_lnl;
+
+  lnl = prev_lnl;
+
+
+  /* set Branch Length */
+  assert(d_equals(tree->length, tree->back->length));
+
+  params->lk_params.branch_lengths[0] = tree->length;
+  params->lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
+  params->lk_params.where.unrooted_t.child_scaler_index = tree->back->scaler_index;
+  params->lk_params.where.unrooted_t.parent_clv_index = tree->clv_index;
+  params->lk_params.where.unrooted_t.parent_scaler_index = tree->scaler_index;
+  params->lk_params.where.unrooted_t.edge_pmatrix_index = tree->pmatrix_index;
+
+#if(USE_LBFGS)
+  new_lnl = -1 * pll_optimize_parameters_lbfgsb(params);
+#else
+  new_lnl = -1 * pll_optimize_parameters_brent(params);
+#endif
+
+  /* ensure that new_lnl is not NaN */
+  assert (new_lnl == new_lnl);
+
+  if (new_lnl < lnl)
+  {
+    pll_update_prob_matrices(params->lk_params.partition,
+                             params->params_index,
+                             &(tree->pmatrix_index),
+                             &(tree->length),
+                             1);
+    lnl = pll_compute_edge_loglikelihood (params->lk_params.partition,
+                                          tree->back->clv_index, tree->back->scaler_index,
+                                            tree->clv_index, tree->scaler_index,
+                                            tree->pmatrix_index,
+                                            params->lk_params.freqs_index);
+  }
+  else
+  {
+    lnl = new_lnl;
+    tree->length = params->lk_params.branch_lengths[0];
+    tree->back->length = params->lk_params.branch_lengths[0];
+  }
+
+  if (tree->next)
+  {
+    pll_operation_t new_op;
+
+    /* set CLV */
+    new_op.parent_clv_index = tree->clv_index;
+    new_op.parent_scaler_index = tree->scaler_index;
+    new_op.child1_clv_index = tree->back->clv_index;
+    new_op.child1_matrix_index = tree->back->pmatrix_index;
+    new_op.child1_scaler_index = tree->back->scaler_index;
+    new_op.child2_clv_index = tree->next->next->back->clv_index;
+    new_op.child2_matrix_index = tree->next->next->back->pmatrix_index;
+    new_op.child2_scaler_index = tree->next->next->back->scaler_index;
+#if(UPDATE_SCALERS)
+    int i;
+    /* update scalers */
+    if (info1->scaler_index != PLL_SCALE_BUFFER_NONE)
+    {
+      int n = params->lk_params.partition->sites;
+      for (i=0; i<n; i++)
+        params->lk_params.partition->scale_buffer[info1->scaler_index][i] =
+            params->lk_params.partition->scale_buffer[info1->scaler_index][i]
+                + ((info2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                    params->lk_params.partition->scale_buffer[info2->scaler_index][i] :
+                    0)
+                - ((info_child1->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                    params->lk_params.partition->scale_buffer[info_child1->scaler_index][i] :
+                    0);
+    }
+#endif
+    pll_update_partials (params->lk_params.partition, &new_op, 1);
+
+    /* eval */
+    recomp_iterative (params, tree->next->back, lnl);
+
+    /* set CLV */
+    new_op.parent_clv_index = tree->clv_index;
+    new_op.parent_scaler_index = tree->scaler_index;
+    new_op.child1_clv_index = tree->back->clv_index;
+    new_op.child1_matrix_index = tree->back->pmatrix_index;
+    new_op.child1_scaler_index = tree->back->scaler_index;
+    new_op.child2_clv_index = tree->next->back->clv_index;
+    new_op.child2_matrix_index = tree->next->back->pmatrix_index;
+    new_op.child2_scaler_index = tree->next->back->scaler_index;
+#if(UPDATE_SCALERS)
+    /* update scalers */
+    if (info1->scaler_index != PLL_SCALE_BUFFER_NONE)
+    {
+      int n = params->lk_params.partition->sites;
+      for (i = 0; i < n; i++)
+        params->lk_params.partition->scale_buffer[info1->scaler_index][i] =
+            params->lk_params.partition->scale_buffer[info1->scaler_index][i]
+                + ((info2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                params->lk_params.partition->scale_buffer[info2->scaler_index][i] :
+            0) - ((info_child2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                params->lk_params.partition->scale_buffer[info_child2->scaler_index][i] :
+                0);
+    }
+#endif
+    pll_update_partials (params->lk_params.partition, &new_op, 1);
+
+   /* eval */
+    recomp_iterative (params, tree->next->next->back, lnl);
+
+    /* reset CLV */
+    new_op.parent_clv_index = tree->clv_index;
+    new_op.parent_scaler_index = tree->scaler_index;
+    new_op.child1_clv_index = tree->next->back->clv_index;
+    new_op.child1_matrix_index = tree->next->back->pmatrix_index;
+    new_op.child1_scaler_index = tree->next->back->scaler_index;
+    new_op.child2_clv_index = tree->next->next->back->clv_index;
+    new_op.child2_matrix_index = tree->next->next->back->pmatrix_index;
+    new_op.child2_scaler_index = tree->next->next->back->scaler_index;
+#if(UPDATE_SCALERS)
+    /* update scalers */
+       if (info1->scaler_index != PLL_SCALE_BUFFER_NONE)
+       {
+         int n = params->lk_params.partition->sites;
+         for (i = 0; i < n; i++)
+           params->lk_params.partition->scale_buffer[info1->scaler_index][i] =
+                       params->lk_params.partition->scale_buffer[info1->scaler_index][i]
+                           + ((info_child2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                           params->lk_params.partition->scale_buffer[info_child2->scaler_index][i] :
+                       0) - ((info2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                           params->lk_params.partition->scale_buffer[info2->scaler_index][i] :
+                           0);
+       }
+#endif
+    pll_update_partials (params->lk_params.partition, &new_op, 1);
+  }
+
+  return lnl;
+} /* recomp_iterative */
 
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                               pll_optimize_options_t * params,
