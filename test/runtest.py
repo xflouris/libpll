@@ -143,7 +143,10 @@ def runSpeedTest(files):
       fancyprint("red", " {:<18} Missing test files\n".format(filename))
       continue
 
-    fancyprint("cyan", " {:<18} ".format(filename))
+    if filename.endswith("exe"):
+        fancyprint("blue", " {:<18} ".format(filename))
+    else:
+        fancyprint("cyan", " {:<18} ".format(filename))
 
     sys.stdout.flush()
 
@@ -234,12 +237,18 @@ def runValidation(files):
       fancyprint("red", " {:<18} Missing test files\n".format(filename))
       continue
 
-    fancyprint("cyan", " {:<18} ".format(filename))
+    if filename.endswith("exe"):
+        fancyprint("blue", " {:<18} ".format(filename))
+    else:
+        fancyprint("cyan", " {:<18} ".format(filename))
 
     sys.stdout.flush()
 
     # Run test case
-    p1 = Popen("obj/"+filename+" 2>tmperr >tmp", shell=True)
+    if filename.endswith("exe"):
+        p1 = Popen("wine obj/"+filename+" 2>tmperr >tmp", shell=True)
+    else:
+        p1 = Popen("obj/"+filename+" 2>tmperr >tmp", shell=True)
     os.waitpid(p1.pid, 0)
 
     end_time = int(time.time()*1000)
@@ -264,7 +273,7 @@ def runValidation(files):
 
     sys.stdout.flush()
 
-    if (do_memtest == 1):
+    if (do_memtest == 1 and not filename.endswith("exe")):
       # Check memory leaks
       p3 = Popen(["./eval_valgrind.sh", "obj/"+filename, nowstr], stdout=PIPE)
       output = p3.communicate()[0]

@@ -23,7 +23,7 @@
 #define NUM_TESTS 10
 #define N_STATES_NT 4
 
-#define FLOAT_PRECISION 5
+#define FLOAT_PRECISION 4
 
 static double titv[NUM_TESTS] = { 
     0.175, 1, 1.5, 2.25, 2.725, 4, 7.125, 8.19283745, 9.73647382, 10 
@@ -105,11 +105,11 @@ int main(int argc, char * argv[])
     pll_update_prob_matrices(partition, 0, matrix_indices, branch_lengths, 4);
     pll_update_partials(partition, operations, 3);
 
-    printf("\n\n TEST ti/tv = %f\n\n", titv[i]);
+    printf("\n\n TEST ti/tv = %.4f\n\n", titv[i]);
 
     for (j = 0; j < 4; ++j)
     {
-      printf ("[%d] P-matrix for branch length %f\n", i, branch_lengths[j]);
+      printf ("[%d] P-matrix for branch length %.4f\n", i, branch_lengths[j]);
       pll_show_pmatrix(partition, j, FLOAT_PRECISION);
       printf ("\n");
     }
@@ -143,7 +143,7 @@ int main(int argc, char * argv[])
   printf("\n");
   for (i = 0; i < NUM_TESTS; ++i) 
   {
-    printf("ti/tv: %14.8f      logL: %17.12f\n", titv[i], lk_scores[i]);
+    printf("ti/tv: %14.4f      logL: %17.4f\n", titv[i], lk_scores[i]);
   }
 
   free(operations);

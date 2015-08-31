@@ -174,7 +174,7 @@ static int smalltest ()
   pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths, 4);
   pll_update_partials (partition, operations, 3);
 
-  printf ("logL: %17.12f\n", 
+  printf ("logL: %17.6f\n", 
           pll_compute_edge_loglikelihood(partition,
                                          6, 
                                          PLL_SCALE_BUFFER_NONE,

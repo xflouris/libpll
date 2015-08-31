@@ -155,8 +155,15 @@ int main(int argc, char * argv[])
     {
       sum_freqs += partition->frequencies[0][i];
     }
-	if (fabs(sum_freqs - 1.0) > 1e-10)
+	if (fabs(sum_freqs - 1.0) > 1e-8)
+  {
       printf (" WARNING: Freq sum diff: %e\n", sum_freqs - 1.0);
+    for (i = 0; i < N_STATES; ++i)
+    {
+      printf("%f ", partition->frequencies[0][i]);
+    }
+    printf("\n");
+  }
 
     printf ("Updating prob matrices...\n");
 
@@ -196,7 +203,7 @@ int main(int argc, char * argv[])
                                                  0,
                                                  0);
 
-    printf("Log-L (%s): %.12f\n", prot_model_names[cur_model], logl);
+    printf("Log-L (%s): %.6f\n", prot_model_names[cur_model], logl);
   }
 
   free(operations);

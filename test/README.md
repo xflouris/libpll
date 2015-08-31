@@ -49,3 +49,13 @@ subset of test cases.
 
 e.g., ./runtest.py speed hky alpha-cats
 
+## Build tests for Windows
+
+1. Build the library dll file and place them in current directory
+
+2. Run `make -f Makefile.w64`
+
+3. Run `./testwin.sh` for testing
+
+4. If some dll missing files are reported, locate them and copy them
+   in current or obj/ directory.
