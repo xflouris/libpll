@@ -118,20 +118,40 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                                                   unsigned int prob_matrices,
                                                   unsigned int rate_cats,
                                                   unsigned int scale_buffers,
-                                                  int attributes)
+                                                  unsigned int attributes)
 {
   unsigned int i;
 
+  /* make sure that multiple ARCH were not specified */
+  if (__builtin_popcount(attributes & PLL_ATTRIB_ARCH_MASK) > 1)
+  {
+    pll_errno = PLL_ERROR_MULTIPLE_ARCH;
+    return PLL_FAILURE;
+  }
+
+  /* allocate partition */
   pll_partition_t * partition = (pll_partition_t *)malloc(sizeof(pll_partition_t));
   if (!partition) return PLL_FAILURE;
 
-  size_t alignment = PLL_ALIGNMENT_CPU;
+  /* extract architecture and set vectorization parameters */
+  partition->alignment = PLL_ALIGNMENT_CPU;
+  partition->attributes = attributes;
+  partition->states_padded = states;
 #ifdef HAVE_SSE
-  if (attributes | PLL_ATTRIBUTE_SSE) alignment = PLL_ALIGNMENT_SSE;
+  if (attributes | PLL_ATTRIB_ARCH_SSE)
+  {
+    partition->alignment = PLL_ALIGNMENT_SSE;
+    partition->states_padded = (states+1) & 0xFFFFFFFE;
+  }
 #endif
 #ifdef HAVE_AVX
-  if (attributes | PLL_ATTRIBUTE_AVX) alignment = PLL_ALIGNMENT_AVX;
+  if (attributes | PLL_ATTRIB_ARCH_AVX)
+  {
+    partition->alignment = PLL_ALIGNMENT_AVX;
+    partition->states_padded = (states+3) & 0xFFFFFFFC;
+  }
 #endif
+  unsigned int states_padded = partition->states_padded;
 
   /* initialize properties */
 
@@ -162,7 +182,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
 
   /* eigen_decomp_valid */
   partition->eigen_decomp_valid = (int *)calloc(partition->rate_matrices,
-                                                             sizeof(int));
+                                                sizeof(int));
   if (!partition->eigen_decomp_valid)
   {
     dealloc_partition_data(partition);
@@ -178,21 +198,14 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->tips + partition->clv_buffers; ++i)
   {
-    partition->clv[i] = pll_aligned_alloc(partition->sites * 
-                                          states * rate_cats * sizeof(double),
-                                          alignment);
+    partition->clv[i] = pll_aligned_alloc(partition->sites * states_padded *
+                                             rate_cats * sizeof(double),
+                                          partition->alignment);
     if (!partition->clv[i])
     {
       dealloc_partition_data(partition);
       return PLL_FAILURE;
     }
-    //if (posix_memalign((void **)&(partition->clv[i]),
-    //                   alignment, 
-    //                   partition->sites * states * rate_cats * sizeof(double)))
-    //{
-    //  dealloc_partition_data(partition);
-    //  return PLL_FAILURE;
-    //}
   }
 
   /* pmatrix */
@@ -205,21 +218,18 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->prob_matrices; ++i)
   {
-    partition->pmatrix[i] = pll_aligned_alloc(states * states *
+    partition->pmatrix[i] = pll_aligned_alloc(states_padded * states_padded *
                                               rate_cats * sizeof(double),
-                                              alignment);
+                                              partition->alignment);
     if (!partition->pmatrix[i])
     {
       dealloc_partition_data(partition);
       return PLL_FAILURE;
     }
     /* TODO: don't forget to add code for SSE/AVX */
-    //if (posix_memalign((void **)&(partition->pmatrix[i]), alignment,
-    //                               states*states*rate_cats*sizeof(double)))
-    //{
-    //  dealloc_partition_data(partition);
-    //  return PLL_FAILURE;
-    //}
+    memset(partition->pmatrix[i],
+           0,
+           states_padded*states_padded*rate_cats*sizeof(double));
   }
 
   /* eigenvecs */
@@ -232,8 +242,9 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->rate_matrices; ++i)
   {
-    partition->eigenvecs[i] = pll_aligned_alloc(states*states*sizeof(double),
-                                                alignment);
+    partition->eigenvecs[i] = pll_aligned_alloc(states_padded * states_padded *
+                                                  sizeof(double),
+                                                partition->alignment);
     if (!partition->eigenvecs[i])
     {
       dealloc_partition_data(partition);
@@ -252,8 +263,9 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->rate_matrices; ++i)
   {
-    partition->inv_eigenvecs[i] = pll_aligned_alloc(states*states*sizeof(double),
-                                                    alignment);
+    partition->inv_eigenvecs[i] = pll_aligned_alloc(states_padded*states_padded*
+                                                       sizeof(double),
+                                                    partition->alignment);
     if (!partition->inv_eigenvecs[i])
     {
       dealloc_partition_data(partition);
@@ -272,8 +284,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->rate_matrices; ++i)
   {
-    partition->eigenvals[i] = pll_aligned_alloc(states*sizeof(double),
-                                                alignment);
+    partition->eigenvals[i] = pll_aligned_alloc(states_padded*sizeof(double),
+                                                partition->alignment);
     if (!partition->eigenvals[i])
     {
       dealloc_partition_data(partition);
@@ -294,7 +306,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   {
     partition->subst_params[i] = pll_aligned_alloc(((states*states-states)/2) *
                                                    sizeof(double),
-                                                   alignment);
+                                                   partition->alignment);
     if (!partition->subst_params[i])
     {
       dealloc_partition_data(partition);
@@ -313,14 +325,17 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->rate_matrices; ++i)
   {
-    partition->frequencies[i] = pll_aligned_alloc(states*sizeof(double),
-                                                alignment);
+    partition->frequencies[i] = pll_aligned_alloc(states_padded*sizeof(double),
+                                                  partition->alignment);
     if (!partition->frequencies[i])
     {
       dealloc_partition_data(partition);
       return PLL_FAILURE;
     }
     /* TODO: don't forget to add code for SSE/AVX */
+    memset(partition->frequencies[i],
+           0,
+           states_padded*sizeof(double));
   }
 
   /* rates */
