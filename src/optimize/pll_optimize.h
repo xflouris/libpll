@@ -43,12 +43,20 @@
 #define PLL_LBFGSB_BOUND_UPPER 3
 
 #define PLL_OPT_MIN_BRANCH_LEN       1.0e-4
+#define PLL_OPT_MAX_BRANCH_LEN          100
+#define PLL_OPT_TOL_BRANCH_LEN       1.0e-4
 #define PLL_OPT_DEFAULT_RATE_RATIO        1
 #define PLL_OPT_DEFAULT_FREQ_RATIO        1
 #define PLL_OPT_DEFAULT_PINV            0.5
 #define PLL_OPT_DEFAULT_ALPHA           0.5
 #define PLL_OPT_DEFAULT_BRANCH_LEN      0.1
 #define PLL_OPT_LNL_UNLIKELY         -1e+80
+
+/* Branch lengths optimization algorithm */
+
+#define PLL_BRANCH_OPT_NEWTON 1
+#define PLL_BRANCH_OPT_BRENT  2
+#define PLL_BRANCH_OPT_LBFGSB 3
 
 /* error codes */
 
@@ -117,4 +125,5 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                                pll_optimize_options_t * params,
                                                pll_utree_t * tree,
                                                int smoothings);
+
 #endif /* PLL_OPTIMIZE_H_ */

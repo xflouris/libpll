@@ -326,6 +326,15 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  unsigned int matrix_index,
                                                  unsigned int freqs_index);
 
+PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
+                                                  unsigned int parent_clv_index,
+                                                  unsigned int child_clv_index,
+                                                  double branch_length,
+                                                  unsigned int params_index,
+                                                  unsigned int freqs_index,
+                                                  double * d_f,
+                                                  double * dd_f);
+
 /* functions in gamma.c */
 
 PLL_EXPORT int pll_compute_gamma_cats(double alpha,

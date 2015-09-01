@@ -268,3 +268,147 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
 
   return logl;
 }
+
+PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
+                                                 unsigned int parent_clv_index,
+                                                 unsigned int child_clv_index,
+                                                 double branch_length,
+                                                 unsigned int params_index,
+                                                 unsigned int freqs_index,
+                                                 double * d_f,
+                                                 double * dd_f)
+{
+  unsigned int n, i, j, k, m;
+  double terma[3], termb[3], site_lk[3];
+  double inv_site_lk;
+  const double * clvp = partition->clv[parent_clv_index];
+  const double * clvc = partition->clv[child_clv_index];
+  const double * freqs = partition->frequencies[freqs_index];
+  double prop_invar = partition->prop_invar[freqs_index];
+  unsigned int states = partition->states;
+  unsigned int n_rates = partition->rate_cats;
+  double * eigenvecs = partition->eigenvecs[params_index];
+  double * inv_eigenvecs = partition->inv_eigenvecs[params_index];
+  double * eigenvals = partition->eigenvals[params_index];
+  double * rates = partition->rates;
+  double *expd, *temp;
+  double *pmatrix, *d_pmatrix, *dd_pmatrix;
+  double *gamma_pmatrix, *d_gamma_pmatrix, *dd_gamma_pmatrix;
+
+  gamma_pmatrix = (double *) calloc (n_rates * states * states,
+                                     sizeof(double));
+  d_gamma_pmatrix = (double *) calloc (n_rates * states * states,
+                                       sizeof(double));
+  dd_gamma_pmatrix = (double *) calloc (n_rates * states * states,
+                                        sizeof(double));
+
+  assert(partition->eigen_decomp_valid[params_index]);
+
+  expd = (double *) malloc (states * sizeof(double));
+  temp = (double *) malloc (states * states * sizeof(double));
+
+  *d_f = *dd_f = 0;
+
+  /* build matrices */
+  for (n = 0; n < n_rates; ++n)
+  {
+    pmatrix = gamma_pmatrix + n * states * states;
+    d_pmatrix = d_gamma_pmatrix + n * states * states;
+    dd_pmatrix = dd_gamma_pmatrix + n * states * states;
+
+    /* if branch length is zero then set the p-matrix to identity matrix */
+    if (!branch_length)
+    {
+      for (j = 0; j < states; ++j)
+        for (k = 0; k < states; ++k)
+          pmatrix[j * states + k] = (j == k) ? 1 : 0;
+    }
+    else
+    {
+      /* exponentiate eigenvalues */
+      for (j = 0; j < states; ++j)
+      {
+        double term = eigenvals[j] / (1.0 - prop_invar);
+        expd[j] = exp (term * rates[n] * branch_length);
+      }
+
+      for (j = 0; j < states; ++j)
+        for (k = 0; k < states; ++k)
+        {
+          temp[j * states + k] = inv_eigenvecs[j * states + k] * expd[k];
+        }
+
+      for (j = 0; j < states; ++j)
+        for (k = 0; k < states; ++k)
+        {
+          for (m = 0; m < states; ++m)
+          {
+            pmatrix[j * states + k] += temp[j * states + m]
+                * eigenvecs[m * states + k];
+            double term = (eigenvals[m] / (1 - prop_invar));
+            d_pmatrix[j * states + k] += term * temp[j * states + m]
+                * eigenvecs[m * states + k];
+            dd_pmatrix[j * states + k] += term * term * temp[j * states + m]
+                * eigenvecs[m * states + k];
+          }
+        }
+    }
+  }
+  free (expd);
+  free (temp);
+
+  /* compute per-site LKs */
+  *d_f = *dd_f = 0;
+  for (n = 0; n < partition->sites; ++n)
+  {
+    pmatrix = gamma_pmatrix;
+    d_pmatrix = d_gamma_pmatrix;
+    dd_pmatrix = dd_gamma_pmatrix;
+    terma[0] = terma[1] = terma[2] = 0.;
+    for (i = 0; i < n_rates; ++i)
+    {
+      for (j = 0; j < states; ++j)
+      {
+        termb[0] = termb[1] = termb[2] = 0.;
+        for (k = 0; k < partition->states; ++k)
+        {
+          termb[0] += pmatrix[k] * clvc[k];
+          termb[1] += d_pmatrix[k] * clvc[k];
+          termb[2] += dd_pmatrix[k] * clvc[k];
+        }
+        terma[0] += clvp[j] * freqs[j] * termb[0];
+        terma[1] += clvp[j] * freqs[j] * termb[1];
+        terma[2] += clvp[j] * freqs[j] * termb[2];
+        pmatrix += states;
+        d_pmatrix += states;
+        dd_pmatrix += states;
+      }
+      clvp += states;
+      clvc += states;
+    }
+
+    site_lk[0] = terma[0] / n_rates;
+    site_lk[1] = terma[1] / n_rates;
+    site_lk[2] = terma[2] / n_rates;
+
+    /* account for invariant sites */
+    if (prop_invar > 0)
+    {
+      inv_site_lk =
+          (partition->invariant[n] == -1) ? 0 : freqs[partition->invariant[n]];
+      site_lk[0] = site_lk[0] * (1. - prop_invar) + inv_site_lk * prop_invar;
+//      site_lk[1] = site_lk[1] * (1. - prop_invar) + inv_site_lk * prop_invar;
+//      site_lk[2] = site_lk[2] * (1. - prop_invar) + inv_site_lk * prop_invar;
+    }
+
+    /* build derivatives */
+    *d_f += partition->pattern_weights[n] * (site_lk[1] / site_lk[0]);
+    *dd_f += partition->pattern_weights[n] * site_lk[2] / site_lk[1];
+  }
+
+  free (gamma_pmatrix);
+  free (d_gamma_pmatrix);
+  free (dd_gamma_pmatrix);
+
+  return PLL_SUCCESS;
+}

@@ -475,7 +475,7 @@ PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * params)
       break;
     case PLL_PARAMETER_BRANCHES_SINGLE:
       xmin = PLL_OPT_MIN_BRANCH_LEN + PLL_LBFGSB_ERROR;
-      xmax = 2;
+      xmax = PLL_OPT_MAX_BRANCH_LEN;
       xguess = params->lk_params.branch_lengths[0];
       if (xguess < xmin || xguess > xmax)
         xguess = PLL_OPT_DEFAULT_BRANCH_LEN;

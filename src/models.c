@@ -356,7 +356,6 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
   free(temp);
 }
 
-
 PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
                                     unsigned int params_index, 
                                     const double * frequencies)
