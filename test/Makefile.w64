@@ -1,0 +1,48 @@
+#    Copyright (C) 2015 Diego Darriba
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#    Contact: Diego Darriba <Diego.Darriba@h-its.org>,
+#    Exelixis Lab, Heidelberg Instutute for Theoretical Studies
+#    Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
+
+CC = i686-w64-mingw32-gcc
+CFLAGS = -g -O3 -Wall -L/usr/local/lib 
+CLIBS = -lpll -lm
+
+CFILES = $(wildcard **/*.c)
+CFILES = $(shell find src/ -type f -name '*.c' | grep -v travers)
+OBJFILES = $(patsubst src/%.c, obj/%.exe, $(CFILES))
+
+DATADIR = testdata
+RESULTDIR = result
+
+DEPFILES = worms16s.fas small.fas small.tree 246x4465.fas 246x4465.tree \
+					 ribosomal_l5_pf00673.fas
+REQFILES = $(patsubst %, $(DATADIR)/%, $(DEPFILES))
+ASSETS = https://raw.githubusercontent.com/xflouris/assets/master/libpll
+
+all: $(OBJFILES) $(REQFILES)
+	@mkdir -p $(RESULTDIR)
+
+$(DATADIR)/%:
+	@mkdir -p "$(@D)"
+	wget -O $@ $(ASSETS)/$@
+
+obj/%.exe: src/%.c $(DEPS)
+	@mkdir -p "$(@D)"
+	$(CC) $(CFLAGS) -D__WIN64__ -o $@ $< $(CLIBS) $(LDFLAGS) -DDATADIR=\"$(DATADIR)\"
+
+clean:
+	rm -rf obj

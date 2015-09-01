@@ -24,7 +24,7 @@
 #define NUM_CATS   5
 #define N_STATES_NT 4
 
-#define FLOAT_PRECISION 5
+#define FLOAT_PRECISION 4
 
 static double titv = 2.5;
 
@@ -179,7 +179,7 @@ int main(int argc, char * argv[])
     {
       for (i = 0; i < NUM_ALPHAS; ++i) 
       {
-        printf("ti/tv:alpha(ncats) = %6.2f(%2d)   logL: %17.12f\n", 
+        printf("ti/tv:alpha(ncats) = %6.2f(%2d)   logL: %17.6f\n", 
             alpha[i], n_cat_gamma[k], lk_scores[k*NUM_ALPHAS + i]);
       }
     }
