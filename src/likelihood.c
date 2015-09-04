@@ -269,9 +269,11 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
   return logl;
 }
 
-PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
+PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                  unsigned int parent_clv_index,
+                                                 int parent_scaler_index,
                                                  unsigned int child_clv_index,
+                                                 int child_scaler_index,
                                                  double branch_length,
                                                  unsigned int params_index,
                                                  unsigned int freqs_index,
@@ -294,6 +296,20 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
   double *expd, *temp;
   double *pmatrix, *d_pmatrix, *dd_pmatrix;
   double *gamma_pmatrix, *d_gamma_pmatrix, *dd_gamma_pmatrix;
+  double logLK = 0.0;
+
+  unsigned int * parent_scaler;
+  unsigned int * child_scaler;
+
+  if (child_scaler_index == PLL_SCALE_BUFFER_NONE)
+    child_scaler = NULL;
+  else
+    child_scaler = partition->scale_buffer[child_scaler_index];
+
+  if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
+    parent_scaler = NULL;
+  else
+    parent_scaler = partition->scale_buffer[parent_scaler_index];
 
   gamma_pmatrix = (double *) calloc (n_rates * states * states,
                                      sizeof(double));
@@ -401,14 +417,24 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
 //      site_lk[2] = site_lk[2] * (1. - prop_invar) + inv_site_lk * prop_invar;
     }
 
+    unsigned int scale_factors;
+    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
+    scale_factors += (child_scaler) ? child_scaler[n] : 0;
+
+    logLK += log(site_lk[0]) * partition->pattern_weights[n];
+    if (scale_factors)
+      logLK += scale_factors * log(PLL_SCALE_THRESHOLD);
+
     /* build derivatives */
-    *d_f += partition->pattern_weights[n] * (site_lk[1] / site_lk[0]);
-    *dd_f += partition->pattern_weights[n] * site_lk[2] / site_lk[1];
+    *d_f += partition->pattern_weights[n] * (-site_lk[1] / site_lk[0]);
+    *dd_f += partition->pattern_weights[n] *
+        ((site_lk[1]*site_lk[1] - site_lk[2]*site_lk[0]) /
+            (site_lk[0]*site_lk[0]));
   }
 
   free (gamma_pmatrix);
   free (d_gamma_pmatrix);
   free (dd_gamma_pmatrix);
 
-  return PLL_SUCCESS;
+  return logLK;
 }

@@ -21,7 +21,8 @@
 #include "pll_optimize.h"
 #include "lbfgsb/lbfgsb.h"
 
-#define UPDATE_SCALERS 0
+#define UPDATE_SCALERS 1
+#define BL_OPT_METHOD PLL_BRANCH_OPT_NEWTON
 
 static int is_nan(double v)
 {
@@ -390,19 +391,19 @@ static double brent_target(pll_optimize_options_t * p, double x)
  * Bui Quang Minh, Minh Anh Thi Nguyen, and Arndt von Haeseler (2013)
  * Ultrafast approximation for phylogenetic bootstrap.
  * Mol. Biol. Evol., 30:1188-1195. (free reprint, DOI: 10.1093/molbev/mst024) */
-PLL_EXPORT double pll_minimize_brent(double xmin,
+PLL_EXPORT double pll_minimize_brent(pll_optimize_options_t * params,
+                                     double xmin,
                                      double xguess,
                                      double xmax,
-                                     double tolerance,
                                      double *fx,
                                      double *f2x,
-                                     pll_optimize_options_t * params,
                                      double (*target_funk)(
                                          pll_optimize_options_t *,
                                          double))
 {
   double eps, optx, ax, bx, cx, fa, fb, fc;
-  /* not converged error flag */
+  int outbounds_ax, outbounds_cx;
+  double tolerance = params->pgtol;
 
   /* first attempt to bracketize minimum */
   if (xguess < xmin)
@@ -411,11 +412,13 @@ PLL_EXPORT double pll_minimize_brent(double xmin,
     xguess = xmax;
   eps = xguess * tolerance * 50.0;
   ax = xguess - eps;
-  if (ax < xmin)
+  outbounds_ax = ax < xmin;
+  if (outbounds_ax)
     ax = xmin;
   bx = xguess;
   cx = xguess + eps;
-  if (cx > xmax)
+  outbounds_cx = cx > xmax;
+  if (outbounds_cx)
     cx = xmax;
 
   /* check if this works */
@@ -426,9 +429,9 @@ PLL_EXPORT double pll_minimize_brent(double xmin,
   /* if it works use these borders else be conservative */
   if ((fa < fb) || (fc < fb))
   {
-    if (ax != xmin)
+    if (!outbounds_ax)
       fa = target_funk (params, xmin);
-    if (cx != xmax)
+    if (!outbounds_cx)
       fc = target_funk (params, xmax);
     ax = xmin;
     cx = xmax;
@@ -453,10 +456,8 @@ PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * params)
   double xmin;
   double xguess;
   double xmax;
-  double tolerance;
   double f2x;
 
-  tolerance = params->pgtol;
   switch (params->which_parameters)
   {
     case PLL_PARAMETER_ALPHA:
@@ -487,9 +488,53 @@ PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * params)
       return -INFINITY;
   }
 
-  double xres = pll_minimize_brent(xmin, xguess, xmax, tolerance, &score, &f2x,
-                             params, &brent_target);
+  double xres = pll_minimize_brent(params,
+                                   xmin, xguess, xmax,
+                                   &score, &f2x,
+                                   &brent_target);
   score = brent_target(params, xres);
+  return score;
+}
+
+PLL_EXPORT double pll_optimize_parameters_newton(pll_optimize_options_t * params)
+{
+  double score = 0.0;
+
+  /* Brent parameters */
+  double xmin;
+  double xguess;
+  double xmax;
+
+  assert(params->which_parameters == PLL_PARAMETER_BRANCHES_SINGLE);
+
+  xmin = PLL_OPT_MIN_BRANCH_LEN + PLL_LBFGSB_ERROR;
+  xmax = PLL_OPT_MAX_BRANCH_LEN;
+  xguess = params->lk_params.branch_lengths[0];
+  if (xguess < xmin || xguess > xmax)
+    xguess = PLL_OPT_DEFAULT_BRANCH_LEN;
+
+  double xres = pll_minimize_newton(params,
+                                   xmin, xguess, xmax,
+                                   200,
+                                   &score);
+  if (pll_errno)
+  {
+    printf("ERROR: %s\n", pll_errmsg);
+    exit(1);
+  }
+
+  params->lk_params.branch_lengths[0] = xres;
+  pll_update_prob_matrices(params->lk_params.partition,
+                           params->params_index,
+                           &(params->lk_params.where.unrooted_t.edge_pmatrix_index),
+                           &xres,1);
+
+  if (score < 0)
+    score *= -1;
+  else
+  {
+   score = brent_target(params, xres);
+  }
   return score;
 }
 
@@ -735,13 +780,12 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
         /* reset variable */
         x[i] = temp;
       }
+
       if (!set_x_to_parameters (params, x))
         return -INFINITY;
     }
     else if (*task != NEW_X)
-    {
       continue_opt = 0;
-    }
   }
 
   free (iwa);
@@ -769,12 +813,12 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
 /* GENERIC */
 /******************************************************************************/
 
-#define USE_LBFGS 0
-
 static double recomp_iterative (pll_optimize_options_t * params,
                                 pll_utree_t * tree,
                                 double prev_lnl)
 {
+  DBG("Optimizing branch %3d - %3d (%.6f) [%.4f]\n",
+      tree->clv_index, tree->back->clv_index, tree->length, prev_lnl);
   double lnl, new_lnl;
 
   lnl = prev_lnl;
@@ -790,10 +834,12 @@ static double recomp_iterative (pll_optimize_options_t * params,
   params->lk_params.where.unrooted_t.parent_scaler_index = tree->scaler_index;
   params->lk_params.where.unrooted_t.edge_pmatrix_index = tree->pmatrix_index;
 
-#if(USE_LBFGS)
+#if(BL_OPT_METHOD == PLL_BRANCH_OPT_LBFGSB)
   new_lnl = -1 * pll_optimize_parameters_lbfgsb(params);
-#else
+#elif(BL_OPT_METHOD == PLL_BRANCH_OPT_BRENT)
   new_lnl = -1 * pll_optimize_parameters_brent(params);
+#else
+  new_lnl = -1 * pll_optimize_parameters_newton(params);
 #endif
 
   /* ensure that new_lnl is not NaN */
@@ -819,6 +865,9 @@ static double recomp_iterative (pll_optimize_options_t * params,
     tree->back->length = params->lk_params.branch_lengths[0];
   }
 
+  DBG(" Optimized branch %3d - %3d (%.6f) [%.4f]\n",
+        tree->clv_index, tree->back->clv_index, tree->length, lnl);
+
   if (tree->next)
   {
     pll_operation_t new_op;
@@ -834,6 +883,10 @@ static double recomp_iterative (pll_optimize_options_t * params,
     new_op.child2_scaler_index = tree->next->next->back->scaler_index;
 #if(UPDATE_SCALERS)
     int i;
+    pll_utree_t * info1 = tree;
+    pll_utree_t * info2 = tree->back;
+    pll_utree_t * info_child1 = tree->next;
+    pll_utree_t * info_child2 = tree->next;
     /* update scalers */
     if (info1->scaler_index != PLL_SCALE_BUFFER_NONE)
     {
@@ -923,11 +976,140 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
 
   params->which_parameters = PLL_PARAMETER_BRANCHES_SINGLE;
 
+  lnl = pll_compute_edge_loglikelihood (params->lk_params.partition,
+                                            tree->back->clv_index, tree->back->scaler_index,
+                                              tree->clv_index, tree->scaler_index,
+                                              tree->pmatrix_index,
+                                              params->lk_params.freqs_index);
+
   for (i=0; i<smoothings; i++)
   {
-      lnl = recomp_iterative (params, tree, PLL_OPT_LNL_UNLIKELY);
+      lnl = recomp_iterative (params, tree, lnl);
       lnl = recomp_iterative (params, tree->back, lnl);
   }
 
   return -1*lnl;
 } /* pll_optimize_branch_lengths_iterative */
+
+
+
+
+/******************************************************************************/
+/* NEWTON-RAPHSON OPTIMIZATION */
+/******************************************************************************/
+
+PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
+                                      double x1,
+                                      double xguess,
+                                      double x2,
+                                      unsigned int max_iters,
+                                      double *score)
+{
+  unsigned int i;
+  double df, dx, dxold, f;
+  double temp, xh, xl, rts, rts_old;
+
+  double tolerance = 1e-6; //params->pgtol
+  if (params->which_parameters != PLL_PARAMETER_BRANCHES_SINGLE)
+  {
+    snprintf(pll_errmsg, 200,
+             "Newton-Raphson defined only for single branches");
+    pll_errno = PLL_ERROR_PARAMETER;
+    return 0.0;
+  }
+  pll_errno = 0;
+
+  rts = xguess;
+  if (rts < x1)
+    rts = x1;
+  if (rts > x2)
+    rts = x2;
+
+  pll_compute_likelihood_derivatives (
+      params->lk_params.partition,
+      params->lk_params.where.unrooted_t.parent_clv_index,
+      params->lk_params.where.unrooted_t.parent_scaler_index,
+      params->lk_params.where.unrooted_t.child_clv_index,
+      params->lk_params.where.unrooted_t.child_scaler_index,
+      rts,
+      params->params_index,
+      params->lk_params.freqs_index,
+      &f, &df);
+  DBG("[NR deriv] BL=%f   f=%f  df=%f  nextBL=%f\n", rts, f, df, rts-f/df);
+  if (!isfinite(f) || !isfinite(df))
+  {
+    snprintf (pll_errmsg, 200, "wrong likelihood derivatives");
+    pll_errno = PLL_ERROR_NEWTON_DERIV;
+    return 0.0;
+  }
+  if (df >= 0.0 && fabs (f) < tolerance)
+    return rts;
+  if (f < 0.0)
+  {
+    xl = rts;
+    xh = x2;
+  }
+  else
+  {
+    xh = rts;
+    xl = x1;
+  }
+
+  dx = dxold = fabs (xh - xl);
+  for (i = 1; i <= max_iters; i++)
+  {
+    rts_old = rts;
+    if ((df <= 0.0) // function is concave
+    || (((rts - xh) * df - f) * ((rts - xl) * df - f) >= 0.0) // out of bound
+        )
+    {
+      dxold = dx;
+      dx = 0.5 * (xh - xl);
+      rts = xl + dx;
+      if (xl == rts)
+        return rts;
+    }
+    else
+    {
+      dxold = dx;
+      dx = f / df;
+      temp = rts;
+      rts -= dx;
+      if (temp == rts)
+        return rts;
+    }
+    if (fabs (dx) < tolerance || (i == max_iters))
+      return rts_old;
+
+    if (rts < x1) rts = x1;
+    *score = pll_compute_likelihood_derivatives (
+          params->lk_params.partition,
+          params->lk_params.where.unrooted_t.parent_clv_index,
+          params->lk_params.where.unrooted_t.parent_scaler_index,
+          params->lk_params.where.unrooted_t.child_clv_index,
+          params->lk_params.where.unrooted_t.child_scaler_index,
+          rts,
+          params->params_index,
+          params->lk_params.freqs_index,
+          &f, &df);
+
+    if (!isfinite(f) || !isfinite(df))
+    {
+      snprintf (pll_errmsg, 200, "wrong likelihood derivatives [it]");
+      pll_errno = PLL_ERROR_NEWTON_DERIV;
+      return 0.0;;
+    }
+
+    if (df > 0.0 && fabs (f) < tolerance)
+      return rts;
+
+    if (f < 0.0)
+      xl = rts;
+    else
+      xh = rts;
+  }
+
+  snprintf(pll_errmsg, 200, "Exceeded maximum number of iterations");
+  pll_errno = PLL_ERROR_NEWTON_LIMIT;
+  return 0.0;
+}

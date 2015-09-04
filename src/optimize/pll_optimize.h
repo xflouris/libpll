@@ -60,10 +60,14 @@
 
 /* error codes */
 
+#define PLL_ERROR_PARAMETER           100
 #define PLL_ERROR_TAXA_MISMATCH       101
 #define PLL_ERROR_SEQLEN_MISMATCH     102
 #define PLL_ERROR_ALIGN_UNREADABLE    103
 #define PLL_ERROR_LBFGSB_UNKNOWN      110
+#define PLL_ERROR_NEWTON_DERIV        120
+#define PLL_ERROR_NEWTON_LIMIT        130
+#define PLL_ERROR_NEWTON_UNKNOWN      140
 
 /* Structure with information necessary for evaluating the likelihood */
 
@@ -108,14 +112,20 @@ typedef struct
 
 /* functions in pll_optimize.c */
 
+/* core Newton-Raphson optimization function */
+PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
+                                      double x1,
+                                      double xguess,
+                                      double x2,
+                                      unsigned int max_iters,
+                                      double *score);
 /* core brent optimization function */
-PLL_EXPORT double pll_minimize_brent(double xmin,
+PLL_EXPORT double pll_minimize_brent(pll_optimize_options_t * params,
+                                     double xmin,
                                      double xguess,
                                      double xmax,
-                                     double tolerance,
                                      double *fx,
                                      double *f2x,
-                                     pll_optimize_options_t * params,
                                      double (*target_funk)(
                                          pll_optimize_options_t *,
                                          double));

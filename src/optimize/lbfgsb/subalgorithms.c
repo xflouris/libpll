@@ -476,7 +476,7 @@ L777:
     dt = tj - tj0;
 #ifdef DEBUG
     if (dt != 0.) {
-        DBB("[L-BFGS-B] Piece %d --f1, f2 at start point %.2e %.2e\n", *nseg, f1, f2 );
+        DBG("[L-BFGS-B] Piece %d --f1, f2 at start point %.2e %.2e\n", *nseg, f1, f2 );
         DBG("[L-BFGS-B] Distance to the next break point = %.2e\n", dt );
         DBG("[L-BFGS-B] Distance to the stationary point = %.2e\n", dtm );
     }
@@ -1239,7 +1239,7 @@ int freev(int *n, int *nfree, int *index,
         }
         /* L24: */
     }
-    DBG("[L-BFGS-B] %d variables are free at GCP iter %d\n", *nfree, *iter + 1;);
+    DBG("[L-BFGS-B] %d variables are free at GCP iter %d\n", *nfree, *iter + 1);
     return 0;
 } /* freev */
 
