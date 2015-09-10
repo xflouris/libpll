@@ -5,7 +5,7 @@ int main(int argc, char * argv[])
   unsigned int i;
   pll_partition_t * partition;
   pll_operation_t * operations;
-  int alpha = 1;
+  double alpha = 1.0;
 
   /* create the PLL partition instance */
   partition = pll_partition_create(4,       /* How many tip sequences do we have */
@@ -15,8 +15,8 @@ int main(int argc, char * argv[])
                                    1,       /* How many different substitution models (or eigen decompositions) do we want to use concurrently (i.e. 4 for LG4) */
                                    5,       /* How many probability matrices should we allocate */
                                    4,       /* Number of rate categories */
-                                   2,       /* How many scale buffers do we want (not implemented currently) */
-                                   PLL_ATTRIB_ARCH_CPU);        /* various attributes (not yet implemented) */
+                                   2,       /* How many scale buffers do we want */
+                                   PLL_ATTRIB_ARCH_CPU);        /* various attributes */
   
   /* initialize an array of two different branch lengths */
   double branch_lengths[5] = { 0.2, 0.4, 0.3, 0.5, 0.6};
@@ -98,7 +98,7 @@ int main(int argc, char * argv[])
   pll_show_clv(partition,2,PLL_SCALE_BUFFER_NONE,7);
   printf ("Tip 3: ");
   pll_show_clv(partition,3,PLL_SCALE_BUFFER_NONE,7);
-  printf ("Tip 4: ");
+  printf ("CLV 4: ");
   pll_show_clv(partition,4,0,7);
   printf ("CLV 5: ");
   pll_show_clv(partition,5,1,7);
