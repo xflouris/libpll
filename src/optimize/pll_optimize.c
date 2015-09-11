@@ -517,6 +517,7 @@ PLL_EXPORT double pll_optimize_parameters_newton(pll_optimize_options_t * params
                                    xmin, xguess, xmax,
                                    200,
                                    &score);
+
   if (pll_errno)
   {
     printf("ERROR: %s\n", pll_errmsg);
@@ -817,22 +818,27 @@ static double recomp_iterative (pll_optimize_options_t * params,
                                 pll_utree_t * tree,
                                 double prev_lnl)
 {
+  int i;
+  double lnl, new_lnl;
+  pll_utree_t *tr_p, *tr_q, *tr_z;
+
   DBG("Optimizing branch %3d - %3d (%.6f) [%.4f]\n",
       tree->clv_index, tree->back->clv_index, tree->length, prev_lnl);
-  double lnl, new_lnl;
 
   lnl = prev_lnl;
-
+  tr_p = tree;
+  tr_q = tree->next;
+  tr_z = tree->next?tree->next->next:NULL;
 
   /* set Branch Length */
-  assert(d_equals(tree->length, tree->back->length));
+  assert(d_equals(tree->length, tr_p->back->length));
 
-  params->lk_params.branch_lengths[0] = tree->length;
-  params->lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
-  params->lk_params.where.unrooted_t.child_scaler_index = tree->back->scaler_index;
-  params->lk_params.where.unrooted_t.parent_clv_index = tree->clv_index;
-  params->lk_params.where.unrooted_t.parent_scaler_index = tree->scaler_index;
-  params->lk_params.where.unrooted_t.edge_pmatrix_index = tree->pmatrix_index;
+  params->lk_params.branch_lengths[0]                    = tr_p->length;
+  params->lk_params.where.unrooted_t.child_clv_index     = tr_p->back->clv_index;
+  params->lk_params.where.unrooted_t.child_scaler_index  = tr_p->back->scaler_index;
+  params->lk_params.where.unrooted_t.parent_clv_index    = tr_p->clv_index;
+  params->lk_params.where.unrooted_t.parent_scaler_index = tr_p->scaler_index;
+  params->lk_params.where.unrooted_t.edge_pmatrix_index  = tr_p->pmatrix_index;
 
 #if(BL_OPT_METHOD == PLL_BRANCH_OPT_LBFGSB)
   new_lnl = -1 * pll_optimize_parameters_lbfgsb(params);
@@ -847,118 +853,136 @@ static double recomp_iterative (pll_optimize_options_t * params,
 
   if (new_lnl < lnl)
   {
+    /* revert */
     pll_update_prob_matrices(params->lk_params.partition,
                              params->params_index,
-                             &(tree->pmatrix_index),
-                             &(tree->length),
+                             &(tr_p->pmatrix_index),
+                             &(tr_p->length),
                              1);
-    lnl = pll_compute_edge_loglikelihood (params->lk_params.partition,
-                                          tree->back->clv_index, tree->back->scaler_index,
-                                            tree->clv_index, tree->scaler_index,
-                                            tree->pmatrix_index,
-                                            params->lk_params.freqs_index);
+//    new_lnl = pll_compute_edge_loglikelihood (params->lk_params.partition,
+//                                          tree->back->clv_index, tree->back->scaler_index,
+//                                          tree->clv_index, tree->scaler_index,
+//                                          tree->pmatrix_index,
+//                                          params->lk_params.freqs_index);
+    DBG("Revert branch %.14f\n", tree->length);
   }
   else
   {
+    /* consolidate */
+    DBG("Consolidate branch %.14f  to %.14f\n", tr_p->length, params->lk_params.branch_lengths[0]);
     lnl = new_lnl;
     tree->length = params->lk_params.branch_lengths[0];
     tree->back->length = params->lk_params.branch_lengths[0];
   }
 
   DBG(" Optimized branch %3d - %3d (%.6f) [%.4f]\n",
-        tree->clv_index, tree->back->clv_index, tree->length, lnl);
+      tr_p->clv_index, tr_p->back->clv_index, tr_p->length, lnl);
 
-  if (tree->next)
+  /* update children */
+  if (tr_p && tr_z)
   {
+    /* update children 'Q'
+     * CLV at P is recomputed with children P->back and Z->back
+     * Scaler is updated by subtracting Q->back and adding P->back
+     */
     pll_operation_t new_op;
 
     /* set CLV */
-    new_op.parent_clv_index = tree->clv_index;
-    new_op.parent_scaler_index = tree->scaler_index;
-    new_op.child1_clv_index = tree->back->clv_index;
-    new_op.child1_matrix_index = tree->back->pmatrix_index;
-    new_op.child1_scaler_index = tree->back->scaler_index;
-    new_op.child2_clv_index = tree->next->next->back->clv_index;
-    new_op.child2_matrix_index = tree->next->next->back->pmatrix_index;
-    new_op.child2_scaler_index = tree->next->next->back->scaler_index;
+    new_op.parent_clv_index    = tr_p->clv_index;
+    new_op.parent_scaler_index = tr_p->scaler_index;
+    new_op.child1_clv_index    = tr_p->back->clv_index;
+    new_op.child1_matrix_index = tr_p->back->pmatrix_index;
+    new_op.child1_scaler_index = tr_p->back->scaler_index;
+    new_op.child2_clv_index    = tr_z->back->clv_index;
+    new_op.child2_matrix_index = tr_z->back->pmatrix_index;
+    new_op.child2_scaler_index = tr_z->back->scaler_index;
 #if(UPDATE_SCALERS)
-    int i;
-    pll_utree_t * info1 = tree;
-    pll_utree_t * info2 = tree->back;
-    pll_utree_t * info_child1 = tree->next;
-    pll_utree_t * info_child2 = tree->next;
     /* update scalers */
-    if (info1->scaler_index != PLL_SCALE_BUFFER_NONE)
+    if (tr_p->scaler_index != PLL_SCALE_BUFFER_NONE)
     {
       int n = params->lk_params.partition->sites;
       for (i=0; i<n; i++)
-        params->lk_params.partition->scale_buffer[info1->scaler_index][i] =
-            params->lk_params.partition->scale_buffer[info1->scaler_index][i]
-                + ((info2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                    params->lk_params.partition->scale_buffer[info2->scaler_index][i] :
+      {
+        params->lk_params.partition->scale_buffer[tr_p->scaler_index][i] =
+            params->lk_params.partition->scale_buffer[tr_p->scaler_index][i]
+                + ((tr_p->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                    params->lk_params.partition->scale_buffer[tr_p->back->scaler_index][i] :
                     0)
-                - ((info_child1->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                    params->lk_params.partition->scale_buffer[info_child1->scaler_index][i] :
+                - ((tr_q->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                    params->lk_params.partition->scale_buffer[tr_q->back->scaler_index][i] :
                     0);
+      }
     }
 #endif
     pll_update_partials (params->lk_params.partition, &new_op, 1);
 
     /* eval */
-    recomp_iterative (params, tree->next->back, lnl);
+    lnl = recomp_iterative (params, tr_q->back, lnl);
+
+    /* update children 'Z'
+     * CLV at P is recomputed with children P->back and Q->back
+     * Scaler is updated by subtracting Z->back and adding Q->back
+     */
 
     /* set CLV */
-    new_op.parent_clv_index = tree->clv_index;
-    new_op.parent_scaler_index = tree->scaler_index;
-    new_op.child1_clv_index = tree->back->clv_index;
-    new_op.child1_matrix_index = tree->back->pmatrix_index;
-    new_op.child1_scaler_index = tree->back->scaler_index;
-    new_op.child2_clv_index = tree->next->back->clv_index;
-    new_op.child2_matrix_index = tree->next->back->pmatrix_index;
-    new_op.child2_scaler_index = tree->next->back->scaler_index;
+    new_op.parent_clv_index    = tr_p->clv_index;
+    new_op.parent_scaler_index = tr_p->scaler_index;
+    new_op.child1_clv_index    = tr_p->back->clv_index;
+    new_op.child1_matrix_index = tr_p->back->pmatrix_index;
+    new_op.child1_scaler_index = tr_p->back->scaler_index;
+    new_op.child2_clv_index    = tr_q->back->clv_index;
+    new_op.child2_matrix_index = tr_q->back->pmatrix_index;
+    new_op.child2_scaler_index = tr_q->back->scaler_index;
 #if(UPDATE_SCALERS)
     /* update scalers */
-    if (info1->scaler_index != PLL_SCALE_BUFFER_NONE)
+    if (tr_p->scaler_index != PLL_SCALE_BUFFER_NONE)
     {
       int n = params->lk_params.partition->sites;
       for (i = 0; i < n; i++)
-        params->lk_params.partition->scale_buffer[info1->scaler_index][i] =
-            params->lk_params.partition->scale_buffer[info1->scaler_index][i]
-                + ((info2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                params->lk_params.partition->scale_buffer[info2->scaler_index][i] :
-            0) - ((info_child2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                params->lk_params.partition->scale_buffer[info_child2->scaler_index][i] :
-                0);
+        params->lk_params.partition->scale_buffer[tr_p->scaler_index][i] =
+            params->lk_params.partition->scale_buffer[tr_p->scaler_index][i]
+                + ((tr_q->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                    params->lk_params.partition->scale_buffer[tr_q->back->scaler_index][i] :
+                    0)
+                - ((tr_z->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                    params->lk_params.partition->scale_buffer[tr_z->back->scaler_index][i] :
+                    0);
     }
 #endif
     pll_update_partials (params->lk_params.partition, &new_op, 1);
 
    /* eval */
-    recomp_iterative (params, tree->next->next->back, lnl);
+    lnl = recomp_iterative (params, tr_z->back, lnl);
+
+    /* reset to initial state
+     * CLV at P is recomputed with children Q->back and Z->back
+     * Scaler is updated by subtracting P->back and adding Z->back
+     */
 
     /* reset CLV */
-    new_op.parent_clv_index = tree->clv_index;
-    new_op.parent_scaler_index = tree->scaler_index;
-    new_op.child1_clv_index = tree->next->back->clv_index;
-    new_op.child1_matrix_index = tree->next->back->pmatrix_index;
-    new_op.child1_scaler_index = tree->next->back->scaler_index;
-    new_op.child2_clv_index = tree->next->next->back->clv_index;
-    new_op.child2_matrix_index = tree->next->next->back->pmatrix_index;
-    new_op.child2_scaler_index = tree->next->next->back->scaler_index;
+    new_op.parent_clv_index    = tr_p->clv_index;
+    new_op.parent_scaler_index = tr_p->scaler_index;
+    new_op.child1_clv_index    = tr_q->back->clv_index;
+    new_op.child1_matrix_index = tr_q->back->pmatrix_index;
+    new_op.child1_scaler_index = tr_q->back->scaler_index;
+    new_op.child2_clv_index    = tr_z->back->clv_index;
+    new_op.child2_matrix_index = tr_z->back->pmatrix_index;
+    new_op.child2_scaler_index = tr_z->back->scaler_index;
 #if(UPDATE_SCALERS)
     /* update scalers */
-       if (info1->scaler_index != PLL_SCALE_BUFFER_NONE)
-       {
-         int n = params->lk_params.partition->sites;
-         for (i = 0; i < n; i++)
-           params->lk_params.partition->scale_buffer[info1->scaler_index][i] =
-                       params->lk_params.partition->scale_buffer[info1->scaler_index][i]
-                           + ((info_child2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                           params->lk_params.partition->scale_buffer[info_child2->scaler_index][i] :
-                       0) - ((info2->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                           params->lk_params.partition->scale_buffer[info2->scaler_index][i] :
-                           0);
-       }
+    if (tr_p->scaler_index != PLL_SCALE_BUFFER_NONE)
+    {
+      int n = params->lk_params.partition->sites;
+      for (i = 0; i < n; i++)
+        params->lk_params.partition->scale_buffer[tr_p->scaler_index][i] =
+            params->lk_params.partition->scale_buffer[tr_p->scaler_index][i]
+                + ((tr_q->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                    params->lk_params.partition->scale_buffer[tr_q->back->scaler_index][i] :
+                    0)
+                - ((tr_p->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                    params->lk_params.partition->scale_buffer[tr_p->back->scaler_index][i] :
+                    0);
+    }
 #endif
     pll_update_partials (params->lk_params.partition, &new_op, 1);
   }
@@ -984,8 +1008,11 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
 
   for (i=0; i<smoothings; i++)
   {
-      lnl = recomp_iterative (params, tree, lnl);
-      lnl = recomp_iterative (params, tree->back, lnl);
+      double new_lnl = recomp_iterative (params, tree, lnl);
+      new_lnl = recomp_iterative (params, tree->back, new_lnl);
+      if (fabs(new_lnl - lnl) < params->pgtol)
+        break;
+      lnl = new_lnl;
   }
 
   return -1*lnl;
@@ -1009,7 +1036,7 @@ PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
   double df, dx, dxold, f;
   double temp, xh, xl, rts, rts_old;
 
-  double tolerance = 1e-6; //params->pgtol
+  double tolerance = 1e-4; //params->pgtol
   if (params->which_parameters != PLL_PARAMETER_BRANCHES_SINGLE)
   {
     snprintf(pll_errmsg, 200,
