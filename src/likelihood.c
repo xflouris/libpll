@@ -361,12 +361,15 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
           {
             pmatrix[j * states + k] += temp[j * states + m]
                 * eigenvecs[m * states + k];
-            double term = (eigenvals[m] / (1 - prop_invar));
+            double term = (rates[n] * eigenvals[m] / (1 - prop_invar));
             d_pmatrix[j * states + k] += term * temp[j * states + m]
                 * eigenvecs[m * states + k];
             dd_pmatrix[j * states + k] += term * term * temp[j * states + m]
                 * eigenvecs[m * states + k];
           }
+          pmatrix[j * states + k] *= freqs[j];
+          d_pmatrix[j * states + k] *= freqs[j];
+          dd_pmatrix[j * states + k] *= freqs[j];
         }
     }
   }
@@ -392,9 +395,9 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
           termb[1] += d_pmatrix[k] * clvc[k];
           termb[2] += dd_pmatrix[k] * clvc[k];
         }
-        terma[0] += clvp[j] * freqs[j] * termb[0];
-        terma[1] += clvp[j] * freqs[j] * termb[1];
-        terma[2] += clvp[j] * freqs[j] * termb[2];
+        terma[0] += clvp[j] * termb[0];
+        terma[1] += clvp[j] * termb[1];
+        terma[2] += clvp[j] * termb[2];
         pmatrix += states;
         d_pmatrix += states;
         dd_pmatrix += states;
@@ -413,25 +416,43 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
       inv_site_lk =
           (partition->invariant[n] == -1) ? 0 : freqs[partition->invariant[n]];
       site_lk[0] = site_lk[0] * (1. - prop_invar) + inv_site_lk * prop_invar;
-//      site_lk[1] = site_lk[1] * (1. - prop_invar) + inv_site_lk * prop_invar;
-//      site_lk[2] = site_lk[2] * (1. - prop_invar) + inv_site_lk * prop_invar;
+      site_lk[1] = site_lk[1] * (1. - prop_invar);
+      site_lk[2] = site_lk[2] * (1. - prop_invar);
     }
 
     unsigned int scale_factors;
     scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
     scale_factors += (child_scaler) ? child_scaler[n] : 0;
 
+    if (site_lk[0] < PLL_SCALE_THRESHOLD_SQRT)
+    {
+      /* correct for underflow */
+      scale_factors += 1;
+      double lk_div = PLL_SCALE_THRESHOLD;
+      site_lk[0] /= lk_div;
+      site_lk[1] /= lk_div;
+      site_lk[2] /= lk_div;
+    }
+
     logLK += log(site_lk[0]) * partition->pattern_weights[n];
     if (scale_factors)
+    {
       logLK += scale_factors * log(PLL_SCALE_THRESHOLD);
+    }
 
     /* build derivatives */
-    *d_f += partition->pattern_weights[n] * (-site_lk[1] / site_lk[0]);
-    *dd_f += partition->pattern_weights[n] *
-        ((site_lk[1]*site_lk[1] - site_lk[2]*site_lk[0]) /
-            (site_lk[0]*site_lk[0]));
-  }
+    double next_df;
+    double first_deriv = (-site_lk[1] / site_lk[0]);
+    *d_f += partition->pattern_weights[n] * first_deriv;
+//    next_df = *dd_f + partition->pattern_weights[n] *
+//        ((site_lk[1]*site_lk[1] - site_lk[2]*site_lk[0]) /
+//            (site_lk[0]*site_lk[0]));
+    next_df = *dd_f + partition->pattern_weights[n] *
+            (first_deriv*first_deriv - (site_lk[2] /
+                site_lk[0]));
 
+    *dd_f = next_df;
+  }
   free (gamma_pmatrix);
   free (d_gamma_pmatrix);
   free (dd_gamma_pmatrix);
