@@ -255,6 +255,7 @@ int main(int argc, char * argv[])
                                    inner_nodes_count,
                                    STATES,
                                    (unsigned int)sites,
+                                   0,
                                    1,
                                    branch_count,
                                    RATE_CATS,
@@ -341,10 +342,10 @@ int main(int argc, char * argv[])
   {
 
     /* set frequencies at model with index 0 (we currently have only one model) */
-    pll_set_frequencies(partition, 0, protein_models_freqs_list[i]);
+    pll_set_frequencies(partition, 0, 0, protein_models_freqs_list[i]);
 
     /* set 6 substitution parameters at model with index 0 */
-    pll_set_subst_params(partition, 0, protein_models_rates_list[i]);
+    pll_set_subst_params(partition, 0, 0, protein_models_rates_list[i]);
 
     /* update 2*tip_count-3 probability matrices for model with index 0. The i-th
        matrix (i ranges from 0 to 2*tip_count-4) is generated using branch length

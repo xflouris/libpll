@@ -12,6 +12,7 @@ int main(int argc, char * argv[])
                                    2,       /* How many extra CLV buffers (apart from the tip sequences) should we allocate */
                                    4,       /* How many states do our data have */
                                    6,       /* How long are the tip sequences (number of sites) */
+                                   0,       /* Mixture models */
                                    1,       /* How many different substitution models (or eigen decompositions) do we want to use concurrently (i.e. 4 for LG4) */
                                    5,       /* How many probability matrices should we allocate */
                                    4,       /* Number of rate categories */
@@ -36,10 +37,10 @@ int main(int argc, char * argv[])
   pll_compute_gamma_cats(alpha, 4, rate_cats);
 
   /* set frequencies */
-  pll_set_frequencies(partition, 0, frequencies);
+  pll_set_frequencies(partition, 0, 0, frequencies);
 
   /* set substitution parameters */
-  pll_set_subst_params(partition, 0, subst_params);
+  pll_set_subst_params(partition, 0, 0, subst_params);
 
   /* set rate categories */
   pll_set_category_rates(partition, rate_cats);

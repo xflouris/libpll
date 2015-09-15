@@ -16,7 +16,8 @@ features related to heterotachous models.
 partition = pll_create_partition(4, 
                                  2, 
                                  4, 
-                                 6, 
+                                 6,
+                                 0, 
                                  num_models, 
                                  5, 
                                  4, 
@@ -36,9 +37,9 @@ Model parameters are set for each of the different models. The frequencies and
 substitution parameters arrays are now two-dimensional, with `num_models` sets
 of values.
 
-[`pll_set_frequencies(partition, i, frequencies[i]);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_frequencies)
+[`pll_set_frequencies(partition, i, 0, frequencies[i]);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_frequencies)
 
-[`pll_set_subst_params(partition, i, subst_params[i], 6);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_subst_params)
+[`pll_set_subst_params(partition, i, 0, subst_params[i], 6);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_subst_params)
 
 Next, we compute the transition probability matrices for each unique branch
 length in the tree. The matrix indices are divided in *num_models* groups, one

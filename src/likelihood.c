@@ -134,6 +134,7 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
     #endif
       update_partials(partition, &(operations[i]));
   }
+
 }
 
 PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
@@ -144,11 +145,13 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
   unsigned int i,j,k;
 
   double logl = 0;
-  double term;
+  double term, term_r;
   const double * clv = partition->clv[clv_index];
   unsigned int rates = partition->rate_cats;
+  double * weights = partition->rate_weights;
   unsigned int states = partition->states;
-  const double * freqs = partition->frequencies[freqs_index];
+  unsigned int states_padded = partition->states_padded;
+  const double * freqs = NULL;
   double prop_invar = partition->prop_invar[freqs_index];
   double site_lk, inv_site_lk;
   unsigned int * scaler;
@@ -162,17 +165,22 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
   /* iterate through sites */
   for (i = 0; i < partition->sites; ++i)
   {
+    freqs = partition->frequencies[freqs_index];
     term = 0;
     for (j = 0; j < rates; ++j)
     {
+      term_r = 0;
       for (k = 0; k < states; ++k)
       {
-        term += clv[k] * freqs[k];
+        term_r += clv[k] * freqs[k];
       }
+      term += term_r * weights[j];
       clv += states;
+      if (partition->mixture > 1)
+        freqs += states_padded;
     }
 
-    site_lk = term / rates;
+    site_lk = term;
 
     /* account for invariant sites */
     if (prop_invar > 0)
@@ -203,16 +211,17 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
 {
   unsigned int n,i,j,k;
   double logl = 0;
-  double terma, termb;
+  double terma, terma_r, termb;
   double site_lk, inv_site_lk;
 
   const double * clvp = partition->clv[parent_clv_index];
   const double * clvc = partition->clv[child_clv_index];
-  const double * freqs = partition->frequencies[freqs_index];
+  const double * freqs = NULL;
   const double * pmatrix = partition->pmatrix[matrix_index];
   double prop_invar = partition->prop_invar[freqs_index];
   unsigned int states = partition->states;
-  unsigned int rates = partition->rate_cats;
+  unsigned int states_padded = partition->states_padded;
+  double * weights = partition->rate_weights;
   unsigned int scale_factors;
 
   unsigned int * parent_scaler;
@@ -231,22 +240,27 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
   for (n = 0; n < partition->sites; ++n)
   {
     pmatrix = partition->pmatrix[matrix_index];
+    freqs = partition->frequencies[freqs_index];
     terma = 0;
     for (i = 0; i < partition->rate_cats; ++i)
     {
+      terma_r = 0;
       for (j = 0; j < partition->states; ++j)
       {
         termb = 0;
         for (k = 0; k < partition->states; ++k)
           termb += pmatrix[k] * clvc[k];
-        terma += clvp[j] * freqs[j] * termb;
+        terma_r += clvp[j] * freqs[j] * termb;
         pmatrix += states;
       }
+      terma += terma_r * weights[i];
       clvp += states;
       clvc += states;
+      if (partition->mixture > 1)
+        freqs += states_padded;
     }
 
-    site_lk = terma / rates;
+    site_lk = terma;
 
     /* account for invariant sites */
     if (prop_invar > 0)

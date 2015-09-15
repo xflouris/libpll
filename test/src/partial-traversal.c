@@ -230,6 +230,7 @@ int main(int argc, char * argv[])
                                    inner_nodes_count,
                                    STATES,
                                    (unsigned int)sites,
+                                   0,
                                    1,
                                    branch_count,
                                    RATE_CATS,
@@ -251,10 +252,10 @@ int main(int argc, char * argv[])
   pll_compute_gamma_cats(1, 4, rate_cats);
 
   /* set frequencies at model with index 0 (we currently have only one model) */
-  pll_set_frequencies(partition, 0, frequencies);
+  pll_set_frequencies(partition, 0, 0, frequencies);
 
   /* set 6 substitution parameters at model with index 0 */
-  pll_set_subst_params(partition, 0, subst_params);
+  pll_set_subst_params(partition, 0, 0, subst_params);
 
   /* set rate categories */
   pll_set_category_rates(partition, rate_cats);

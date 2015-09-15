@@ -14,7 +14,8 @@ The program first instantiates a partition using the function call
 partition = pll_create_partition(5, 
                                  4, 
                                  4, 
-                                 6, 
+                                 6,
+                                 0,   
                                  1, 
                                  8, 
                                  4, 
@@ -27,6 +28,7 @@ The parameters of the function (in the order passed) indicate
 * the extra number of Conditional Likelihood Vectors (CLVs) that should be allocated apart from those created for the tip sequences (typically, number of tips minus one for rooted trees), 
 * number of states in the dataset (for instance 4 for nucleotide datasets, 20 for aminoacid datasets),
 * the length of the alignment, i.e. the number of sites at the tip sequences,
+* for mixture models, how many different models
 * how many different substitution models we want to have at one time, 
 * the number of probability matrices that should be allocated (typically 2 times the number of tip sequences minus 2),
 * number of discrete rate categories (rate heterogeneity),
@@ -37,9 +39,9 @@ For a more detailed explanation of the function arguments refer to the [API Refe
 
 Model parameters are set with the function calls 
 
-[`pll_set_frequencies(partition, 0, frequencies);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_frequencies)
+[`pll_set_frequencies(partition, 0, 0, frequencies);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_frequencies)
 
-[`pll_set_subst_params(partition, 0, subst_params, 6);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_subst_params)
+[`pll_set_subst_params(partition, 0, 0, subst_params, 6);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_subst_params)
 
 `pll_set_category_rates(partition, rate_cats);`
 

@@ -64,6 +64,9 @@
 #define PLL_ATTRIB_ARCH_AVX2      1 << 2
 #define PLL_ATTRIB_ARCH_AVX512    1 << 3
 #define PLL_ATTRIB_ARCH_MASK         0xF
+#define PLL_ATTRIB_MIXT_LINKED    1 << 4  /** Q matrices linked to rate categories */
+#define PLL_ATTRIB_MIXT_UNLINKED  1 << 5  /** Q matrices unlinked */
+#define PLL_ATTRIB_MIXT_MASK        0xF0
 
 /* error codes */
 
@@ -80,6 +83,7 @@
 
 #define PLL_ERROR_ALPHA                  101
 #define PLL_ERROR_PINV                   102
+#define PLL_ERROR_MIXTURE                103
 
 /* utree specific */
 
@@ -109,9 +113,11 @@ typedef struct pll_partition
   size_t alignment;
   unsigned int states_padded;
 
+  unsigned int mixture;
   double ** clv;
   double ** pmatrix;
   double * rates;
+  double * rate_weights;
   double ** subst_params;
   unsigned int ** scale_buffer;
   double ** frequencies;
@@ -221,6 +227,8 @@ PLL_EXPORT extern const double pll_aa_rates_hivw[190];
 PLL_EXPORT extern const double pll_aa_rates_jttdcmut[190];
 PLL_EXPORT extern const double pll_aa_rates_flu[190];
 PLL_EXPORT extern const double pll_aa_rates_stmtrev[190];
+PLL_EXPORT extern const double pll_aa_rates_lg4m[4][190];
+PLL_EXPORT extern const double pll_aa_rates_lg4x[4][190];
 
 PLL_EXPORT extern const double pll_aa_freqs_dayhoff[20];
 PLL_EXPORT extern const double pll_aa_freqs_lg[20];
@@ -241,6 +249,8 @@ PLL_EXPORT extern const double pll_aa_freqs_hivw[20];
 PLL_EXPORT extern const double pll_aa_freqs_jttdcmut[20];
 PLL_EXPORT extern const double pll_aa_freqs_flu[20];
 PLL_EXPORT extern const double pll_aa_freqs_stmtrev[20];
+PLL_EXPORT extern const double pll_aa_freqs_lg4m[4][20];
+PLL_EXPORT extern const double pll_aa_freqs_lg4x[4][20];
 
 #ifdef __cplusplus
 extern "C" {
@@ -252,6 +262,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                                                   unsigned int clv_buffers,
                                                   unsigned int states,
                                                   unsigned int sites,
+                                                  unsigned int mixture,
                                                   unsigned int rate_matrices,
                                                   unsigned int prob_matrices,
                                                   unsigned int rate_cats,
@@ -281,15 +292,20 @@ PLL_EXPORT int pll_dlist_prepend(pll_dlist_t ** dlist, void * data);
 /* functions in models.c */
 
 PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition, 
-                                     unsigned int params_index, 
+                                     unsigned int params_index,
+                                     unsigned int mixture_index,
                                      const double * params);
 
 PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
                                     unsigned int params_index,
+                                    unsigned int mixture_index,
                                     const double * frequencies);
 
 PLL_EXPORT void pll_set_category_rates(pll_partition_t * partition,
                                        const double * rates);
+
+PLL_EXPORT void pll_set_category_weights(pll_partition_t * partition,
+                                         const double * rate_weights);
 
 PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
                                          unsigned int params_index, 

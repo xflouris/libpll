@@ -45,6 +45,7 @@ int main(int argc, char * argv[])
                                    4,           /* clv buffers */
                                    N_STATES_NT, /* number of states */
                                    n_sites,     /* sequence length */
+                                   0,           /* mixture */
                                    1,           /* different rate parameters */
                                    2*n_tips-3,  /* probability matrices */
                                    n_cat_gamma, /* gamma categories */
@@ -58,7 +59,7 @@ int main(int argc, char * argv[])
 
   pll_compute_gamma_cats(alpha, n_cat_gamma, rate_cats);
 
-  pll_set_frequencies(partition, 0, frequencies);
+  pll_set_frequencies(partition, 0, 0, frequencies);
 
   pll_set_category_rates(partition, rate_cats);
 
@@ -100,7 +101,7 @@ int main(int argc, char * argv[])
   for (i = 0; i < NUM_TESTS; ++i) 
   {
     subst_params[1] = subst_params[4] = titv[i];
-    pll_set_subst_params(partition, 0, subst_params);
+    pll_set_subst_params(partition, 0, 0, subst_params);
 
     pll_update_prob_matrices(partition, 0, matrix_indices, branch_lengths, 4);
     pll_update_partials(partition, operations, 3);

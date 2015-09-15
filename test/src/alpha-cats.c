@@ -75,6 +75,7 @@ int main(int argc, char * argv[])
                                 4,           /* clv buffers */
                                 N_STATES_NT, /* number of states */
                                 n_sites,     /* sequence length */
+                                1,           /* mixture */
                                 1,           /* different rate parameters */
                                 2*n_tips-3,  /* probability matrices */
                                 n_cat_gamma[k], /* gamma categories */
@@ -92,8 +93,8 @@ int main(int argc, char * argv[])
     unsigned int matrix_indices[4] = { 0, 1, 2, 3 };
     double subst_params[6] = {1,titv,1,1,titv,1};
 
-    pll_set_frequencies(partition, 0, frequencies);
-    pll_set_subst_params(partition, 0, subst_params);
+    pll_set_frequencies(partition, 0, 0, frequencies);
+    pll_set_subst_params(partition, 0, 0, subst_params);
 
     pll_set_tip_states(partition, 0, pll_map_nt, "WAACTCGCTA--ATTCTAAT");
     pll_set_tip_states(partition, 1, pll_map_nt, "CACCATGCTA--ATTGTCTT");

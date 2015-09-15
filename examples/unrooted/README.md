@@ -15,6 +15,7 @@ partition = pll_create_partition(4,
                                  2, 
                                  4, 
                                  6, 
+                                 0,
                                  1, 
                                  5, 
                                  4, 
@@ -28,6 +29,7 @@ The parameters of the function (in the order passed) indicate
 * number of states in the dataset (for instance 4 for nucleotide datasets, 20 for aminoacid datasets) (4),
 * the length of the alignment, i.e. the number of sites at the tip sequences (6),
 * how many different substitution models we want to have at one time (1), 
+* for mixture models, how many different models
 * the number of probability matrices that should be allocated (typically 2 times the number of tip sequences minus 3 for unrooted trees) (5) ,
 * number of discrete rate categories (rate heterogeneity) (4),
 * number of scale buffers to be allocated (not yet implemented) (1),
@@ -37,9 +39,9 @@ For a more detailed explanation of the function arguments refer to the [API Refe
 
 Model parameters are set with the function calls 
 
-[`pll_set_frequencies(partition, 0, frequencies);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_frequencies)
+[`pll_set_frequencies(partition, 0, 0, frequencies);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_frequencies)
 
-[`pll_set_subst_params(partition, 0, subst_params, 6);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_subst_params)
+[`pll_set_subst_params(partition, 0, 0, subst_params, 6);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_subst_params)
 
 `pll_set_category_rates(partition, rate_cats);`
 

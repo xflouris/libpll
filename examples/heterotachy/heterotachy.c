@@ -54,7 +54,7 @@ int main(int argc, char * argv[])
   double alpha = 1.0;
 
   /* create the PLL partition instance */
-  partition = pll_partition_create(4, 2, 4, 6,
+  partition = pll_partition_create(4, 2, 4, 6, 0,
                                    num_models,  /* How many different models */
                                    5, 4, 2,
                                    PLL_ATTRIB_ARCH_CPU);
@@ -89,14 +89,14 @@ int main(int argc, char * argv[])
   pll_compute_gamma_cats(alpha, 4, rate_cats);
 
   /* set frequencies to the parameter sets */
-  pll_set_frequencies(partition, 0, frequencies[0]);
-  pll_set_frequencies(partition, 1, frequencies[1]);
-  pll_set_frequencies(partition, 2, frequencies[2]);
+  pll_set_frequencies(partition, 0, 0, frequencies[0]);
+  pll_set_frequencies(partition, 1, 0, frequencies[1]);
+  pll_set_frequencies(partition, 2, 0, frequencies[2]);
 
   /* set substitution parameters */
-  pll_set_subst_params(partition, 0, subst_params[0]);
-  pll_set_subst_params(partition, 1, subst_params[1]);
-  pll_set_subst_params(partition, 2, subst_params[2]);
+  pll_set_subst_params(partition, 0, 0, subst_params[0]);
+  pll_set_subst_params(partition, 1, 0, subst_params[1]);
+  pll_set_subst_params(partition, 2, 0, subst_params[2]);
 
   /* set (single set of) rate categories */
   pll_set_category_rates(partition, rate_cats);
