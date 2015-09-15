@@ -1,18 +1,14 @@
 #include "pll.h"
 #include <stdarg.h>
 #include <search.h>
-#include <time.h>
 
 
-#define STATES    4
-#define RATE_CATS 4
+#define STATES    20
+#define MIXTURE 4
+#define RATE_CATS MIXTURE
+#define PROT_MODELS_COUNT 19
 
 static void fatal(const char * format, ...) __attribute__ ((noreturn));
-
-typedef struct
-{
-  int clv_valid;
-} node_info_t;
 
 /* a callback function for performing a full traversal */
 static int cb_full_traversal(pll_utree_t * node)
@@ -79,13 +75,12 @@ int main(int argc, char * argv[])
   /* parse the unrooted binary tree in newick format, and store the number
      of tip nodes in tip_nodes_count */
   pll_utree_t * tree = pll_utree_parse_newick(argv[1], &tip_nodes_count);
-  if (!tree)
-    fatal("Tree must be an unrooted binary tree");
   
   /* fix all missing branch lengths (i.e. those that did not appear in the 
      newick) to 0.000001 */
   set_missing_branch_length(tree, 0.000001);
 
+  
   /* compute and show node count information */
   inner_nodes_count = tip_nodes_count - 2;
   nodes_count = inner_nodes_count + tip_nodes_count;
@@ -96,22 +91,17 @@ int main(int argc, char * argv[])
   printf("Total number of nodes in tree: %d\n", nodes_count);
   printf("Number of branches in tree: %d\n", branch_count);
 
-  /* Uncomment to display the parsed tree ASCII tree together with information
-     as to which CLV index, branch length and label is associated with each
-     node. The code will also write (and print on screen) the newick format
-     of the tree.
-
+  /*
   pll_utree_show_ascii(tree, PLL_UTREE_SHOW_LABEL |
                              PLL_UTREE_SHOW_BRANCH_LENGTH |
                              PLL_UTREE_SHOW_CLV_INDEX);
   char * newick = pll_utree_export_newick(tree);
   printf("%s\n", newick);
   free(newick);
-
-  */
+ // */
 
   /*  obtain an array of pointers to tip nodes */
-  pll_utree_t ** tipnodes = (pll_utree_t  **)calloc(tip_nodes_count,
+  pll_utree_t ** tipnodes = (pll_utree_t  **)calloc(tip_nodes_count, 
                                                     sizeof(pll_utree_t *));
   pll_utree_query_tipnodes(tree, tipnodes);
 
@@ -179,48 +169,26 @@ int main(int argc, char * argv[])
   tip_nodes_count : the number of tip sequences we want to have
   inner_nodes_count : the number of CLV buffers to be allocated for inner nodes
   STATES : the number of states that our data have
-  1 : number of different substitution models (or eigen decomposition) 
-      to use concurrently (i.e. 4 for LG4)
+  4 : mixture size
+  4 : number of different substitution models (or eigen decomposition)
+      to use concurrently (multiple of mixture size)
   branch_count: number of probability matrices to be allocated
   RATE_CATS : number of rate categories we will use
   inner_nodes_count : how many scale buffers to use
-  PLL_ATTRIB_ARCH_SSE : list of flags for hardware acceleration (not yet implemented)
-  
+  PLL_ATTRIB_ARCH_SSE : list of flags for hardware acceleration
+  PLL_ATTRIB_MIXT_GAMMA : flag for determining how to compute the CLVs on the mixture models
   */
 
   partition = pll_partition_create(tip_nodes_count,
                                    inner_nodes_count,
                                    STATES,
                                    (unsigned int)sites,
-                                   0,
+                                   MIXTURE,
                                    1,
                                    branch_count,
                                    RATE_CATS,
                                    inner_nodes_count,
-                                   PLL_ATTRIB_ARCH_CPU);
-
-  /* initialize the array of base frequencies */
-  double frequencies[4] = { 0.17, 0.19, 0.25, 0.39 };
-
-  /* substitution rates for the 4x4 GTR model. This means we need exactly
-     (4*4-4)/2 = 6 values, i.e. the number of elements above the diagonal */
-  double subst_params[6] = {1,1,1,1,1,1};
-
-  /* we'll use 4 rate categories, and currently initialize them to 0 */
-  double rate_cats[4] = {0};
-
-  /* compute the discretized category rates from a gamma distribution
-     with alpha shape 1 and store them in rate_cats  */
-  pll_compute_gamma_cats(1, 4, rate_cats);
-
-  /* set frequencies at model with index 0 (we currently have only one model) */
-  pll_set_frequencies(partition, 0, 0, frequencies);
-
-  /* set 6 substitution parameters at model with index 0 */
-  pll_set_subst_params(partition, 0, 0, subst_params);
-
-  /* set rate categories */
-  pll_set_category_rates(partition, rate_cats);
+                                   PLL_ATTRIB_ARCH_CPU | PLL_ATTRIB_MIXT_LINKED);
 
   /* find sequences in hash table and link them with the corresponding taxa */
   for (i = 0; i < tip_nodes_count; ++i)
@@ -236,7 +204,7 @@ int main(int argc, char * argv[])
         
     unsigned int tip_clv_index = *((unsigned int *)(found->data));
 
-    pll_set_tip_states(partition, tip_clv_index, pll_map_nt, seqdata[i]);
+    pll_set_tip_states(partition, tip_clv_index, pll_map_aa, seqdata[i]);
   }
 
   /* destroy hash table */
@@ -256,27 +224,26 @@ int main(int argc, char * argv[])
   free(seqdata);
   free(headers);
 
-
-  /* allocate a buffer for storing pointers to nodes of the tree in postorder
+  /* allocate a buffer for storing pointers to nodes of the tree in postorder 
      traversal */
   travbuffer = (pll_utree_t **)malloc(nodes_count * sizeof(pll_utree_t *));
 
-
   branch_lengths = (double *)malloc(branch_count * sizeof(double));
   matrix_indices = (unsigned int *)malloc(branch_count * sizeof(unsigned int));
-  operations = (pll_operation_t *)malloc(inner_nodes_count *
+  operations = (pll_operation_t *)malloc(inner_nodes_count * 
                                                 sizeof(pll_operation_t));
 
-  /* perform a postorder traversal of the unrooted tree */
+  /* compute a partial traversal starting from the randomly selected 
+     inner node */
   unsigned int traversal_size;
-  if (!pll_utree_traverse(tree,
-                          cb_full_traversal,
+  if (!pll_utree_traverse(tree, 
+                          cb_full_traversal, 
                           travbuffer,
                           &traversal_size))
     fatal("Function pll_utree_traverse() requires inner nodes as parameters");
 
-  /* given the computed traversal descriptor, generate the operations
-     structure, and the corresponding probability matrix indices that
+  /* given the computed traversal descriptor, generate the operations 
+     structure, and the corresponding probability matrix indices that 
      may need recomputing */
   pll_utree_create_operations(travbuffer,
                               traversal_size,
@@ -286,46 +253,46 @@ int main(int argc, char * argv[])
                               &matrix_count,
                               &ops_count);
 
-                              
-  printf ("Traversal size: %d\n", traversal_size);
-  printf ("Operations: %d\n", ops_count);
-  printf ("Probability Matrices: %d\n", matrix_count);
+  /* we'll use 4 rate categories, and currently initialize them to 0 */
+  double rate_cats[4] = {0};
 
-  /* update matrix_count probability matrices for model with index 0. The i-th
-     matrix (i ranges from 0 to matrix_count - 1) is generated using branch
-     length branch_lengths[i] and can be refered to with index
-     matrix_indices[i] */
-  pll_update_prob_matrices(partition, 
-                           0, 
-                           matrix_indices, 
-                           branch_lengths, 
-                           matrix_count);
+  /* compute the discretized category rates from a gamma distribution
+     with alpha shape 1 and store them in rate_cats  */
+  pll_compute_gamma_cats(1.00000, 4, rate_cats);
 
-  /* Uncomment to output the probability matrices (for each branch and each rate
-     category) on screen
-  for (i = 0; i < branch_count; ++i)
+  /* set rate categories */
+  pll_set_category_rates(partition, rate_cats);
+
+  for (i=0; i<partition->mixture; i++)
   {
-    printf ("P-matrix (%d) for branch length %f\n", i, branch_lengths[i]);
-    pll_show_pmatrix(partition, i,17);
-    printf ("\n");
-  }
-  
-  */
+    /* set frequencies at model with index i */
+    pll_set_frequencies(partition, 0, i, pll_aa_freqs_lg4m[i]);
 
-  /* use the operations array to compute all ops_count inner CLVs. Operations
-     will be carried out sequentially starting from operation 0 towrds ops_count-1 */
-  pll_update_partials(partition, operations, ops_count);
-
-  /* Uncomment to print on screen the CLVs at tip and inner nodes. From 0 to
-     tip_nodes_count-1 are tip CLVs, the rest are inner node CLVs.
-
-  for (i = 0; i < nodes_count; ++i)
-  {
-    printf ("CLV %d: ", i);
-    pll_show_clv(partition,i,17);
+    /* set substitution parameters at model with index i */
+    pll_set_subst_params(partition, 0, i, pll_aa_rates_lg4m[i]);
   }
 
-  */
+    /* update 2*tip_count-3 probability matrices for model with index 0. The i-th
+       matrix (i ranges from 0 to 2*tip_count-4) is generated using branch length
+       branch_lengths[i] and can be refered to with index matrix_indices[i] */
+    pll_update_prob_matrices(partition, 
+                             0, 
+                             matrix_indices, 
+                             branch_lengths, 
+                             matrix_count);
+
+    /*
+    for (i = 0; i < branch_count; ++i)
+    {
+      printf ("P-matrix (%d) for branch length %f\n", i, branch_lengths[i]);
+      pll_show_pmatrix(partition, i,4);
+      printf ("\n");
+    }
+    */
+
+    /* use the operations array to compute all tip_count-2 inner CLVs. Operations
+       will be carried out sequentially starting from operation 0 and upwards */
+    pll_update_partials(partition, operations, ops_count);
 
   /* compute the likelihood on an edge of the unrooted tree by specifying
      the CLV indices at the two end-point of the branch, the probability matrix
@@ -339,13 +306,66 @@ int main(int argc, char * argv[])
                                                tree->pmatrix_index,
                                                0);
 
-  printf("Log-L: %f\n", logl);
-  
+  printf("\nRates:   ");
+      for (i = 0; i < partition->mixture; i++)
+        printf("%.6f ", partition->rates[i]);
+  printf("\nLog-L (LG4M): %f\n", logl);
+
+  /* now let's switch into LG4X model with fixed rates and weights */
+
+  for (i = 0; i < partition->mixture; i++)
+  {
+    /* set frequencies at model with index i */
+    pll_set_frequencies (partition, 0, i, pll_aa_freqs_lg4x[i]);
+
+    /* set substitution parameters at model with index i */
+    pll_set_subst_params (partition, 0, i, pll_aa_rates_lg4x[i]);
+  }
+
+  /* set free rates and weights */
+  double fixedweights[] =
+    { 0.209224645, 0.224707726, 0.277599198, 0.288468431 };
+  double fixedrates[] =
+    { 0.498991136, 0.563680734, 0.808264032, 1.887769458 };
+  pll_set_category_rates (partition, fixedrates);
+  pll_set_category_weights (partition, fixedweights);
+
+  pll_update_prob_matrices(partition,
+                           0,
+                           matrix_indices,
+                           branch_lengths,
+                           matrix_count);
+
+  /*
+  for (i = 0; i < branch_count; ++i)
+  {
+    printf ("P-matrix (%d) for branch length %f\n", i, branch_lengths[i]);
+    pll_show_pmatrix(partition, i,4);
+    printf ("\n");
+  }
+  */
+
+  pll_update_partials(partition, operations, ops_count);
+
+  logl = pll_compute_edge_loglikelihood(partition,
+                                        tree->clv_index,
+                                        tree->scaler_index,
+                                        tree->back->clv_index,
+                                        tree->back->scaler_index,
+                                        tree->pmatrix_index,
+                                        0);
+
+  printf("\nWeights: ");
+  for (i = 0; i < partition->mixture; i++)
+    printf("%.6f ", partition->rate_weights[i]);
+  printf("\nRates:   ");
+    for (i = 0; i < partition->mixture; i++)
+      printf("%.6f ", partition->rates[i]);
+  printf("\nLog-L (LG4X): %f\n", logl);
+
   /* destroy all structures allocated for the concrete PLL partition instance */
   pll_partition_destroy(partition);
 
-  /* deallocate traversal buffer, branch lengths array, matrix indices
-     array and operations */
   free(travbuffer);
   free(branch_lengths);
   free(matrix_indices);
