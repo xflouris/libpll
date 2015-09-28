@@ -26,7 +26,7 @@ WARN=-Wall -Wsign-compare
 
 AR = ar
 CC = gcc
-CFLAGS = -D_GNU_SOURCE -fPIC -g -msse3 -O3 -I../ $(WARN)
+CFLAGS = -D_GNU_SOURCE -fPIC $(PROFILING) -msse3 -O3 -I../ $(WARN)
 LINKFLAGS=$(PROFILING)
 LIBS=-lpll -lm
 

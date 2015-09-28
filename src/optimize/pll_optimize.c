@@ -51,6 +51,7 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
   double * branch_lengths = params->lk_params.branch_lengths;
   unsigned int * matrix_indices = params->lk_params.matrix_indices;
   unsigned int params_index = params->params_index;
+  unsigned int mixture_index = params->mixture_index;
   unsigned int n_branches, n_inner_nodes;
   double * xptr = x;
 
@@ -106,7 +107,10 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
       xptr += n_subst_rates-1;
     }
 
-    pll_set_subst_params (partition, 0, subst_rates);
+    pll_set_subst_params (partition,
+                          params_index,
+                          mixture_index,
+                          subst_rates);
     free (subst_rates);
   }
   /* update stationary frequencies */
@@ -114,6 +118,7 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
   {
     unsigned int i;
     unsigned int n_states = partition->states;
+    unsigned int cur_index;
     double sum_ratios = 1.0;
     double *freqs = (double *) malloc ((size_t) n_states * sizeof(double));
     for (i = 0; i < (n_states - 1); ++i)
@@ -121,10 +126,20 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
       assert(!is_nan(xptr[i]));
       sum_ratios += xptr[i];
     }
-    for (i = 0; i < (n_states - 1); ++i)
-      freqs[i] = xptr[i] / sum_ratios;
-    freqs[n_states - 1] = 1.0 / sum_ratios;
-    pll_set_frequencies (partition, params->params_index, freqs);
+    cur_index = 0;
+    for (i = 0; i < (n_states); ++i)
+    {
+      if (i != params->highest_freq_state)
+      {
+        freqs[i] = xptr[cur_index] / sum_ratios;
+        cur_index++;
+      }
+    }
+    freqs[params->highest_freq_state] = 1.0 / sum_ratios;
+    pll_set_frequencies (partition,
+                         params_index,
+                         mixture_index,
+                         freqs);
     free (freqs);
     xptr += (n_states - 1);
   }
@@ -513,15 +528,30 @@ PLL_EXPORT double pll_optimize_parameters_newton(pll_optimize_options_t * params
   if (xguess < xmin || xguess > xmax)
     xguess = PLL_OPT_DEFAULT_BRANCH_LEN;
 
+  if (!params->sumtable)
+  {
+    if ((params->sumtable = (double *) calloc(
+        params->lk_params.partition->sites *
+        params->lk_params.partition->rate_cats *
+        params->lk_params.partition->states,
+        sizeof(double))) == NULL)
+      return PLL_FAILURE;
+  }
+
+  pll_update_sumtable (params->lk_params.partition,
+                       params->lk_params.where.unrooted_t.parent_clv_index,
+                       params->lk_params.where.unrooted_t.child_clv_index,
+                       params->params_index, params->lk_params.freqs_index,
+                       params->sumtable);
   double xres = pll_minimize_newton(params,
                                    xmin, xguess, xmax,
-                                   200,
+                                   10,
                                    &score);
 
   if (pll_errno)
   {
     printf("ERROR: %s\n", pll_errmsg);
-    exit(1);
+    return PLL_FAILURE;
   }
 
   params->lk_params.branch_lengths[0] = xres;
@@ -637,18 +667,35 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     /* stationary frequency parameters */
     if (params->which_parameters & PLL_PARAMETER_FREQUENCIES)
     {
-      unsigned int n_freqs_free_params;
+      unsigned int states = params->lk_params.partition->states;
+      unsigned int n_freqs_free_params = states - 1;
+      unsigned int cur_index;
 
-      n_freqs_free_params = params->lk_params.partition->states - 1;
-      for (i = 0; i < n_freqs_free_params; i++)
+      double * frequencies =
+          params->lk_params.partition->frequencies[params->params_index];
+
+      params->highest_freq_state = 3;
+      for (i = 1; i < states; i++)
+              if (frequencies[i] > frequencies[params->highest_freq_state])
+                params->highest_freq_state = i;
+
+      cur_index = 0;
+      for (i = 0; i < states; i++)
       {
-        nbd_ptr[i] = PLL_LBFGSB_BOUND_BOTH;
-        l_ptr[i] = PLL_LBFGSB_ERROR;
-        u_ptr[i] = 1000;
-        x[check_n + i] = params->freq_ratios[i];
+        if (i != params->highest_freq_state)
+        {
+          nbd_ptr[cur_index] = PLL_LBFGSB_BOUND_BOTH;
+          l_ptr[cur_index] = 0.001;
+          u_ptr[cur_index] = 100;
+          x[check_n + cur_index] = frequencies[i]
+              / frequencies[params->highest_freq_state];
+          //params->freq_ratios[i];
 
-        if (x[check_n + i] < *l_ptr || x[check_n + i] > *u_ptr)
-                              x[check_n + 1] = PLL_OPT_DEFAULT_FREQ_RATIO;
+          if (x[check_n + cur_index] < *l_ptr
+              || x[check_n + cur_index] > *u_ptr)
+            x[check_n + cur_index] = PLL_OPT_DEFAULT_FREQ_RATIO;
+          cur_index++;
+        }
       }
       check_n += n_freqs_free_params;
       nbd_ptr += n_freqs_free_params;
@@ -761,6 +808,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
        */
 
       score = compute_lnl_unrooted (params, x);
+
       if (is_nan(score) || d_equals(score, -INFINITY))
         break;
 
@@ -859,11 +907,6 @@ static double recomp_iterative (pll_optimize_options_t * params,
                              &(tr_p->pmatrix_index),
                              &(tr_p->length),
                              1);
-//    new_lnl = pll_compute_edge_loglikelihood (params->lk_params.partition,
-//                                          tree->back->clv_index, tree->back->scaler_index,
-//                                          tree->clv_index, tree->scaler_index,
-//                                          tree->pmatrix_index,
-//                                          params->lk_params.freqs_index);
     DBG("Revert branch %.14f\n", tree->length);
   }
   else
@@ -1061,6 +1104,7 @@ PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
       rts,
       params->params_index,
       params->lk_params.freqs_index,
+      params->sumtable,
       &f, &df);
   DBG("[NR deriv] BL=%f   f=%f  df=%f  nextBL=%f\n", rts, f, df, rts-f/df);
   if (!isfinite(f) || !isfinite(df))
@@ -1118,6 +1162,7 @@ PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
           rts,
           params->params_index,
           params->lk_params.freqs_index,
+          params->sumtable,
           &f, &df);
 
     if (!isfinite(f) || !isfinite(df))
@@ -1128,7 +1173,9 @@ PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
     }
 
     if (df > 0.0 && fabs (f) < tolerance)
+    {
       return rts;
+    }
 
     if (f < 0.0)
       xl = rts;
@@ -1139,4 +1186,104 @@ PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
   snprintf(pll_errmsg, 200, "Exceeded maximum number of iterations");
   pll_errno = PLL_ERROR_NEWTON_LIMIT;
   return 0.0;
+}
+
+PLL_EXPORT double * pll_compute_empirical_frequencies(pll_partition_t * partition)
+{
+  unsigned int i, j, k;
+  double sum_test = 0.0;
+  unsigned int states = partition->states;
+  unsigned int sites = partition->sites;
+  unsigned int cats  = partition->rate_cats;
+  unsigned int tips  = partition->tips;
+
+  double * frequencies = (double *) calloc(states, sizeof(double));
+  for (i=0; i<tips; ++i)
+  {
+    for (j=0; j<sites*states*cats; j+=(states*cats))
+      {
+        double sum_site = 0.0;
+        for (k=0; k<states; ++k)
+          sum_site += partition->clv[i][j+k];
+        for (k=0; k<states; ++k)
+          frequencies[k] += partition->clv[i][j+k] / sum_site;
+      }
+  }
+
+#ifndef NDEBUG
+  for (k=0; k<states; ++k)
+  {
+    frequencies[k] /= sites * tips;
+    sum_test += frequencies[k];
+  }
+  assert ( fabs(sum_test - 1) < 1e-6);
+#endif
+
+  return frequencies;
+}
+
+PLL_EXPORT double * pll_compute_empirical_subst_rates(pll_partition_t * partition)
+{
+  unsigned int i, j, k, n;
+  unsigned int states = partition->states;
+  unsigned int sites = partition->sites;
+  unsigned int tips = partition->tips;
+  unsigned int cats = partition->rate_cats;
+  unsigned int n_subst_rates = (states * (states - 1) / 2);
+  double * subst_rates = (double *) calloc (n_subst_rates, sizeof(double));
+
+  unsigned *pair_rates = (unsigned *) alloca(
+      states * states * sizeof(unsigned));
+  memset (pair_rates, 0, sizeof(unsigned) * states * states);
+  unsigned *state_freq = (unsigned *) alloca(states * sizeof(unsigned));
+
+  unsigned int cur_site = 0;
+  for (n = 0; n < sites * states * cats; n += (states * cats))
+  {
+    memset (state_freq, 0, sizeof(unsigned) * (states));
+    for (i = 0; i < tips; ++i)
+    {
+      int unstate = 1;
+      for (k = 0; k < states; ++k)
+        if (partition->clv[i][n + k] == 0)
+        {
+          unstate = 0;
+          break;
+        }
+      if (unstate) continue;
+      for (k = 0; k < states; ++k)
+      {
+        if (partition->clv[i][n + k])
+        {
+          state_freq[k]++;
+        }
+      }
+    }
+
+    for (i = 0; i < states; i++)
+    {
+      if (state_freq[i] == 0)
+        continue;
+      for (j = i + 1; j < states; j++)
+      {
+        pair_rates[i * states + j] += state_freq[i] * state_freq[j]
+            * partition->pattern_weights[cur_site];
+      }
+    }
+    cur_site++;
+  }
+
+  k = 0;
+  double last_rate = pair_rates[(states-2)*states+states-1];
+  if (last_rate == 0) last_rate = 1;
+  for (i = 0; i < states-1; i++)
+  {
+      for (j = i+1; j < states; j++) {
+        subst_rates[k++] = pair_rates[i*states+j] / last_rate;
+          if (subst_rates[k-1] < 0.01) subst_rates[k-1] = 0.01;
+          if (subst_rates[k-1] > 50.0) subst_rates[k-1] = 50.0;
+      }
+  }
+  subst_rates[k-1] = 1.0;
+  return subst_rates;
 }

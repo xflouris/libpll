@@ -25,7 +25,6 @@
 //#include <search.h>
 
 /* Parameters mask */
-
 #define PLL_PARAMETER_SUBST_RATES          1
 #define PLL_PARAMETER_ALPHA                2
 #define PLL_PARAMETER_PINV                 4
@@ -36,12 +35,12 @@
 #define PLL_PARAMETER_TOPOLOGY           128
 
 /* L-BFGS-B bound type */
-
 #define PLL_LBFGSB_BOUND_NONE  0
 #define PLL_LBFGSB_BOUND_LOWER 1
 #define PLL_LBFGSB_BOUND_BOTH  2
 #define PLL_LBFGSB_BOUND_UPPER 3
 
+/* Parameter defaults and limits */
 #define PLL_OPT_MIN_BRANCH_LEN       1.0e-4
 #define PLL_OPT_MAX_BRANCH_LEN          100
 #define PLL_OPT_TOL_BRANCH_LEN       1.0e-4
@@ -53,13 +52,11 @@
 #define PLL_OPT_LNL_UNLIKELY         -1e+80
 
 /* Branch lengths optimization algorithm */
-
 #define PLL_BRANCH_OPT_NEWTON 1
 #define PLL_BRANCH_OPT_BRENT  2
 #define PLL_BRANCH_OPT_LBFGSB 3
 
 /* error codes */
-
 #define PLL_ERROR_PARAMETER           100
 #define PLL_ERROR_TAXA_MISMATCH       101
 #define PLL_ERROR_SEQLEN_MISMATCH     102
@@ -102,15 +99,21 @@ typedef struct
 typedef struct
 {
   pll_likelihood_info_t lk_params;
+  unsigned int highest_freq_state;
   unsigned int params_index;
+  unsigned int mixture_index;
   unsigned int which_parameters;
-  double * freq_ratios;
   int * subst_params_symmetries;
   double factr;
   double pgtol;
+
+  double * sumtable;
 } pll_optimize_options_t;
 
 /* functions in pll_optimize.c */
+
+PLL_EXPORT double * pll_compute_empirical_frequencies(pll_partition_t * partition);
+PLL_EXPORT double * pll_compute_empirical_subst_rates(pll_partition_t * partition);
 
 /* core Newton-Raphson optimization function */
 PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
@@ -119,7 +122,8 @@ PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
                                       double x2,
                                       unsigned int max_iters,
                                       double *score);
-/* core brent optimization function */
+
+/* core Brent optimization function */
 PLL_EXPORT double pll_minimize_brent(pll_optimize_options_t * params,
                                      double xmin,
                                      double xguess,
@@ -129,6 +133,8 @@ PLL_EXPORT double pll_minimize_brent(pll_optimize_options_t * params,
                                      double (*target_funk)(
                                          pll_optimize_options_t *,
                                          double));
+
+/* optimization functions */
 PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * p);
 PLL_EXPORT double pll_optimize_parameters_lbfgsb(pll_optimize_options_t * p);
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (

@@ -344,6 +344,13 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  unsigned int matrix_index,
                                                  unsigned int freqs_index);
 
+PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
+                                      unsigned int parent_clv_index,
+                                      unsigned int child_clv_index,
+                                      unsigned int params_index,
+                                      unsigned int freqs_index,
+                                      double *sumtable);
+
 PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                   unsigned int parent_clv_index,
                                                   int parent_scaler_index,
@@ -352,6 +359,7 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
                                                   double branch_length,
                                                   unsigned int params_index,
                                                   unsigned int freqs_index,
+                                                  double * sumtable,
                                                   double * d_f,
                                                   double * dd_f);
 

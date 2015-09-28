@@ -283,6 +283,54 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
   return logl;
 }
 
+PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
+                                      unsigned int parent_clv_index,
+                                      unsigned int child_clv_index,
+                                      unsigned int params_index,
+                                      unsigned int freqs_index,
+                                      double *sumtable)
+{
+  unsigned int i,j,k,n;
+  const double * clvp = partition->clv[parent_clv_index];
+  const double * clvc = partition->clv[child_clv_index];
+  const double * eigenvecs = partition->eigenvecs[params_index];
+  const double * inv_eigenvecs = partition->inv_eigenvecs[params_index];
+  const double * freqs = partition->frequencies[freqs_index];
+  unsigned int states = partition->states;
+  unsigned int n_rates = partition->rate_cats;
+  unsigned int sites = partition->sites;
+
+  /* so far not available for mixture models */
+  assert(partition->mixture == 1);
+
+  /* build sumtable */
+  double * sum = sumtable;
+  const double * t_clvp = clvp;
+  const double * t_clvc = clvc;
+  for (n = 0; n < sites; n++)
+  {
+    for (i = 0; i < n_rates; ++i)
+    {
+      for (j = 0; j < states; ++j)
+      {
+        double lefterm = 0;
+        double righterm = 0;
+        for (k = 0; k < states; ++k)
+        {
+          lefterm += t_clvp[k] * freqs[k] * inv_eigenvecs[k * states + j];
+          righterm += eigenvecs[j * states + k] * t_clvc[k];
+        }
+        sum[j] = lefterm * righterm;
+      }
+      t_clvc += states;
+      t_clvp += states;
+      sum += states;
+    }
+  }
+
+  return PLL_SUCCESS;
+}
+
 PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                  unsigned int parent_clv_index,
                                                  int parent_scaler_index,
@@ -291,145 +339,91 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
                                                  double branch_length,
                                                  unsigned int params_index,
                                                  unsigned int freqs_index,
+                                                 double * sumtable,
                                                  double * d_f,
                                                  double * dd_f)
 {
-  unsigned int n, i, j, k, m;
-  double terma[3], termb[3], site_lk[3];
-  double inv_site_lk;
-  const double * clvp = partition->clv[parent_clv_index];
-  const double * clvc = partition->clv[child_clv_index];
-  const double * freqs = partition->frequencies[freqs_index];
-  double prop_invar = partition->prop_invar[freqs_index];
+  unsigned int n, i, j;
+  unsigned int sites = partition->sites;
+  double site_lk[3];
   unsigned int states = partition->states;
   unsigned int n_rates = partition->rate_cats;
-  double * eigenvecs = partition->eigenvecs[params_index];
-  double * inv_eigenvecs = partition->inv_eigenvecs[params_index];
-  double * eigenvals = partition->eigenvals[params_index];
-  double * rates = partition->rates;
-  double *expd, *temp;
-  double *pmatrix, *d_pmatrix, *dd_pmatrix;
-  double *gamma_pmatrix, *d_gamma_pmatrix, *dd_gamma_pmatrix;
+  const double * eigenvals = partition->eigenvals[params_index];
+  const double * rates = partition->rates;
+  const double * freqs = partition->frequencies[freqs_index];
+  const double * sum;
   double logLK = 0.0;
 
   unsigned int * parent_scaler;
   unsigned int * child_scaler;
+  double deriv1, deriv2;
+
+  /* so far not available for mixture models */
+  assert(partition->mixture == 1);
 
   if (child_scaler_index == PLL_SCALE_BUFFER_NONE)
-    child_scaler = NULL;
-  else
-    child_scaler = partition->scale_buffer[child_scaler_index];
+     child_scaler = NULL;
+   else
+     child_scaler = partition->scale_buffer[child_scaler_index];
 
-  if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
-    parent_scaler = NULL;
-  else
-    parent_scaler = partition->scale_buffer[parent_scaler_index];
+   if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
+     parent_scaler = NULL;
+   else
+     parent_scaler = partition->scale_buffer[parent_scaler_index];
 
-  gamma_pmatrix = (double *) calloc (n_rates * states * states,
-                                     sizeof(double));
-  d_gamma_pmatrix = (double *) calloc (n_rates * states * states,
-                                       sizeof(double));
-  dd_gamma_pmatrix = (double *) calloc (n_rates * states * states,
-                                        sizeof(double));
+  *d_f = 0.0;
+  *dd_f = 0.0;
 
-  assert(partition->eigen_decomp_valid[params_index]);
+  double
+    diagptable[1024] = {0}, /* TODO make this dynamic */
+    *diagp,
+    ki;
 
-  expd = (double *) malloc (states * sizeof(double));
-  temp = (double *) malloc (states * states * sizeof(double));
-
-  *d_f = *dd_f = 0;
-
-  /* build matrices */
-  for (n = 0; n < n_rates; ++n)
+  /* pre-compute the derivatives of the P matrix for all discrete GAMMA rates */
+  diagp = diagptable;
+  for(i = 0; i < n_rates; ++i)
   {
-    pmatrix = gamma_pmatrix + n * states * states;
-    d_pmatrix = d_gamma_pmatrix + n * states * states;
-    dd_pmatrix = dd_gamma_pmatrix + n * states * states;
-
-    /* if branch length is zero then set the p-matrix to identity matrix */
-    if (!branch_length)
+    ki = rates[i];
+    for(j = 0; j < states; ++j)
     {
-      for (j = 0; j < states; ++j)
-        for (k = 0; k < states; ++k)
-          pmatrix[j * states + k] = (j == k) ? 1 : 0;
-    }
-    else
-    {
-      /* exponentiate eigenvalues */
-      for (j = 0; j < states; ++j)
-      {
-        double term = eigenvals[j] / (1.0 - prop_invar);
-        expd[j] = exp (term * rates[n] * branch_length);
-      }
-
-      for (j = 0; j < states; ++j)
-        for (k = 0; k < states; ++k)
-        {
-          temp[j * states + k] = inv_eigenvecs[j * states + k] * expd[k];
-        }
-
-      for (j = 0; j < states; ++j)
-        for (k = 0; k < states; ++k)
-        {
-          for (m = 0; m < states; ++m)
-          {
-            pmatrix[j * states + k] += temp[j * states + m]
-                * eigenvecs[m * states + k];
-            double term = (rates[n] * eigenvals[m] / (1 - prop_invar));
-            d_pmatrix[j * states + k] += term * temp[j * states + m]
-                * eigenvecs[m * states + k];
-            dd_pmatrix[j * states + k] += term * term * temp[j * states + m]
-                * eigenvecs[m * states + k];
-          }
-          pmatrix[j * states + k] *= freqs[j];
-          d_pmatrix[j * states + k] *= freqs[j];
-          dd_pmatrix[j * states + k] *= freqs[j];
-        }
+      diagp[0] = exp(eigenvals[j] * ki * branch_length);
+      diagp[1] = eigenvals[j] * ki * diagp[0];
+      diagp[2] = eigenvals[j] * ki * eigenvals[j] * ki * diagp[0];
+      diagp += 3;
     }
   }
-  free (expd);
-  free (temp);
 
-  /* compute per-site LKs */
-  *d_f = *dd_f = 0;
-  for (n = 0; n < partition->sites; ++n)
+  sum = sumtable;
+  for (n = 0; n < sites; ++n)
   {
-    pmatrix = gamma_pmatrix;
-    d_pmatrix = d_gamma_pmatrix;
-    dd_pmatrix = dd_gamma_pmatrix;
-    terma[0] = terma[1] = terma[2] = 0.;
+    site_lk[0] = site_lk[1] = site_lk[2] = 0;
+    diagp = diagptable;
     for (i = 0; i < n_rates; ++i)
     {
+      ki = rates[i];
       for (j = 0; j < states; ++j)
       {
-        termb[0] = termb[1] = termb[2] = 0.;
-        for (k = 0; k < partition->states; ++k)
-        {
-          termb[0] += pmatrix[k] * clvc[k];
-          termb[1] += d_pmatrix[k] * clvc[k];
-          termb[2] += dd_pmatrix[k] * clvc[k];
-        }
-        terma[0] += clvp[j] * termb[0];
-        terma[1] += clvp[j] * termb[1];
-        terma[2] += clvp[j] * termb[2];
-        pmatrix += states;
-        d_pmatrix += states;
-        dd_pmatrix += states;
-      }
-      clvp += states;
-      clvc += states;
-    }
 
-    site_lk[0] = terma[0] / n_rates;
-    site_lk[1] = terma[1] / n_rates;
-    site_lk[2] = terma[2] / n_rates;
+        site_lk[0] += sum[j] * diagp[0];
+        site_lk[1] += sum[j] * diagp[1];
+        site_lk[2] += sum[j] * diagp[2];
+        diagp += 3;
+      }
+      sum += states;
+    }
+    site_lk[0] /= n_rates;
+    site_lk[1] /= n_rates;
+    site_lk[2] /= n_rates;
+
+    double prop_invar = partition->prop_invar[params_index];
+    double inv_site_lk = 0.0;
 
     /* account for invariant sites */
     if (prop_invar > 0)
     {
       inv_site_lk =
-          (partition->invariant[n] == -1) ? 0 : freqs[partition->invariant[n]];
-      site_lk[0] = site_lk[0] * (1. - prop_invar) + inv_site_lk * prop_invar;
+          (partition->invariant[n] == -1) ? 0 : freqs[partition->invariant[n]] * prop_invar;
+      site_lk[0] = site_lk[0] * (1. - prop_invar) + inv_site_lk;
       site_lk[1] = site_lk[1] * (1. - prop_invar);
       site_lk[2] = site_lk[2] * (1. - prop_invar);
     }
@@ -438,38 +432,28 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
     scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
     scale_factors += (child_scaler) ? child_scaler[n] : 0;
 
-    if (site_lk[0] < PLL_SCALE_THRESHOLD_SQRT)
-    {
-      /* correct for underflow */
-      scale_factors += 1;
-      double lk_div = PLL_SCALE_THRESHOLD;
-      site_lk[0] /= lk_div;
-      site_lk[1] /= lk_div;
-      site_lk[2] /= lk_div;
-    }
+//    if (site_lk[0] < PLL_SCALE_THRESHOLD_SQRT)
+//    {
+//      /* correct for underflow */
+//      scale_factors += 1;
+//      double lk_div = PLL_SCALE_THRESHOLD;
+//      site_lk[0] /= lk_div;
+//      site_lk[1] /= lk_div;
+//      site_lk[2] /= lk_div;
+//    }
 
-    logLK += log(site_lk[0]) * partition->pattern_weights[n];
+    logLK += log (site_lk[0]) * partition->pattern_weights[n];
     if (scale_factors)
     {
-      logLK += scale_factors * log(PLL_SCALE_THRESHOLD);
+      logLK += scale_factors * log (PLL_SCALE_THRESHOLD);
     }
 
     /* build derivatives */
-    double next_df;
-    double first_deriv = (-site_lk[1] / site_lk[0]);
-    *d_f += partition->pattern_weights[n] * first_deriv;
-//    next_df = *dd_f + partition->pattern_weights[n] *
-//        ((site_lk[1]*site_lk[1] - site_lk[2]*site_lk[0]) /
-//            (site_lk[0]*site_lk[0]));
-    next_df = *dd_f + partition->pattern_weights[n] *
-            (first_deriv*first_deriv - (site_lk[2] /
-                site_lk[0]));
-
-    *dd_f = next_df;
+    deriv1 = (-site_lk[1] / site_lk[0]);
+    deriv2 = (deriv1 * deriv1 - (site_lk[2] / site_lk[0]));
+    *d_f += partition->pattern_weights[n] * deriv1;
+    *dd_f += partition->pattern_weights[n] * deriv2;
   }
-  free (gamma_pmatrix);
-  free (d_gamma_pmatrix);
-  free (dd_gamma_pmatrix);
 
   return logLK;
 }

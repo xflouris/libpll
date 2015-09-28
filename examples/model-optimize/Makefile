@@ -4,7 +4,7 @@
 CC = gcc
 #CC = gcc-4.9
 
-CFLAGS = -g -O3 -Wall -Wno-uninitialized
+CFLAGS = -g -pg -O3 -Wall -Wno-uninitialized
 LDFLAGS = -lpll_optimize -lpll -lm
 
 INCLUDES = -I/usr/local/include -I./
@@ -17,14 +17,15 @@ INCLUDES = -I/usr/local/include -I./
 
 #TIMER   = timer.c
 
+OBJ = src/utils.o src/model-optimize.o
 SRC = 
 # $(LBFGSB) $(LINPACK) $(BLAS) $(TIMER) $(F2CFILES)
 
 default: all
-all :  lbfgsb_pll 
+all : model-optimize
 
-lbfgsb_pll : $(DRIVER2_77C) $(LBFGSB) $(LINPACK) $(BLAS) $(TIMER)
-	$(CC) $(CFLAGS) pll-lbfgsb.c $(INCLUDES) $(LDFLAGS) -o pll-lbfgsb
+model-optimize : $(OBJ) $(DRIVER2_77C) $(LBFGSB) $(LINPACK) $(BLAS) $(TIMER)
+	$(CC) $(CFLAGS) $(OBJ) $(INCLUDES) $(LDFLAGS) -o model-optimize
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
