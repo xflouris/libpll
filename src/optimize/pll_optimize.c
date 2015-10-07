@@ -202,8 +202,9 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
   return PLL_SUCCESS;
 }
 
-static double compute_lnl_unrooted (pll_optimize_options_t * params, double *x)
+static double compute_lnl_unrooted (void * p, double *x)
 {
+  pll_optimize_options_t * params = (pll_optimize_options_t *) p;
   pll_partition_t * partition = params->lk_params.partition;
   double score;
 
@@ -280,9 +281,9 @@ static unsigned int count_n_free_variables (pll_optimize_options_t * params)
 static double brent_opt (double ax, double bx, double cx, double tol,
                              double *foptx, double *f2optx, double fax,
                              double fbx, double fcx,
-                             pll_optimize_options_t * params,
+                             void * params,
                              double (*target_funk)(
-                                 pll_optimize_options_t *,
+                                 void *,
                                  double))
 {
   int iter;
@@ -395,7 +396,7 @@ static double brent_opt (double ax, double bx, double cx, double tol,
   return x;
 }
 
-static double brent_target(pll_optimize_options_t * p, double x)
+static double brent_target(void * p, double x)
 {
   return compute_lnl_unrooted(p, &x);
 }
@@ -406,26 +407,26 @@ static double brent_target(pll_optimize_options_t * p, double x)
  * Bui Quang Minh, Minh Anh Thi Nguyen, and Arndt von Haeseler (2013)
  * Ultrafast approximation for phylogenetic bootstrap.
  * Mol. Biol. Evol., 30:1188-1195. (free reprint, DOI: 10.1093/molbev/mst024) */
-PLL_EXPORT double pll_minimize_brent(pll_optimize_options_t * params,
-                                     double xmin,
+PLL_EXPORT double pll_minimize_brent(double xmin,
                                      double xguess,
                                      double xmax,
+                                     double xtol,
                                      double *fx,
                                      double *f2x,
+                                     void * params,
                                      double (*target_funk)(
-                                         pll_optimize_options_t *,
+                                         void *,
                                          double))
 {
   double eps, optx, ax, bx, cx, fa, fb, fc;
   int outbounds_ax, outbounds_cx;
-  double tolerance = params->pgtol;
 
   /* first attempt to bracketize minimum */
   if (xguess < xmin)
     xguess = xmin;
   if (xguess > xmax)
     xguess = xmax;
-  eps = xguess * tolerance * 50.0;
+  eps = xguess * xtol * 50.0;
   ax = xguess - eps;
   outbounds_ax = ax < xmin;
   if (outbounds_ax)
@@ -452,7 +453,7 @@ PLL_EXPORT double pll_minimize_brent(pll_optimize_options_t * params,
     cx = xmax;
   }
 
-  optx = brent_opt (ax, bx, cx, tolerance, fx, f2x, fa, fb, fc, params,
+  optx = brent_opt (ax, bx, cx, xtol, fx, f2x, fa, fb, fc, params,
                     target_funk);
   if (*fx > fb) // if worse, return initial value
   {
@@ -503,9 +504,10 @@ PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * params)
       return -INFINITY;
   }
 
-  double xres = pll_minimize_brent(params,
-                                   xmin, xguess, xmax,
+  double xres = pll_minimize_brent(xmin, xguess, xmax,
+                                   params->pgtol,
                                    &score, &f2x,
+                                   (void *) params,
                                    &brent_target);
   score = brent_target(params, xres);
   return score;
@@ -543,10 +545,11 @@ PLL_EXPORT double pll_optimize_parameters_newton(pll_optimize_options_t * params
                        params->lk_params.where.unrooted_t.child_clv_index,
                        params->params_index, params->lk_params.freqs_index,
                        params->sumtable);
-  double xres = pll_minimize_newton(params,
-                                   xmin, xguess, xmax,
+  double xres = pll_minimize_newton(xmin, xguess, xmax,
                                    10,
-                                   &score);
+                                   &score,
+                                   params,
+                                   pll_derivative_func);
 
   if (pll_errno)
   {
@@ -1068,25 +1071,40 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
 /* NEWTON-RAPHSON OPTIMIZATION */
 /******************************************************************************/
 
-PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
-                                      double x1,
+PLL_EXPORT double pll_derivative_func(void * parameters,
+                                      double proposal,
+                                      double *df, double *ddf)
+{
+  pll_optimize_options_t * params = (pll_optimize_options_t *) parameters;
+  double score = pll_compute_likelihood_derivatives (
+      params->lk_params.partition,
+      params->lk_params.where.unrooted_t.parent_clv_index,
+      params->lk_params.where.unrooted_t.parent_scaler_index,
+      params->lk_params.where.unrooted_t.child_clv_index,
+      params->lk_params.where.unrooted_t.child_scaler_index,
+      proposal,
+      params->params_index,
+      params->lk_params.freqs_index,
+      params->sumtable,
+      df, ddf);
+  return score;
+}
+
+PLL_EXPORT double pll_minimize_newton(double x1,
                                       double xguess,
                                       double x2,
                                       unsigned int max_iters,
-                                      double *score)
+                                      double *score,
+                                      void * params,
+                                      double (deriv_func)(void *,
+                                                          double,
+                                                          double *, double *))
 {
   unsigned int i;
   double df, dx, dxold, f;
   double temp, xh, xl, rts, rts_old;
 
   double tolerance = 1e-4; //params->pgtol
-  if (params->which_parameters != PLL_PARAMETER_BRANCHES_SINGLE)
-  {
-    snprintf(pll_errmsg, 200,
-             "Newton-Raphson defined only for single branches");
-    pll_errno = PLL_ERROR_PARAMETER;
-    return 0.0;
-  }
   pll_errno = 0;
 
   rts = xguess;
@@ -1095,17 +1113,8 @@ PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
   if (rts > x2)
     rts = x2;
 
-  pll_compute_likelihood_derivatives (
-      params->lk_params.partition,
-      params->lk_params.where.unrooted_t.parent_clv_index,
-      params->lk_params.where.unrooted_t.parent_scaler_index,
-      params->lk_params.where.unrooted_t.child_clv_index,
-      params->lk_params.where.unrooted_t.child_scaler_index,
-      rts,
-      params->params_index,
-      params->lk_params.freqs_index,
-      params->sumtable,
-      &f, &df);
+  deriv_func((void *)params, rts, &f, &df);
+
   DBG("[NR deriv] BL=%f   f=%f  df=%f  nextBL=%f\n", rts, f, df, rts-f/df);
   if (!isfinite(f) || !isfinite(df))
   {
@@ -1153,17 +1162,8 @@ PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
       return rts_old;
 
     if (rts < x1) rts = x1;
-    *score = pll_compute_likelihood_derivatives (
-          params->lk_params.partition,
-          params->lk_params.where.unrooted_t.parent_clv_index,
-          params->lk_params.where.unrooted_t.parent_scaler_index,
-          params->lk_params.where.unrooted_t.child_clv_index,
-          params->lk_params.where.unrooted_t.child_scaler_index,
-          rts,
-          params->params_index,
-          params->lk_params.freqs_index,
-          params->sumtable,
-          &f, &df);
+
+    *score = deriv_func((void *)params, rts, &f, &df);
 
     if (!isfinite(f) || !isfinite(df))
     {

@@ -499,7 +499,9 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
     {
       state = 0;
       for (k = 0; k < partition->states; ++k)
+      {
         state |= ((unsigned int)tipclv[k] << k);
+      }
       if ((unsigned int)__builtin_popcount(state) < partition->states)
         partition->invariant[j] |= state;
       tipclv += (partition->rate_cats * partition->states);
@@ -509,10 +511,12 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
   /* if all basecalls at current site are the same and not degenerate set the 
      index in invariant to the frequency index of the basecall, otherwise -1 */
   for (i = 0; i < partition->sites; ++i)
-    if (__builtin_popcount((unsigned int)(partition->invariant[i])) > 1)
+  {
+    if (partition->invariant[i] == 0 || __builtin_popcount((unsigned int)(partition->invariant[i])) > 1)
       partition->invariant[i] = -1;
     else
       partition->invariant[i] = __builtin_ctz((unsigned int)(partition->invariant[i]));
+  }
   
   return PLL_SUCCESS;
 }

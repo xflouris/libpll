@@ -28,7 +28,7 @@
 #define OPTIMIZE_SUBST_PARAMS 1
 #define OPTIMIZE_ALPHA        1
 #define OPTIMIZE_FREQS        1
-#define OPTIMIZE_PINV         0
+#define OPTIMIZE_PINV         1
 
 /* tolerances */
 #define OPT_EPSILON       1e-1
@@ -56,17 +56,17 @@ int main (int argc, char * argv[])
   if (argc != 4)
     fatal (" syntax: %s [newick] [fasta] [model]", argv[0]);
 
-  printf("[DBG] parse\n");
+  printf("Parsing tree\n");
 
   tree = pll_utree_parse_newick(argv[1], &tip_count);
   nodes_count = 2*tip_count - 2;
   branch_count = 2*tip_count - 3;
   inner_nodes_count = tip_count - 2;
 
-  printf("[DBG] traverse branches\n");
+  printf("Traversing branches\n");
 
-  /* fix all missing branch lengths to 0.00001 */
-  set_missing_branch_length (tree, 0.00001);
+  /* fix all missing branch lengths to 0.1 */
+  set_missing_branch_length (tree, 0.1);
 
   /*  obtain an array of pointers to tip nodes */
     pll_utree_t ** tipnodes = (pll_utree_t  **)calloc((size_t)tip_count,
@@ -79,7 +79,7 @@ int main (int argc, char * argv[])
   for (i = 0; i < tip_count; ++i)
     tipnames[i] = tipnodes[i]->label;
 
-  printf("[DBG] fasta read\n");
+  printf("Reading fasta file\n");
 
   partition = partition_fasta_create (
       argv[2],
@@ -94,12 +94,13 @@ int main (int argc, char * argv[])
   if (!partition)
     fatal ("Error %d: %s\n", pll_errno, pll_errmsg);
 
+  printf("  Tips:   %u\n", partition->tips);
+  printf("  Length: %u\n", partition->sites);
+
   /* we no longer need these arrays */
   free (data);
   free (tipnodes);
   free (tipnames);
-
-  printf("[DBG] symmetries\n");
 
   subst_params_symmetries = build_model_symmetries (argv[3]);
   if (!subst_params_symmetries)
@@ -145,7 +146,7 @@ int main (int argc, char * argv[])
 
   /* set frequencies at model with index 0 (we currently have only one model) */
   double * empirical_freqs = pll_compute_empirical_frequencies(partition);
-  printf("[DBG] frequencies: ");
+  printf("Empirical frequencies: ");
   for (i=0; i<STATES; i++) printf("%.4f ", empirical_freqs[i]);
   printf("\n");
   pll_set_frequencies (partition, 0, 0, empirical_freqs);
@@ -153,7 +154,7 @@ int main (int argc, char * argv[])
 
   /* set empirical substitution rates */
   double * empirical_subst_rates = pll_compute_empirical_subst_rates(partition);
-  printf("[DBG] rates: ");
+  printf("Empirical rates: ");
   for (i=0; i<SUBST_PARAMS; i++) printf("%.4f ", empirical_subst_rates[i]);
   printf("\n");
   pll_set_subst_params (partition, 0, 0, empirical_subst_rates);
@@ -162,16 +163,14 @@ int main (int argc, char * argv[])
   /* set rate categories */
   pll_set_category_rates (partition, rate_cats);
 
-  printf("[DBG] update matrices\n");
+  printf("Updating probability matrices\n");
 
   pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths,
                             2 * tip_count - 3);
 
-  printf("[DBG] update partials\n");
+  printf("Updating partials\n");
 
   pll_update_partials (partition, operations, tip_count - 2);
-
-  printf("[DBG] edge likelihood\n");
 
   double logl = pll_compute_edge_loglikelihood (partition,
                                                 tree->clv_index,
@@ -180,8 +179,6 @@ int main (int argc, char * argv[])
                                                 tree->back->scaler_index,
                                                 tree->pmatrix_index,
                                                 0);
-
-  printf("[DBG] export\n");
 
   char * newick = pll_utree_export_newick(tree);
   printf("Starting tree: %s\n", newick);
@@ -206,7 +203,7 @@ int main (int argc, char * argv[])
   params.params_index = 0;
   params.mixture_index = 0;
   params.subst_params_symmetries = subst_params_symmetries;
-  params.factr = 1e8;
+  params.factr = 1e5;
   params.pgtol = OPT_PARAM_EPSILON;
   params.sumtable = 0;
 
@@ -221,6 +218,8 @@ int main (int argc, char * argv[])
   logl *= -1;
   double cur_logl = logl + 10;
   int smoothings = 1;
+
+  printf("\nParamter optimization start\n");
   while (fabs (cur_logl - logl) > OPT_EPSILON)
   {
     logl = cur_logl;
@@ -249,17 +248,6 @@ int main (int argc, char * argv[])
                   cur_logl);
         }
 
-    if (parameters_to_optimize & PLL_PARAMETER_FREQUENCIES)
-    {
-      params.which_parameters = PLL_PARAMETER_FREQUENCIES;
-      cur_logl = pll_optimize_parameters_lbfgsb (&params);
-      printf ("  %5ld s [freqs]: %f\n", time (NULL) - start_time, cur_logl);
-      printf ("             ");
-      for (i = 0; i < partition->states; i++)
-        printf ("%f ", partition->frequencies[0][i]);
-      printf ("\n");
-    }
-
     if (parameters_to_optimize & PLL_PARAMETER_SUBST_RATES)
     {
       params.which_parameters = PLL_PARAMETER_SUBST_RATES;
@@ -274,7 +262,8 @@ int main (int argc, char * argv[])
     if (parameters_to_optimize & PLL_PARAMETER_ALPHA)
     {
       params.which_parameters = PLL_PARAMETER_ALPHA;
-      cur_logl = pll_optimize_parameters_lbfgsb (&params);
+//      cur_logl = pll_optimize_parameters_lbfgsb (&params);
+      cur_logl = pll_optimize_parameters_brent (&params);
       printf ("  %5ld s [alpha]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             %f\n", params.lk_params.alpha_value);
     }
@@ -282,9 +271,21 @@ int main (int argc, char * argv[])
     if (parameters_to_optimize & PLL_PARAMETER_PINV)
     {
       params.which_parameters = PLL_PARAMETER_PINV;
-      cur_logl = pll_optimize_parameters_lbfgsb (&params);
+//      cur_logl = pll_optimize_parameters_lbfgsb (&params);
+      cur_logl = pll_optimize_parameters_brent (&params);
       printf ("  %5ld s [p-inv]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             %f\n", partition->prop_invar[0]);
+    }
+
+    if (parameters_to_optimize & PLL_PARAMETER_FREQUENCIES)
+    {
+      params.which_parameters = PLL_PARAMETER_FREQUENCIES;
+      cur_logl = pll_optimize_parameters_lbfgsb (&params);
+      printf ("  %5ld s [freqs]: %f\n", time (NULL) - start_time, cur_logl);
+      printf ("             ");
+      for (i = 0; i < partition->states; i++)
+        printf ("%f ", partition->frequencies[0][i]);
+      printf ("\n");
     }
 
     printf ("Iteration: %5ld s. : %f\n", time (NULL) - start_time, cur_logl);
@@ -303,7 +304,7 @@ int main (int argc, char * argv[])
           partition->subst_params[0][5]);
 
   newick = pll_utree_export_newick(tree);
-  printf("Final tree: %s\n", newick);
+  printf("\nFinal tree: %s\n", newick);
   free(newick);
   printf ("Final Log-L: %f\n", logl);
 

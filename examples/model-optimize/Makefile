@@ -4,7 +4,7 @@
 CC = gcc
 #CC = gcc-4.9
 
-CFLAGS = -g -pg -O3 -Wall -Wno-uninitialized
+CFLAGS = -g -O3 -Wall -Wno-uninitialized
 LDFLAGS = -lpll_optimize -lpll -lm
 
 INCLUDES = -I/usr/local/include -I./

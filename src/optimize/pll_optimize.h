@@ -111,27 +111,34 @@ typedef struct
 } pll_optimize_options_t;
 
 /* functions in pll_optimize.c */
-
 PLL_EXPORT double * pll_compute_empirical_frequencies(pll_partition_t * partition);
 PLL_EXPORT double * pll_compute_empirical_subst_rates(pll_partition_t * partition);
 
+PLL_EXPORT double pll_derivative_func(void * parameters,
+                                      double proposal,
+                                      double *df, double *ddf);
+
 /* core Newton-Raphson optimization function */
-PLL_EXPORT double pll_minimize_newton(pll_optimize_options_t * params,
-                                      double x1,
+PLL_EXPORT double pll_minimize_newton(double x1,
                                       double xguess,
                                       double x2,
                                       unsigned int max_iters,
-                                      double *score);
+                                      double *score,
+                                      void * params,
+                                      double (deriv_func)(void *,
+                                                          double,
+                                                          double *, double *));
 
 /* core Brent optimization function */
-PLL_EXPORT double pll_minimize_brent(pll_optimize_options_t * params,
-                                     double xmin,
+PLL_EXPORT double pll_minimize_brent(double xmin,
                                      double xguess,
                                      double xmax,
+                                     double xtol,
                                      double *fx,
                                      double *f2x,
+                                     void * params,
                                      double (*target_funk)(
-                                         pll_optimize_options_t *,
+                                         void *,
                                          double));
 
 /* optimization functions */
