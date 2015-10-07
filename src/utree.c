@@ -109,11 +109,12 @@ static unsigned int tree_indend_level(pll_utree_t * tree, unsigned int indend)
 PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options)
 {
   unsigned int a, b;
+
+  if (!tree->next) tree=tree->back;
   
   a = tree_indend_level(tree->back,1);
   b = tree_indend_level(tree,0);
   unsigned int max_indend_level = (a > b ? a : b);
-
 
   int * active_node_order = (int *)malloc((max_indend_level+1) * sizeof(int));
   active_node_order[0] = 1;
@@ -168,6 +169,8 @@ PLL_EXPORT char * pll_utree_export_newick(pll_utree_t * root)
   char * newick;
   int size_alloced;
   if (!root) return NULL;
+
+  if (!root->next) root=root->back;
 
   char * subtree1 = newick_utree_recurse(root->back);
   if (subtree1 == NULL)
