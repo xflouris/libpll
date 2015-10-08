@@ -25,10 +25,10 @@ PROFILING=-g
 WARN=-Wall -Wsign-compare
 
 CC = gcc
-CFLAGS = -Wall -g -O3 $(WARN)
-LINKFLAGS = -L. $(PROFILING)
+CFLAGS = -I. -Wall -g -O3 $(WARN)
+LINKFLAGS = $(PROFILING)
 LIBS=-lpll -lm
-PROG=pl
+PROG=protein-list
 
 all: $(PROG)
 

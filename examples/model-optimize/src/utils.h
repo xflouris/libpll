@@ -15,6 +15,9 @@
 #include <search.h>
 #include <time.h>
 
+#define STATES    4
+#define SUBST_PARAMS (STATES*(STATES-1)/2)
+
 void fatal (const char * format, ...) __attribute__ ((noreturn));
 
 pll_partition_t * partition_fasta_create (const char *file,

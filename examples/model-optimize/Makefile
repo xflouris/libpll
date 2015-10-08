@@ -17,15 +17,19 @@ INCLUDES = -I/usr/local/include -I./
 
 #TIMER   = timer.c
 
-OBJ = src/utils.o src/model-optimize.o
+OBJS = src/utils.o src/model-optimize.o
 SRC = 
+PROG = model-optimize
 # $(LBFGSB) $(LINPACK) $(BLAS) $(TIMER) $(F2CFILES)
 
 default: all
-all : model-optimize
+all : $(PROG)
 
-model-optimize : $(OBJ) $(DRIVER2_77C) $(LBFGSB) $(LINPACK) $(BLAS) $(TIMER)
-	$(CC) $(CFLAGS) $(OBJ) $(INCLUDES) $(LDFLAGS) -o model-optimize
+model-optimize : $(OBJS) $(DRIVER2_77C) $(LBFGSB) $(LINPACK) $(BLAS) $(TIMER)
+	$(CC) $(CFLAGS) $(OBJS) $(INCLUDES) $(LDFLAGS) -o $(PROG)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+clean:
+	rm -f *~ $(OBJS) gmon.out $(PROG)

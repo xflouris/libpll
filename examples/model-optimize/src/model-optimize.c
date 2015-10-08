@@ -20,9 +20,7 @@
  */
 #include "utils.h"
 
-#define STATES    4
 #define RATE_CATS 4
-#define SUBST_PARAMS (STATES*(STATES-1)/2)
 
 #define OPTIMIZE_BRANCHES     1
 #define OPTIMIZE_SUBST_PARAMS 1

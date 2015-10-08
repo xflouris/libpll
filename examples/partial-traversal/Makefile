@@ -28,7 +28,7 @@ CC = gcc
 CFLAGS = -Wall -g -O3 $(WARN)
 LINKFLAGS = -L. $(PROFILING)
 LIBS=-lpll -lm
-PROG=partial
+PROG=partial-traversal
 
 all: $(PROG)
 
