@@ -26,11 +26,14 @@
 #define OPTIMIZE_SUBST_PARAMS 1
 #define OPTIMIZE_ALPHA        1
 #define OPTIMIZE_FREQS        1
-#define OPTIMIZE_PINV         1
+#define OPTIMIZE_PINV         0
 
 /* tolerances */
 #define OPT_EPSILON       1e-1
-#define OPT_PARAM_EPSILON 1e-2
+#define OPT_PARAM_EPSILON 1e-1
+
+/* use L-BFGS-B instead of Brent for single parameters (alpha / pInv) */
+#define USE_LBFGSB 1
 
 int main (int argc, char * argv[])
 {
@@ -70,6 +73,9 @@ int main (int argc, char * argv[])
     pll_utree_t ** tipnodes = (pll_utree_t  **)calloc((size_t)tip_count,
                                                       sizeof(pll_utree_t *));
     pll_utree_query_tipnodes(tree, tipnodes);
+    pll_utree_t ** innernodes = (pll_utree_t  **)calloc((size_t)inner_nodes_count,
+                                                          sizeof(pll_utree_t *));
+    pll_utree_query_innernodes(tree, innernodes);
 
   /* create and populate the list of tipnames */
   char **tipnames = (char **) malloc (tip_count * sizeof(char *));
@@ -84,7 +90,7 @@ int main (int argc, char * argv[])
       STATES,
       1,
       RATE_CATS,
-      PLL_ATTRIB_ARCH_SSE,
+      PLL_ATTRIB_ARCH_AVX,
       0,
       tip_count,
       (const char **)tipnames);
@@ -201,9 +207,8 @@ int main (int argc, char * argv[])
   params.params_index = 0;
   params.mixture_index = 0;
   params.subst_params_symmetries = subst_params_symmetries;
-  params.factr = 1e5;
+  params.factr = 1e7;
   params.pgtol = OPT_PARAM_EPSILON;
-  params.sumtable = 0;
 
   parameters_to_optimize =
       (OPTIMIZE_SUBST_PARAMS * PLL_PARAMETER_SUBST_RATES) |
@@ -218,17 +223,38 @@ int main (int argc, char * argv[])
   int smoothings = 1;
 
   printf("\nParamter optimization start\n");
+  double lnl_monitor = logl;
   while (fabs (cur_logl - logl) > OPT_EPSILON)
   {
     logl = cur_logl;
 
+    /* move to random node */
+    int inner_index = rand() % inner_nodes_count;
+    tree = innernodes[inner_index];
+    pll_utree_traverse (tree,
+                               cb_full_traversal,
+                               travbuffer, &
+                               traversal_size);
+    pll_utree_create_operations(travbuffer,
+                                  traversal_size,
+                                  branch_lengths,
+                                  matrix_indices,
+                                  operations,
+                                  &matrix_count,
+                                  &ops_count);
+    pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths,
+                                2 * tip_count - 3);
+    pll_update_partials (partition, operations, tip_count - 2);
+
     if (parameters_to_optimize & PLL_PARAMETER_BRANCHES_ALL)
         {
           params.which_parameters = PLL_PARAMETER_BRANCHES_SINGLE;
-          cur_logl = pll_optimize_branch_lengths_iterative (&params, tree, smoothings);
-
-          /* reset variables */
-          //params.lk_params.branch_lengths[0] = branch_lengths[0];
+          cur_logl = pll_optimize_branch_lengths_iterative (partition,
+                                                            tree,
+                                                            params.params_index,
+                                                            params.lk_params.freqs_index,
+                                                            params.pgtol,
+                                                            smoothings++);
           pll_utree_create_operations(travbuffer,
                                       traversal_size,
                                       branch_lengths,
@@ -244,6 +270,9 @@ int main (int argc, char * argv[])
 
           printf ("  %5ld s [branches]: %f\n", time (NULL) - start_time,
                   cur_logl);
+
+          assert(cur_logl <= lnl_monitor);
+          lnl_monitor = cur_logl;
         }
 
     if (parameters_to_optimize & PLL_PARAMETER_SUBST_RATES)
@@ -260,19 +289,31 @@ int main (int argc, char * argv[])
     if (parameters_to_optimize & PLL_PARAMETER_ALPHA)
     {
       params.which_parameters = PLL_PARAMETER_ALPHA;
-//      cur_logl = pll_optimize_parameters_lbfgsb (&params);
+#if(USE_LBFGSB)
+      cur_logl = pll_optimize_parameters_lbfgsb (&params);
+#else
       cur_logl = pll_optimize_parameters_brent (&params);
+#endif
       printf ("  %5ld s [alpha]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             %f\n", params.lk_params.alpha_value);
+
+      assert(cur_logl <= lnl_monitor);
+      lnl_monitor = cur_logl;
     }
 
     if (parameters_to_optimize & PLL_PARAMETER_PINV)
     {
       params.which_parameters = PLL_PARAMETER_PINV;
-//      cur_logl = pll_optimize_parameters_lbfgsb (&params);
+#if(USE_LBFGSB)
+      cur_logl = pll_optimize_parameters_lbfgsb (&params);
+#else
       cur_logl = pll_optimize_parameters_brent (&params);
+#endif
       printf ("  %5ld s [p-inv]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             %f\n", partition->prop_invar[0]);
+
+      assert(cur_logl <= lnl_monitor);
+      lnl_monitor = cur_logl;
     }
 
     if (parameters_to_optimize & PLL_PARAMETER_FREQUENCIES)
@@ -284,6 +325,9 @@ int main (int argc, char * argv[])
       for (i = 0; i < partition->states; i++)
         printf ("%f ", partition->frequencies[0][i]);
       printf ("\n");
+
+      assert(cur_logl <= lnl_monitor);
+      lnl_monitor = cur_logl;
     }
 
     printf ("Iteration: %5ld s. : %f\n", time (NULL) - start_time, cur_logl);
@@ -311,8 +355,6 @@ int main (int argc, char * argv[])
   pll_utree_destroy (tree);
   pll_partition_destroy (partition);
 
-  if (params.sumtable)
-    free (params.sumtable);
   free (travbuffer);
   free (subst_params_symmetries);
   free (branch_lengths);

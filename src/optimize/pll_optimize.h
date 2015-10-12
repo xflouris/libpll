@@ -110,6 +110,15 @@ typedef struct
   double * sumtable;
 } pll_optimize_options_t;
 
+ typedef struct
+{
+  pll_partition_t * partition;
+  pll_utree_t * tree;
+  unsigned int params_index;
+  unsigned int freqs_index;
+  double * sumtable;
+} pll_newton_tree_params_t;
+
 /* functions in pll_optimize.c */
 PLL_EXPORT double * pll_compute_empirical_frequencies(pll_partition_t * partition);
 PLL_EXPORT double * pll_compute_empirical_subst_rates(pll_partition_t * partition);
@@ -145,8 +154,11 @@ PLL_EXPORT double pll_minimize_brent(double xmin,
 PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * p);
 PLL_EXPORT double pll_optimize_parameters_lbfgsb(pll_optimize_options_t * p);
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (
-                                               pll_optimize_options_t * params,
-                                               pll_utree_t * tree,
-                                               int smoothings);
+                                              pll_partition_t * partition,
+                                              pll_utree_t * tree,
+                                              unsigned int params_index,
+                                              unsigned int freqs_index,
+                                              double tolerance,
+                                              int smoothings);
 
 #endif /* PLL_OPTIMIZE_H_ */
