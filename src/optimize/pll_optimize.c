@@ -820,7 +820,8 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
                                 double *best_lnl)
 {
   int i;
-  double lnl, new_lnl;
+  double lnl = 0.0,
+     new_lnl = 0.0;
   pll_utree_t *tr_p, *tr_q, *tr_z;
 
   DBG("Optimizing branch %3d - %3d (%.6f) [%.4f]\n",

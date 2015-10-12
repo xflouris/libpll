@@ -33,7 +33,7 @@
 #define OPT_PARAM_EPSILON 1e-1
 
 /* use L-BFGS-B instead of Brent for single parameters (alpha / pInv) */
-#define USE_LBFGSB 1
+#define USE_LBFGSB 0
 
 int main (int argc, char * argv[])
 {
@@ -352,6 +352,7 @@ int main (int argc, char * argv[])
 
   /* clean */
 
+  free (innernodes);
   pll_utree_destroy (tree);
   pll_partition_destroy (partition);
 
