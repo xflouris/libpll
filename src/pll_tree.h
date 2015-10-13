@@ -13,6 +13,13 @@
 #include <pll.h>
 #endif
 
+/* the bisection edge is a leaf */
+#define PLL_ERROR_TBR_LEAF_BISECTION   5001
+/* the bisection and reconnection points are overlapped */
+#define PLL_ERROR_TBR_OVERLAPPED_NODES 5002
+/* the reconnection branches belong to the same subtree */
+#define PLL_ERROR_TBR_SAME_SUBTREE     5003
+
 typedef struct pll_edge
 {
   union
@@ -38,6 +45,10 @@ typedef struct pll_edge
  * Removes the edge \p edge and frees the nodes defining that edge.
  * Reconnects the subtrees at the sides of the edge (figure below).
  * The branch lengths of the new edges are the sum of the removed ones.
+ * The join branch contains the pmatrix index of the parent edges
+ * The removed pmatrix indices are returned in the field
+ *     'additional_pmatrix_index' of both output subtrees
+ *
  * Returns the new parent and child edges, where parent is the closest to \p edge.
  *
  *   A            C              A        C
@@ -120,6 +131,15 @@ PLL_EXPORT int pll_utree_nodes_at_node_dist(pll_utree_t * node,
                                             unsigned int distance,
                                             int fixed);
 
-PLL_EXPORT void pll_utree_TBR(pll_utree_t * b_edge, pll_edge_t * r_edge);
+/**
+ * Performs one TBR move by applying a bisection and a reconnection.
+ * The CLV, scaler and pmatrix indices are updated.
+ *
+ * @param[in] b_edge bisection point
+ * @param[in] r_edge reconnection point
+ *
+ * @returns true, if the move was applied correctly
+ */
+PLL_EXPORT int pll_utree_TBR(pll_utree_t * b_edge, pll_edge_t * r_edge);
 
 #endif /* PLL_TREE_H_ */

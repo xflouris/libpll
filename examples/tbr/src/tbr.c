@@ -386,7 +386,10 @@ int main (int argc, char * argv[])
           reconnect.edge.utree.child->label,
           reconnect.edge.utree.child->back->label);
   reconnect.length = 0.555;
-  pll_utree_TBR (bisect_edge, &reconnect);
+
+  if (!pll_utree_TBR (bisect_edge, &reconnect))
+    fatal ("TBR move cannot be applied");
+
   tree = reconnect.edge.utree.parent;
   free(nodes_at_dist);
 

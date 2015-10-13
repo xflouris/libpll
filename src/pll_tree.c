@@ -170,12 +170,69 @@ PLL_EXPORT pll_edge_t pll_utree_reconnect(pll_edge_t * edge,
   return new_edge;
 }
 
-PLL_EXPORT void pll_utree_TBR(pll_utree_t * b_edge, pll_edge_t * r_edge)
+PLL_EXPORT static int utree_find_node_in_subtree(pll_utree_t * root,
+                                                 pll_utree_t * node)
+{
+  if (root == node)
+  {
+    return PLL_SUCCESS;
+  }
+
+  if (root->next)
+  {
+    if (root->next == node || root->next->next == node)
+    {
+      return PLL_SUCCESS;
+    }
+
+    return utree_find_node_in_subtree(root->next->back, node)
+        || utree_find_node_in_subtree(root->next->next->back, node);
+  }
+
+  return PLL_FAILURE;
+}
+
+PLL_EXPORT int pll_utree_TBR(pll_utree_t * b_edge, pll_edge_t * r_edge)
 {
   pll_edge_t parent, child;
   unsigned int parent_clv_index, child_clv_index;
   unsigned int parent_scaler_index, child_scaler_index;
   unsigned int edge_pmatrix_index, parent_pmatrix_index, child_pmatrix_index;
+
+  /* validate if the move can be applied */
+
+  /* 1. bisection point must not be a leaf branch */
+  if (!(b_edge->next && b_edge->back->next))
+  {
+    pll_errno = PLL_ERROR_TBR_LEAF_BISECTION;
+    return PLL_FAILURE;
+  }
+
+  /* 2. reconnection edges are different from bisection point */
+  if (b_edge == r_edge->edge.utree.parent ||
+      b_edge == r_edge->edge.utree.parent->back ||
+      b_edge == r_edge->edge.utree.child ||
+      b_edge == r_edge->edge.utree.child->back ||
+      b_edge->back == r_edge->edge.utree.parent ||
+      b_edge->back == r_edge->edge.utree.parent->back ||
+      b_edge->back == r_edge->edge.utree.child ||
+      b_edge->back == r_edge->edge.utree.child->back)
+  {
+    pll_errno = PLL_ERROR_TBR_OVERLAPPED_NODES;
+    return PLL_FAILURE;
+  }
+
+  /* 3. reconnection edges must belong to different subtrees rooted at b_edge
+   *    and b_edge->back
+   */
+  if (!(utree_find_node_in_subtree(b_edge, r_edge->edge.utree.parent) &&
+        utree_find_node_in_subtree(b_edge->back, r_edge->edge.utree.child)) &&
+      !(utree_find_node_in_subtree(b_edge->back, r_edge->edge.utree.parent) &&
+        utree_find_node_in_subtree(b_edge, r_edge->edge.utree.child)))
+  {
+    pll_errno = PLL_ERROR_TBR_SAME_SUBTREE;
+    return PLL_FAILURE;
+  }
 
   /* keep removed CLVs, scalers and pmatrix indices */
   parent_clv_index = b_edge->clv_index;
@@ -220,6 +277,8 @@ PLL_EXPORT void pll_utree_TBR(pll_utree_t * b_edge, pll_edge_t * r_edge)
         q->next->scaler_index =
         q->next->next->scaler_index = child_scaler_index;
   q->pmatrix_index = q->back->pmatrix_index = child_pmatrix_index;
+
+  return PLL_SUCCESS;
 }
 
 static void utree_nodes_at_dist(pll_utree_t * node,
