@@ -256,6 +256,20 @@ PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
   }
 }
 
+static int utree_traverse_check(pll_utree_t * node,
+                                 int (*cbtrav)(pll_utree_t *))
+{
+  if (!node->next)
+  {
+    return cbtrav(node);
+  }
+  if (!cbtrav(node))
+    return 0;
+
+  return utree_traverse_check(node->next->back, cbtrav) &&
+         utree_traverse_check(node->next->next->back, cbtrav);
+}
+
 static void utree_traverse(pll_utree_t * node,
                            int (*cbtrav)(pll_utree_t *),
                            unsigned int * index,
@@ -304,7 +318,6 @@ PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
 
   return PLL_SUCCESS;
 }
-
 
 static void utree_query_tipnodes_recursive(pll_utree_t * node,
                                            pll_utree_t ** node_list,
@@ -372,3 +385,39 @@ PLL_EXPORT unsigned int pll_utree_query_innernodes(pll_utree_t * root,
   return index;
 }
 
+/* a callback function for checking tree integrity */
+static int cb_check_integrity(pll_utree_t * node)
+{
+  unsigned int clv_index = node->clv_index;
+  int scaler_index = node->scaler_index;
+  unsigned int pmatrix_index = node->pmatrix_index;
+  char * label = node->label;
+  double length = node->length;
+
+  /* edge attributes */
+  if (node->back->length != length
+      || node->back->pmatrix_index != pmatrix_index)
+    return 0;
+  if (node->next)
+  {
+    /* node attributes */
+    if (node->next->clv_index != clv_index ||
+        node->next->next->clv_index != clv_index)
+      return 0;
+    if (node->next->scaler_index != scaler_index ||
+            node->next->next->scaler_index != scaler_index)
+          return 0;
+    if (node->next->label != label ||
+            node->next->next->label != label)
+          return 0;
+  }
+  return 1;
+}
+
+PLL_EXPORT int pll_utree_check_integrity(pll_utree_t * root)
+{
+  pll_utree_t * start_node = root->next?root:root->back;
+
+  return utree_traverse_check(start_node->back, cb_check_integrity) &&
+         utree_traverse_check(start_node, cb_check_integrity);
+}

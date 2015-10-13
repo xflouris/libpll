@@ -436,6 +436,8 @@ PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
                                             unsigned int * matrix_count,
                                             unsigned int * ops_count);
 
+PLL_EXPORT int pll_utree_check_integrity(pll_utree_t * root);
+
 /* functions in rtree.c */
 
 PLL_EXPORT void pll_rtree_show_ascii(pll_rtree_t * tree, int options);
