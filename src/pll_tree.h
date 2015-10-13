@@ -8,7 +8,10 @@
 #ifndef PLL_TREE_H_
 #define PLL_TREE_H_
 
+#ifndef PLL_H_
+#define PLL_H_
 #include <pll.h>
+#endif
 
 typedef struct pll_edge
 {
@@ -25,6 +28,7 @@ typedef struct pll_edge
       pll_rtree_t * child;
     } rtree;
   } edge;
+  int additional_pmatrix_index;
   double length;
 } pll_edge_t;
 
@@ -57,33 +61,64 @@ PLL_EXPORT int pll_utree_bisect(pll_utree_t * edge,
  * Addes 1 new edge connecting edges \p edge.parent and \p edge.child with
  * length \p edge.length.
  *
- *   A       C         A            C
- *   |       |  ---->   \___edge___/
- *   |       |          /          \
- *   B       D         B            D
+ *   A       C         A              C
+ *   |       |  ---->   \            /
+ *                       e1--edge--e2
+ *   |       |          /            \
+ *   B       D         B              D
  *   A,B,C,D are subtrees
  *
- * @param[in] edge new edge
+ * @param[in] edge                 new edge
+ * @param[in] parent_pmatrix_index matrix index of e1-A
+ * @param[in] parent_clv_index     clv index of e1
+ * @param[in] parent_scaler_index  scaler index of e1
+ * @param[in] child_pmatrix_index  matrix index of e2-C
+ * @param[in] child_clv_index      clv index of e2
+ * @param[in] child_scaler_index   scaler index of e2
+ * @param[in] edge_pmatrix_index   matrix index of e1-e2
  *
- * @returns PLL_SUCCESS if OK
+ * @returns the new created edge
  */
-PLL_EXPORT void pll_utree_reconnect(pll_edge_t * edge);
+PLL_EXPORT pll_edge_t pll_utree_reconnect(pll_edge_t * edge,
+                                          unsigned int parent_pmatrix_index,
+                                          unsigned int parent_clv_index,
+                                          unsigned int parent_scaler_index,
+                                          unsigned int child_pmatrix_index,
+                                          unsigned int child_clv_index,
+                                          unsigned int child_scaler_index,
+                                          unsigned int edge_pmatrix_index);
 
 /**
- * Returns the list of nodes at a certain distance from a specified root
+ * Returns the list of nodes at a certain distance from a specified edge
  *
- * @param[in] root the root node
+ * @param[in] edge the root edge
  * @param[out] outbuffer the list of nodes. Outbuffer should be allocated
  * @param[out] n_nodes the number of nodes returned in \p outbuffer
  * @paran[in] distance the maximum distance to check
  * @param[in] fixed if true, returns only the nodes at distance \p distance,
  *            otherwise, the nodes at distance <= \p distance.
  */
-PLL_EXPORT int pll_utree_nodes_at_dist(pll_utree_t * root,
-                                       pll_utree_t ** outbuffer,
-                                       unsigned int * n_nodes,
-                                       unsigned int distance,
-                                       int fixed);
+PLL_EXPORT int pll_utree_nodes_at_edge_dist(pll_utree_t * edge,
+                                            pll_utree_t ** outbuffer,
+                                            unsigned int * n_nodes,
+                                            unsigned int distance,
+                                            int fixed);
+
+/**
+ * Returns the list of nodes at a certain distance from a specified node
+ *
+ * @param[in] node the root node
+ * @param[out] outbuffer the list of nodes. Outbuffer should be allocated
+ * @param[out] n_nodes the number of nodes returned in \p outbuffer
+ * @paran[in] distance the maximum distance to check
+ * @param[in] fixed if true, returns only the nodes at distance \p distance,
+ *            otherwise, the nodes at distance <= \p distance.
+ */
+PLL_EXPORT int pll_utree_nodes_at_node_dist(pll_utree_t * node,
+                                            pll_utree_t ** outbuffer,
+                                            unsigned int * n_nodes,
+                                            unsigned int distance,
+                                            int fixed);
 
 PLL_EXPORT void pll_utree_TBR(pll_utree_t * b_edge, pll_edge_t * r_edge);
 
