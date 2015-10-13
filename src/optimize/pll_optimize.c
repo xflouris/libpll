@@ -817,7 +817,8 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
 /* GENERIC */
 /******************************************************************************/
 static double recomp_iterative (pll_newton_tree_params_t * params,
-                                double *best_lnl)
+                                double *best_lnl,
+                                int radius)
 {
   int i;
   double lnl = 0.0,
@@ -840,6 +841,10 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
         tr_p->clv_index, tr_p->scaler_index,
         tr_p->back->clv_index, tr_p->back->scaler_index,
         tr_p->pmatrix_index, 0);
+    if (fabs(test_logl - lnl) > 1e-6)
+    {
+      printf("ERROR: %s-%s %f vs %f\n", tr_p->label, tr_p->back->label, test_logl, lnl);
+    }
     assert(fabs(test_logl - lnl) < 1e-6);
   }
 #endif
@@ -926,8 +931,10 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
       tr_p->clv_index, tr_p->back->clv_index, tr_p->length, lnl);
 
   /* update children */
-  if (tr_p && tr_z)
+  if (radius && tr_q && tr_z)
   {
+    if (!radius)
+      printf("SKIP %s-%s", tr_p->label, tr_z->label);
     /* update children 'Q'
      * CLV at P is recomputed with children P->back and Z->back
      * Scaler is updated by subtracting Q->back and adding P->back
@@ -967,7 +974,7 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
     pll_newton_tree_params_t params_cpy;
     memcpy(&params_cpy, params, sizeof(pll_newton_tree_params_t));
     params_cpy.tree = tr_q->back;
-    lnl = recomp_iterative (&params_cpy, best_lnl);
+    lnl = recomp_iterative (&params_cpy, best_lnl, radius-1);
     /* update children 'Z'
      * CLV at P is recomputed with children P->back and Q->back
      * Scaler is updated by subtracting Z->back and adding Q->back
@@ -1002,7 +1009,7 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
 
    /* eval */
     params_cpy.tree = tr_z->back;
-    lnl = recomp_iterative (&params_cpy, best_lnl);
+    lnl = recomp_iterative (&params_cpy, best_lnl, radius-1);
 
     /* reset to initial state
      * CLV at P is recomputed with children Q->back and Z->back
@@ -1040,13 +1047,14 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
   return lnl;
 } /* recomp_iterative */
 
-PLL_EXPORT double pll_optimize_branch_lengths_iterative (
+PLL_EXPORT double pll_optimize_branch_lengths_local (
                                               pll_partition_t * partition,
                                               pll_utree_t * tree,
                                               unsigned int params_index,
                                               unsigned int freqs_index,
                                               double tolerance,
-                                              int smoothings)
+                                              int smoothings,
+                                              int radius)
 {
   int i;
   double lnl = 0.0;
@@ -1075,9 +1083,9 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
   for (i = 0; i < smoothings; i++)
   {
     double new_lnl = lnl;
-    recomp_iterative (&params, &new_lnl);
+    recomp_iterative (&params, &new_lnl, radius);
     params.tree = params.tree->back;
-    recomp_iterative (&params, &new_lnl);
+    recomp_iterative (&params, &new_lnl, radius-1);
     assert(new_lnl >= lnl);
     if (fabs (new_lnl - lnl) < tolerance)
       i = smoothings;
@@ -1087,6 +1095,25 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
   free(params.sumtable);
 
   return -1*lnl;
+} /* pll_optimize_branch_lengths_iterative */
+
+PLL_EXPORT double pll_optimize_branch_lengths_iterative (
+                                              pll_partition_t * partition,
+                                              pll_utree_t * tree,
+                                              unsigned int params_index,
+                                              unsigned int freqs_index,
+                                              double tolerance,
+                                              int smoothings)
+{
+  double lnl;
+  lnl = pll_optimize_branch_lengths_local (partition,
+                                           tree,
+                                           params_index,
+                                           freqs_index,
+                                           tolerance,
+                                           smoothings,
+                                           -1);
+  return lnl;
 } /* pll_optimize_branch_lengths_iterative */
 
 

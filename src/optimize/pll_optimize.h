@@ -21,7 +21,10 @@
 #ifndef PLL_OPTIMIZE_H_
 #define PLL_OPTIMIZE_H_
 
+#ifndef PLL_H_
+#define PLL_H_
 #include <pll.h>
+#endif
 //#include <search.h>
 
 /* Parameters mask */
@@ -160,5 +163,13 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                               unsigned int freqs_index,
                                               double tolerance,
                                               int smoothings);
+PLL_EXPORT double pll_optimize_branch_lengths_local (
+                                              pll_partition_t * partition,
+                                              pll_utree_t * tree,
+                                              unsigned int params_index,
+                                              unsigned int freqs_index,
+                                              double tolerance,
+                                              int smoothings,
+                                              int radius);
 
 #endif /* PLL_OPTIMIZE_H_ */
