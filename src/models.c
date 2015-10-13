@@ -343,6 +343,8 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
 
   for (i = 0; i < count; ++i)
   {
+    assert(branch_lengths[i] >= 0);
+
     /* compute effective pmatrix location */
     for (n = 0; n < partition->rate_cats; ++n)
     {
