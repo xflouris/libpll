@@ -816,11 +816,48 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
 /******************************************************************************/
 /* GENERIC */
 /******************************************************************************/
+static void update_op_scalers(pll_partition_t * partition,
+                              pll_utree_t * parent,
+                              pll_utree_t * right_child,
+                              pll_utree_t * left_child)
+{
+  int i;
+  pll_operation_t op;
+
+  /* set CLV */
+  op.parent_clv_index    = parent->clv_index;
+  op.parent_scaler_index = parent->scaler_index;
+  op.child1_clv_index    = right_child->back->clv_index;
+  op.child1_matrix_index = right_child->back->pmatrix_index;
+  op.child1_scaler_index = right_child->back->scaler_index;
+  op.child2_clv_index    = left_child->back->clv_index;
+  op.child2_matrix_index = left_child->back->pmatrix_index;
+  op.child2_scaler_index = left_child->back->scaler_index;
+#if(UPDATE_SCALERS)
+  /* update scalers */
+  if (parent->scaler_index != PLL_SCALE_BUFFER_NONE)
+  {
+    int n = partition->sites;
+    for (i=0; i<n; i++)
+    {
+      partition->scale_buffer[parent->scaler_index][i] =
+          partition->scale_buffer[parent->scaler_index][i]
+              + ((right_child->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                  partition->scale_buffer[right_child->back->scaler_index][i] :
+                  0)
+              - ((parent->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
+                  partition->scale_buffer[parent->back->scaler_index][i] :
+                  0);
+    }
+  }
+#endif
+  pll_update_partials (partition, &op, 1);
+}
+
 static double recomp_iterative (pll_newton_tree_params_t * params,
                                 double *best_lnl,
                                 int radius)
 {
-  int i;
   double lnl = 0.0,
      new_lnl = 0.0;
   pll_utree_t *tr_p, *tr_q, *tr_z;
@@ -933,79 +970,31 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
   /* update children */
   if (radius && tr_q && tr_z)
   {
-    if (!radius)
-      printf("SKIP %s-%s", tr_p->label, tr_z->label);
     /* update children 'Q'
      * CLV at P is recomputed with children P->back and Z->back
      * Scaler is updated by subtracting Q->back and adding P->back
      */
-    pll_operation_t new_op;
 
-    /* set CLV */
-    new_op.parent_clv_index    = tr_q->clv_index;
-    new_op.parent_scaler_index = tr_q->scaler_index;
-    new_op.child1_clv_index    = tr_p->back->clv_index;
-    new_op.child1_matrix_index = tr_p->back->pmatrix_index;
-    new_op.child1_scaler_index = tr_p->back->scaler_index;
-    new_op.child2_clv_index    = tr_z->back->clv_index;
-    new_op.child2_matrix_index = tr_z->back->pmatrix_index;
-    new_op.child2_scaler_index = tr_z->back->scaler_index;
-#if(UPDATE_SCALERS)
-    /* update scalers */
-    if (tr_q->scaler_index != PLL_SCALE_BUFFER_NONE)
-    {
-      int n = params->partition->sites;
-      for (i=0; i<n; i++)
-      {
-        params->partition->scale_buffer[tr_q->scaler_index][i] =
-            params->partition->scale_buffer[tr_q->scaler_index][i]
-                + ((tr_p->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                    params->partition->scale_buffer[tr_p->back->scaler_index][i] :
-                    0)
-                - ((tr_q->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                    params->partition->scale_buffer[tr_q->back->scaler_index][i] :
-                    0);
-      }
-    }
-#endif
-    pll_update_partials (params->partition, &new_op, 1);
+    update_op_scalers(params->partition,
+                      tr_q,
+                      tr_p,
+                      tr_z);
 
     /* eval */
     pll_newton_tree_params_t params_cpy;
     memcpy(&params_cpy, params, sizeof(pll_newton_tree_params_t));
     params_cpy.tree = tr_q->back;
     lnl = recomp_iterative (&params_cpy, best_lnl, radius-1);
+
     /* update children 'Z'
      * CLV at P is recomputed with children P->back and Q->back
      * Scaler is updated by subtracting Z->back and adding Q->back
      */
 
-    /* set CLV */
-    new_op.parent_clv_index    = tr_z->clv_index;
-    new_op.parent_scaler_index = tr_z->scaler_index;
-    new_op.child1_clv_index    = tr_p->back->clv_index;
-    new_op.child1_matrix_index = tr_p->back->pmatrix_index;
-    new_op.child1_scaler_index = tr_p->back->scaler_index;
-    new_op.child2_clv_index    = tr_q->back->clv_index;
-    new_op.child2_matrix_index = tr_q->back->pmatrix_index;
-    new_op.child2_scaler_index = tr_q->back->scaler_index;
-#if(UPDATE_SCALERS)
-    /* update scalers */
-    if (tr_z->scaler_index != PLL_SCALE_BUFFER_NONE)
-    {
-      int n = params->partition->sites;
-      for (i = 0; i < n; i++)
-        params->partition->scale_buffer[tr_z->scaler_index][i] =
-            params->partition->scale_buffer[tr_z->scaler_index][i]
-                + ((tr_q->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                    params->partition->scale_buffer[tr_q->back->scaler_index][i] :
-                    0)
-                - ((tr_z->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                    params->partition->scale_buffer[tr_z->back->scaler_index][i] :
-                    0);
-    }
-#endif
-    pll_update_partials (params->partition, &new_op, 1);
+    update_op_scalers(params->partition,
+                      tr_z,
+                      tr_q,
+                      tr_p);
 
    /* eval */
     params_cpy.tree = tr_z->back;
@@ -1016,32 +1005,10 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
      * Scaler is updated by subtracting P->back and adding Z->back
      */
 
-    /* reset CLV */
-    new_op.parent_clv_index    = tr_p->clv_index;
-    new_op.parent_scaler_index = tr_p->scaler_index;
-    new_op.child1_clv_index    = tr_q->back->clv_index;
-    new_op.child1_matrix_index = tr_q->back->pmatrix_index;
-    new_op.child1_scaler_index = tr_q->back->scaler_index;
-    new_op.child2_clv_index    = tr_z->back->clv_index;
-    new_op.child2_matrix_index = tr_z->back->pmatrix_index;
-    new_op.child2_scaler_index = tr_z->back->scaler_index;
-#if(UPDATE_SCALERS)
-    /* update scalers */
-    if (tr_p->scaler_index != PLL_SCALE_BUFFER_NONE)
-    {
-      int n = params->partition->sites;
-      for (i = 0; i < n; i++)
-        params->partition->scale_buffer[tr_p->scaler_index][i] =
-            params->partition->scale_buffer[tr_p->scaler_index][i]
-                + ((tr_z->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                    params->partition->scale_buffer[tr_z->back->scaler_index][i] :
-                    0)
-                - ((tr_p->back->scaler_index != PLL_SCALE_BUFFER_NONE) ?
-                    params->partition->scale_buffer[tr_p->back->scaler_index][i] :
-                    0);
-    }
-#endif
-    pll_update_partials (params->partition, &new_op, 1);
+    update_op_scalers(params->partition,
+                      tr_p,
+                      tr_z,
+                      tr_q);
   }
 
   return lnl;
