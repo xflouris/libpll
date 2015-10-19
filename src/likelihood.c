@@ -351,6 +351,7 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
   const double * eigenvals = partition->eigenvals[params_index];
   const double * rates = partition->rates;
   const double * freqs = partition->frequencies[freqs_index];
+  double prop_invar = partition->prop_invar[params_index];
   const double * sum;
   double logLK = 0.0;
 
@@ -378,6 +379,8 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
     diagptable[1024] = {0}, /* TODO make this dynamic */
     *diagp,
     ki;
+
+  branch_length /= (1.0 - prop_invar);
 
   /* pre-compute the derivatives of the P matrix for all discrete GAMMA rates */
   diagp = diagptable;
@@ -415,7 +418,6 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
     site_lk[1] /= n_rates;
     site_lk[2] /= n_rates;
 
-    double prop_invar = partition->prop_invar[params_index];
     double inv_site_lk = 0.0;
 
     /* account for invariant sites */

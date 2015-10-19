@@ -113,6 +113,7 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
                           subst_rates);
     free (subst_rates);
   }
+
   /* update stationary frequencies */
   if (params->which_parameters & PLL_PARAMETER_FREQUENCIES)
   {
@@ -936,12 +937,12 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
                              params->params_index,
                              &(params->tree->pmatrix_index),
                              &(tr_p->length),1);
-    new_lnl = pll_compute_edge_loglikelihood (
+    lnl = pll_compute_edge_loglikelihood (
               params->partition,
               tr_p->clv_index, tr_p->scaler_index,
               tr_p->back->clv_index, tr_p->back->scaler_index,
               tr_p->pmatrix_index, params->freqs_index);
-    lnl = new_lnl;
+    assert(fabs(lnl - new_lnl) < 1e-6);
     assert(lnl >= *best_lnl);
     *best_lnl = lnl;
   }
