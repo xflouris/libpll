@@ -214,7 +214,7 @@ static double utree_derivative_func (void * parameters, double proposal,
   return score;
 }
 
-static double compute_lnl_unrooted (void * p, double *x)
+static double compute_negative_lnl_unrooted (void * p, double *x)
 {
   pll_optimize_options_t * params = (pll_optimize_options_t *) p;
   pll_partition_t * partition = params->lk_params.partition;
@@ -410,7 +410,7 @@ static double brent_opt (double ax, double bx, double cx, double tol,
 
 static double brent_target(void * p, double x)
 {
-  return compute_lnl_unrooted(p, &x);
+  return compute_negative_lnl_unrooted(p, &x);
 }
 
 /* most of the code for Brent optimization taken from IQ-Tree
@@ -476,6 +476,27 @@ PLL_EXPORT double pll_minimize_brent(double xmin,
   return optx; /* return optimal x */
 }
 
+static void set_range(double abs_min,
+                      double defaultv,
+                      double abs_max,
+                      double deltav,
+                      double *guess,
+                      double *minv,
+                      double *maxv)
+{
+        *minv = abs_min;
+        *maxv = abs_max;
+        if (*guess < abs_min || *guess > abs_max)
+        {
+          *guess = defaultv;
+        }
+        else
+        {
+          *minv = max(abs_min, *guess - deltav);
+          *maxv = min(abs_max, *guess + deltav);
+        }
+}
+
 PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * params)
 {
   double score = 0;
@@ -489,27 +510,28 @@ PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * params)
   switch (params->which_parameters)
   {
     case PLL_PARAMETER_ALPHA:
-      xmin = 0.0201 + PLL_LBFGSB_ERROR;
-      xmax = 100.0;
       xguess = params->lk_params.alpha_value;
-      if (xguess < xmin || xguess > xmax)
-         xguess = PLL_OPT_DEFAULT_ALPHA;
+      set_range (PLL_OPT_MIN_ALPHA,
+                 PLL_OPT_DEFAULT_ALPHA,
+                 PLL_OPT_MAX_ALPHA,
+                 PLL_OPT_ALPHA_OFFSET,
+                 &xguess, &xmin, &xmax);
       break;
     case PLL_PARAMETER_PINV:
-      xmin = PLL_LBFGSB_ERROR;
-      xmax = 0.99;
       xguess = params->lk_params.partition->prop_invar[params->params_index];
-      if (xguess < xmin || xguess > xmax)
-         xguess = PLL_OPT_DEFAULT_PINV;
+      set_range (PLL_OPT_MIN_PINV,
+                 PLL_OPT_DEFAULT_PINV,
+                 PLL_OPT_MAX_PINV,
+                 PLL_OPT_PINV_OFFSET,
+                 &xguess, &xmin, &xmax);
       break;
     case PLL_PARAMETER_BRANCHES_SINGLE:
-      xmin = PLL_OPT_MIN_BRANCH_LEN + PLL_LBFGSB_ERROR;
-      xmax = PLL_OPT_MAX_BRANCH_LEN;
       xguess = params->lk_params.branch_lengths[0];
-      if (xguess < xmin || xguess > xmax)
-        xguess = PLL_OPT_DEFAULT_BRANCH_LEN;
-//      //TODO: Temporarily unavailable
-//      assert(0);
+      set_range (PLL_OPT_MIN_BRANCH_LEN,
+                 PLL_OPT_DEFAULT_BRANCH_LEN,
+                 PLL_OPT_MAX_BRANCH_LEN,
+                 PLL_OPT_BRANCH_LEN_OFFSET,
+                 &xguess, &xmin, &xmax);
       break;
     default:
       /* unavailable or multiple parameter */
@@ -538,7 +560,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
   /* L-BFGS-B parameters */
   int max_corrections;
   unsigned int num_variables;
-  double score = 0;
+  double initial_score, score = 0;
   double *x, *g, *lower_bounds, *upper_bounds, *wa;
   int *bound_type, *iwa;
 
@@ -595,8 +617,6 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
       for (i = 0; i < n_subst_free_params; i++)
       {
         nbd_ptr[i] = PLL_LBFGSB_BOUND_BOTH;
-        l_ptr[i] = 0.001;
-        u_ptr[i] = 100.;
         unsigned int j = i;
         if (params->subst_params_symmetries)
         {
@@ -609,10 +629,13 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
           }
           current_rate++;
         }
-        x[check_n + i] = partition->subst_params[params->params_index][j];
 
-        if (x[check_n + i] < *l_ptr || x[check_n + i] > *u_ptr)
-                                   x[check_n + 1] = PLL_OPT_DEFAULT_RATE_RATIO;
+        x[check_n + i] = partition->subst_params[params->params_index][j];
+        set_range (PLL_OPT_MIN_SUBST_RATE,
+                   PLL_OPT_DEFAULT_RATE_RATIO,
+                   PLL_OPT_MAX_SUBST_RATE,
+                   PLL_OPT_SUBST_RATE_OFFSET,
+                   &x[check_n + i], &l_ptr[i], &u_ptr[i]);
       }
       nbd_ptr += n_subst_free_params;
       l_ptr += n_subst_free_params;
@@ -641,15 +664,14 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
         if (i != params->highest_freq_state)
         {
           nbd_ptr[cur_index] = PLL_LBFGSB_BOUND_BOTH;
-          l_ptr[cur_index] = 0.001;
-          u_ptr[cur_index] = 100;
           x[check_n + cur_index] = frequencies[i]
               / frequencies[params->highest_freq_state];
-          //params->freq_ratios[i];
-
-          if (x[check_n + cur_index] < *l_ptr
-              || x[check_n + cur_index] > *u_ptr)
-            x[check_n + cur_index] = PLL_OPT_DEFAULT_FREQ_RATIO;
+          set_range (PLL_OPT_MIN_FREQ,
+                     PLL_OPT_DEFAULT_FREQ_RATIO,
+                     PLL_OPT_MAX_FREQ,
+                     PLL_OPT_FREQ_OFFSET,
+                     &x[check_n + cur_index],
+                     &l_ptr[cur_index], &u_ptr[cur_index]);
           cur_index++;
         }
       }
@@ -663,13 +685,12 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     if (params->which_parameters & PLL_PARAMETER_PINV)
     {
       *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
-      *l_ptr = PLL_LBFGSB_ERROR;
-      *u_ptr = 0.99;
       x[check_n] = partition->prop_invar[params->params_index];
-
-      if (x[check_n] < *l_ptr || x[check_n] > *u_ptr)
-                      x[check_n] = PLL_OPT_DEFAULT_PINV;
-
+      set_range (PLL_OPT_MIN_PINV + PLL_LBFGSB_ERROR,
+                 PLL_OPT_DEFAULT_PINV,
+                 PLL_OPT_MAX_PINV,
+                 PLL_OPT_PINV_OFFSET,
+                 &x[check_n], l_ptr, u_ptr);
       check_n += 1;
       nbd_ptr++;
       l_ptr++;
@@ -680,14 +701,12 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     if (params->which_parameters & PLL_PARAMETER_ALPHA)
     {
       *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
-      /* minimum alpha + error offset */
-      *l_ptr = 0.0201 + PLL_LBFGSB_ERROR;
-      *u_ptr = 100.0;
       x[check_n] = params->lk_params.alpha_value;
-
-      if (x[check_n] < *l_ptr || x[check_n] > *u_ptr)
-                x[check_n] = PLL_OPT_DEFAULT_ALPHA;
-
+      set_range (PLL_OPT_MIN_ALPHA,
+                 PLL_OPT_DEFAULT_ALPHA,
+                 PLL_OPT_MAX_ALPHA,
+                 PLL_OPT_ALPHA_OFFSET,
+                 &x[check_n], l_ptr, u_ptr);
       check_n += 1;
       nbd_ptr++;
       l_ptr++;
@@ -704,12 +723,12 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     if (params->which_parameters & PLL_PARAMETER_BRANCHES_SINGLE)
     {
         *nbd_ptr = PLL_LBFGSB_BOUND_LOWER;
-        *l_ptr = PLL_OPT_MIN_BRANCH_LEN + PLL_LBFGSB_ERROR;
         x[check_n] = params->lk_params.branch_lengths[0];
-
-        if (x[check_n] < *l_ptr)
-          x[check_n] = PLL_OPT_DEFAULT_BRANCH_LEN;
-
+        set_range (PLL_OPT_MIN_BRANCH_LEN + PLL_LBFGSB_ERROR,
+                   PLL_OPT_DEFAULT_BRANCH_LEN,
+                   PLL_OPT_MAX_BRANCH_LEN,
+                   PLL_OPT_BRANCH_LEN_OFFSET,
+                   &x[check_n], l_ptr, u_ptr);
         check_n += 1;
         nbd_ptr++;
         l_ptr++;
@@ -725,11 +744,12 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
       for (i = 0; i < num_branch_lengths; i++)
       {
         nbd_ptr[i] = PLL_LBFGSB_BOUND_LOWER;
-        l_ptr[i] = PLL_OPT_MIN_BRANCH_LEN + PLL_LBFGSB_ERROR;
-        x[check_n + i] =
-            params->lk_params.branch_lengths[i] > l_ptr[i]?
-                params->lk_params.branch_lengths[i] :
-                PLL_OPT_DEFAULT_BRANCH_LEN;
+        x[check_n + i] = params->lk_params.branch_lengths[i];
+        set_range (PLL_OPT_MIN_BRANCH_LEN + PLL_LBFGSB_ERROR,
+                   PLL_OPT_DEFAULT_BRANCH_LEN,
+                   PLL_OPT_MAX_BRANCH_LEN,
+                   PLL_OPT_BRANCH_LEN_OFFSET,
+                   &x[check_n + i], &l_ptr[i], &u_ptr[i]);
       }
       check_n += num_branch_lengths;
       nbd_ptr += num_branch_lengths;
@@ -748,6 +768,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
           + 12 * (size_t)max_corrections * ((size_t)max_corrections + 1),
       sizeof(double));
 
+  initial_score = compute_negative_lnl_unrooted (params, x);
   int continue_opt = 1;
   while (continue_opt)
   {
@@ -763,7 +784,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
        * Compute function value f for the sample problem.
        */
 
-      score = compute_lnl_unrooted (params, x);
+      score = compute_negative_lnl_unrooted (params, x);
 
       if (is_nan(score) || d_equals(score, -INFINITY))
         break;
@@ -778,7 +799,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
 
         x[i] = temp + h;
         h = x[i] - temp;
-        double lnderiv = compute_lnl_unrooted (params, x);
+        double lnderiv = compute_negative_lnl_unrooted (params, x);
 
         g[i] = (lnderiv - score) / h;
 
@@ -855,9 +876,11 @@ static void update_op_scalers(pll_partition_t * partition,
   pll_update_partials (partition, &op, 1);
 }
 
+/* if keep_update, P-matrices are updated after each branch length opt */
 static double recomp_iterative (pll_newton_tree_params_t * params,
                                 double *best_lnl,
-                                int radius)
+                                int radius,
+                                int keep_update)
 {
   double lnl = 0.0,
      new_lnl = 0.0;
@@ -933,26 +956,36 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
     DBG("Consolidate branch %.14f  to %.14f [%f]\n", tr_p->length, params->lk_params.branch_lengths[0], new_lnl);
     tr_p->length = xres;
     tr_p->back->length = tr_p->length;
-    pll_update_prob_matrices(params->partition,
-                             params->params_index,
-                             &(params->tree->pmatrix_index),
-                             &(tr_p->length),1);
-    lnl = pll_compute_edge_loglikelihood (
-              params->partition,
-              tr_p->clv_index, tr_p->scaler_index,
-              tr_p->back->clv_index, tr_p->back->scaler_index,
-              tr_p->pmatrix_index, params->freqs_index);
-    assert(fabs(lnl - new_lnl) < 1e-6);
-    assert(lnl >= *best_lnl);
-    *best_lnl = lnl;
+    if (keep_update)
+    {
+      pll_update_prob_matrices(params->partition,
+                               params->params_index,
+                               &(params->tree->pmatrix_index),
+                               &(tr_p->length),1);
+#ifndef NDEBUG
+    {
+      lnl = pll_compute_edge_loglikelihood (
+                params->partition,
+                tr_p->clv_index, tr_p->scaler_index,
+                tr_p->back->clv_index, tr_p->back->scaler_index,
+                tr_p->pmatrix_index, params->freqs_index);
+      assert(fabs(lnl - new_lnl) < 1e-6);
+      assert(lnl >= *best_lnl);
+    }
+#endif
+      *best_lnl = new_lnl;
+    }
   }
   else
   {
     /* revert */
-    pll_update_prob_matrices(params->partition,
+    if (keep_update)
+    {
+       pll_update_prob_matrices(params->partition,
                                  params->params_index,
                                  &tr_p->pmatrix_index,
                                  &tr_p->length, 1);
+    }
 #ifndef NDEBUG
     {
     double test_logl = pll_compute_edge_loglikelihood (
@@ -985,7 +1018,7 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
     pll_newton_tree_params_t params_cpy;
     memcpy(&params_cpy, params, sizeof(pll_newton_tree_params_t));
     params_cpy.tree = tr_q->back;
-    lnl = recomp_iterative (&params_cpy, best_lnl, radius-1);
+    lnl = recomp_iterative (&params_cpy, best_lnl, radius-1, keep_update);
 
     /* update children 'Z'
      * CLV at P is recomputed with children P->back and Q->back
@@ -999,7 +1032,7 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
 
    /* eval */
     params_cpy.tree = tr_z->back;
-    lnl = recomp_iterative (&params_cpy, best_lnl, radius-1);
+    lnl = recomp_iterative (&params_cpy, best_lnl, radius-1, keep_update);
 
     /* reset to initial state
      * CLV at P is recomputed with children Q->back and Z->back
@@ -1022,7 +1055,8 @@ PLL_EXPORT double pll_optimize_branch_lengths_local (
                                               unsigned int freqs_index,
                                               double tolerance,
                                               int smoothings,
-                                              int radius)
+                                              int radius,
+                                              int keep_update)
 {
   int i;
   double lnl = 0.0;
@@ -1051,9 +1085,9 @@ PLL_EXPORT double pll_optimize_branch_lengths_local (
   for (i = 0; i < smoothings; i++)
   {
     double new_lnl = lnl;
-    recomp_iterative (&params, &new_lnl, radius);
+    recomp_iterative (&params, &new_lnl, radius, keep_update);
     params.tree = params.tree->back;
-    recomp_iterative (&params, &new_lnl, radius-1);
+    recomp_iterative (&params, &new_lnl, radius-1, keep_update);
     assert(new_lnl >= lnl);
     if (fabs (new_lnl - lnl) < tolerance)
       i = smoothings;
@@ -1071,7 +1105,8 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                               unsigned int params_index,
                                               unsigned int freqs_index,
                                               double tolerance,
-                                              int smoothings)
+                                              int smoothings,
+                                              int keep_update)
 {
   double lnl;
   lnl = pll_optimize_branch_lengths_local (partition,
@@ -1080,7 +1115,8 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                            freqs_index,
                                            tolerance,
                                            smoothings,
-                                           -1);
+                                           -1,
+                                           keep_update);
   return lnl;
 } /* pll_optimize_branch_lengths_iterative */
 

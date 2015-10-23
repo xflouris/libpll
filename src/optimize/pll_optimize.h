@@ -44,14 +44,28 @@
 #define PLL_LBFGSB_BOUND_UPPER 3
 
 /* Parameter defaults and limits */
-#define PLL_OPT_MIN_BRANCH_LEN       1.0e-4
-#define PLL_OPT_MAX_BRANCH_LEN          100
-#define PLL_OPT_TOL_BRANCH_LEN       1.0e-4
 #define PLL_OPT_DEFAULT_RATE_RATIO        1
 #define PLL_OPT_DEFAULT_FREQ_RATIO        1
 #define PLL_OPT_DEFAULT_PINV            0.5
 #define PLL_OPT_DEFAULT_ALPHA           0.5
 #define PLL_OPT_DEFAULT_BRANCH_LEN      0.1
+
+#define PLL_OPT_MIN_BRANCH_LEN       1.0e-4
+#define PLL_OPT_MAX_BRANCH_LEN         100.
+#define PLL_OPT_TOL_BRANCH_LEN       1.0e-4
+#define PLL_OPT_BRANCH_LEN_OFFSET         5
+#define PLL_OPT_MIN_SUBST_RATE       1.0e-3
+#define PLL_OPT_MAX_SUBST_RATE        1000.
+#define PLL_OPT_SUBST_RATE_OFFSET        10
+#define PLL_OPT_MIN_FREQ             1.0e-3
+#define PLL_OPT_MAX_FREQ               100.
+#define PLL_OPT_FREQ_OFFSET              10
+#define PLL_OPT_MIN_ALPHA            0.0201 + PLL_LBFGSB_ERROR
+#define PLL_OPT_MAX_ALPHA              100.
+#define PLL_OPT_ALPHA_OFFSET            0.1
+#define PLL_OPT_MIN_PINV                  0
+#define PLL_OPT_MAX_PINV               0.99
+#define PLL_OPT_PINV_OFFSET             0.1
 #define PLL_OPT_LNL_UNLIKELY         -1e+80
 
 /* Branch lengths optimization algorithm */
@@ -162,7 +176,8 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                               unsigned int params_index,
                                               unsigned int freqs_index,
                                               double tolerance,
-                                              int smoothings);
+                                              int smoothings,
+                                              int keep_update);
 PLL_EXPORT double pll_optimize_branch_lengths_local (
                                               pll_partition_t * partition,
                                               pll_utree_t * tree,
@@ -170,6 +185,7 @@ PLL_EXPORT double pll_optimize_branch_lengths_local (
                                               unsigned int freqs_index,
                                               double tolerance,
                                               int smoothings,
-                                              int radius);
+                                              int radius,
+                                              int keep_update);
 
 #endif /* PLL_OPTIMIZE_H_ */
