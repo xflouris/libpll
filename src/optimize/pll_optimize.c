@@ -281,199 +281,9 @@ static unsigned int count_n_free_variables (pll_optimize_options_t * params)
 /* BRENT'S OPTIMIZATION */
 /******************************************************************************/
 
-#define ITMAX 100
-#define CGOLD 0.3819660
-#define GOLD 1.618034
-#define GLIMIT 100.0
-#define TINY 1.0e-20
-#define ZEPS 1.0e-10
-#define SHFT(a,b,c,d) (a)=(b);(b)=(c);(c)=(d);
-#define SIGN(a,b) ((b) >= 0.0 ? fabs(a) : -fabs(a))
-
-static double brent_opt (double ax, double bx, double cx, double tol,
-                             double *foptx, double *f2optx, double fax,
-                             double fbx, double fcx,
-                             void * params,
-                             double (*target_funk)(
-                                 void *,
-                                 double))
-{
-  int iter;
-  double a, b, d = 0, etemp, fu, fv, fw, fx, p, q, r, tol1, tol2, u, v, w, x,
-      xm;
-  double xw, wv, vx;
-  double e = 0.0;
-
-  a = (ax < cx ? ax : cx);
-  b = (ax > cx ? ax : cx);
-  x = bx;
-  fx = fbx;
-  if (fax < fcx)
-  {
-    w = ax;
-    fw = fax;
-    v = cx;
-    fv = fcx;
-  }
-  else
-  {
-    w = cx;
-    fw = fcx;
-    v = ax;
-    fv = fax;
-  }
-
-  for (iter = 1; iter <= ITMAX; iter++)
-  {
-    xm = 0.5 * (a + b);
-    tol2 = 2.0 * (tol1 = tol * fabs (x) + ZEPS);
-    if (fabs (x - xm) <= (tol2 - 0.5 * (b - a)))
-    {
-      *foptx = fx;
-      xw = x - w;
-      wv = w - v;
-      vx = v - x;
-      *f2optx = 2.0 * (fv * xw + fx * wv + fw * vx)
-          / (v * v * xw + x * x * wv + w * w * vx);
-      return x;
-    }
-
-    if (fabs (e) > tol1)
-    {
-      r = (x - w) * (fx - fv);
-      q = (x - v) * (fx - fw);
-      p = (x - v) * q - (x - w) * r;
-      q = 2.0 * (q - r);
-      if (q > 0.0)
-        p = -p;
-      q = fabs (q);
-      etemp = e;
-      e = d;
-      if (fabs (p) >= fabs (0.5 * q * etemp) || p <= q * (a - x)
-          || p >= q * (b - x))
-        d = CGOLD * (e = (x >= xm ? a - x : b - x));
-      else
-      {
-        d = p / q;
-        u = x + d;
-        if (u - a < tol2 || b - u < tol2)
-          d = SIGN(tol1, xm - x);
-      }
-    }
-    else
-    {
-      d = CGOLD * (e = (x >= xm ? a - x : b - x));
-    }
-
-    u = (fabs (d) >= tol1 ? x + d : x + SIGN(tol1, d));
-    fu = target_funk (params, u);
-    if (fu <= fx)
-    {
-      if (u >= x)
-        a = x;
-      else
-        b = x;
-
-      SHFT(v, w, x, u)
-      SHFT(fv, fw, fx, fu)
-    }
-    else
-    {
-      if (u < x)
-        a = u;
-      else
-        b = u;
-      if (fu <= fw || w == x)
-      {
-        v = w;
-        w = u;
-        fv = fw;
-        fw = fu;
-      }
-      else if (fu <= fv || v == x || v == w)
-      {
-        v = u;
-        fv = fu;
-      }
-    }
-  }
-
-  *foptx = fx;
-  xw = x - w;
-  wv = w - v;
-  vx = v - x;
-  *f2optx = 2.0 * (fv * xw + fx * wv + fw * vx)
-      / (v * v * xw + x * x * wv + w * w * vx);
-
-  return x;
-}
-
 static double brent_target(void * p, double x)
 {
   return compute_negative_lnl_unrooted(p, &x);
-}
-
-/* most of the code for Brent optimization taken from IQ-Tree
- * http://www.cibiv.at/software/iqtree
- * --------------------------------------------------------------------------
- * Bui Quang Minh, Minh Anh Thi Nguyen, and Arndt von Haeseler (2013)
- * Ultrafast approximation for phylogenetic bootstrap.
- * Mol. Biol. Evol., 30:1188-1195. (free reprint, DOI: 10.1093/molbev/mst024) */
-PLL_EXPORT double pll_minimize_brent(double xmin,
-                                     double xguess,
-                                     double xmax,
-                                     double xtol,
-                                     double *fx,
-                                     double *f2x,
-                                     void * params,
-                                     double (*target_funk)(
-                                         void *,
-                                         double))
-{
-  double eps, optx, ax, bx, cx, fa, fb, fc;
-  int outbounds_ax, outbounds_cx;
-
-  /* first attempt to bracketize minimum */
-  if (xguess < xmin)
-    xguess = xmin;
-  if (xguess > xmax)
-    xguess = xmax;
-  eps = xguess * xtol * 50.0;
-  ax = xguess - eps;
-  outbounds_ax = ax < xmin;
-  if (outbounds_ax)
-    ax = xmin;
-  bx = xguess;
-  cx = xguess + eps;
-  outbounds_cx = cx > xmax;
-  if (outbounds_cx)
-    cx = xmax;
-
-  /* check if this works */
-  fa = target_funk (params, ax);
-  fb = target_funk (params, bx);
-  fc = target_funk (params, cx);
-
-  /* if it works use these borders else be conservative */
-  if ((fa < fb) || (fc < fb))
-  {
-    if (!outbounds_ax)
-      fa = target_funk (params, xmin);
-    if (!outbounds_cx)
-      fc = target_funk (params, xmax);
-    ax = xmin;
-    cx = xmax;
-  }
-
-  optx = brent_opt (ax, bx, cx, xtol, fx, f2x, fa, fb, fc, params,
-                    target_funk);
-  if (*fx > fb) // if worse, return initial value
-  {
-    *fx = target_funk (params, bx);
-    return bx;
-  }
-
-  return optx; /* return optimal x */
 }
 
 static void set_range(double abs_min,
@@ -558,9 +368,10 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
   pll_partition_t * partition = params->lk_params.partition;
 
   /* L-BFGS-B parameters */
+  //  double initial_score;
   int max_corrections;
   unsigned int num_variables;
-  double initial_score, score = 0;
+  double score = 0;
   double *x, *g, *lower_bounds, *upper_bounds, *wa;
   int *bound_type, *iwa;
 
@@ -574,8 +385,6 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
   logical lsave[4];
 
   int iprint = -1;
-
-  pll_errno = 0;
 
   /* ensure that the 2 branch optimization modes are not set together */
   assert(!((params->which_parameters & PLL_PARAMETER_BRANCHES_ALL)
@@ -768,7 +577,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
           + 12 * (size_t)max_corrections * ((size_t)max_corrections + 1),
       sizeof(double));
 
-  initial_score = compute_negative_lnl_unrooted (params, x);
+  //initial_score = compute_negative_lnl_unrooted (params, x);
   int continue_opt = 1;
   while (continue_opt)
   {
@@ -1120,13 +929,6 @@ PLL_EXPORT double pll_optimize_branch_lengths_iterative (
   return lnl;
 } /* pll_optimize_branch_lengths_iterative */
 
-
-
-
-/******************************************************************************/
-/* NEWTON-RAPHSON OPTIMIZATION */
-/******************************************************************************/
-
 PLL_EXPORT double pll_derivative_func(void * parameters,
                                       double proposal,
                                       double *df, double *ddf)
@@ -1144,202 +946,4 @@ PLL_EXPORT double pll_derivative_func(void * parameters,
       params->sumtable,
       df, ddf);
   return score;
-}
-
-PLL_EXPORT double pll_minimize_newton(double x1,
-                                      double xguess,
-                                      double x2,
-                                      unsigned int max_iters,
-                                      double *score,
-                                      void * params,
-                                      double (deriv_func)(void *,
-                                                          double,
-                                                          double *, double *))
-{
-  unsigned int i;
-  double df, dx, dxold, f;
-  double temp, xh, xl, rts, rts_old;
-
-  double tolerance = 1e-4; //params->pgtol
-  pll_errno = 0;
-
-  rts = xguess;
-  if (rts < x1)
-    rts = x1;
-  if (rts > x2)
-    rts = x2;
-
-  deriv_func((void *)params, rts, &f, &df);
-
-  DBG("[NR deriv] BL=%f   f=%f  df=%f  nextBL=%f\n", rts, f, df, rts-f/df);
-  if (!isfinite(f) || !isfinite(df))
-  {
-    snprintf (pll_errmsg, 200, "wrong likelihood derivatives");
-    pll_errno = PLL_ERROR_NEWTON_DERIV;
-    return 0.0;
-  }
-  if (df >= 0.0 && fabs (f) < tolerance)
-    return rts;
-  if (f < 0.0)
-  {
-    xl = rts;
-    xh = x2;
-  }
-  else
-  {
-    xh = rts;
-    xl = x1;
-  }
-
-  dx = dxold = fabs (xh - xl);
-  for (i = 1; i <= max_iters; i++)
-  {
-    rts_old = rts;
-    if ((df <= 0.0) // function is concave
-    || (((rts - xh) * df - f) * ((rts - xl) * df - f) >= 0.0) // out of bound
-        )
-    {
-      dxold = dx;
-      dx = 0.5 * (xh - xl);
-      rts = xl + dx;
-      if (xl == rts)
-        return rts;
-    }
-    else
-    {
-      dxold = dx;
-      dx = f / df;
-      temp = rts;
-      rts -= dx;
-      if (temp == rts)
-        return rts;
-    }
-    if (fabs (dx) < tolerance || (i == max_iters))
-      return rts_old;
-
-    if (rts < x1) rts = x1;
-
-    *score = deriv_func((void *)params, rts, &f, &df);
-
-    if (!isfinite(f) || !isfinite(df))
-    {
-      snprintf (pll_errmsg, 200, "wrong likelihood derivatives [it]");
-      pll_errno = PLL_ERROR_NEWTON_DERIV;
-      return 0.0;;
-    }
-
-    if (df > 0.0 && fabs (f) < tolerance)
-    {
-      return rts;
-    }
-
-    if (f < 0.0)
-      xl = rts;
-    else
-      xh = rts;
-  }
-
-  snprintf(pll_errmsg, 200, "Exceeded maximum number of iterations");
-  pll_errno = PLL_ERROR_NEWTON_LIMIT;
-  return 0.0;
-}
-
-PLL_EXPORT double * pll_compute_empirical_frequencies(pll_partition_t * partition)
-{
-  unsigned int i, j, k;
-  double sum_test = 0.0;
-  unsigned int states = partition->states;
-  unsigned int sites = partition->sites;
-  unsigned int cats  = partition->rate_cats;
-  unsigned int tips  = partition->tips;
-
-  double * frequencies = (double *) calloc(states, sizeof(double));
-  for (i=0; i<tips; ++i)
-  {
-    for (j=0; j<sites*states*cats; j+=(states*cats))
-      {
-        double sum_site = 0.0;
-        for (k=0; k<states; ++k)
-          sum_site += partition->clv[i][j+k];
-        for (k=0; k<states; ++k)
-          frequencies[k] += partition->clv[i][j+k] / sum_site;
-      }
-  }
-
-#ifndef NDEBUG
-  for (k=0; k<states; ++k)
-  {
-    frequencies[k] /= sites * tips;
-    sum_test += frequencies[k];
-  }
-  assert ( fabs(sum_test - 1) < 1e-6);
-#endif
-
-  return frequencies;
-}
-
-PLL_EXPORT double * pll_compute_empirical_subst_rates(pll_partition_t * partition)
-{
-  unsigned int i, j, k, n;
-  unsigned int states = partition->states;
-  unsigned int sites = partition->sites;
-  unsigned int tips = partition->tips;
-  unsigned int cats = partition->rate_cats;
-  unsigned int n_subst_rates = (states * (states - 1) / 2);
-  double * subst_rates = (double *) calloc (n_subst_rates, sizeof(double));
-
-  unsigned *pair_rates = (unsigned *) alloca(
-      states * states * sizeof(unsigned));
-  memset (pair_rates, 0, sizeof(unsigned) * states * states);
-  unsigned *state_freq = (unsigned *) alloca(states * sizeof(unsigned));
-
-  unsigned int cur_site = 0;
-  for (n = 0; n < sites * states * cats; n += (states * cats))
-  {
-    memset (state_freq, 0, sizeof(unsigned) * (states));
-    for (i = 0; i < tips; ++i)
-    {
-      int unstate = 1;
-      for (k = 0; k < states; ++k)
-        if (partition->clv[i][n + k] == 0)
-        {
-          unstate = 0;
-          break;
-        }
-      if (unstate) continue;
-      for (k = 0; k < states; ++k)
-      {
-        if (partition->clv[i][n + k])
-        {
-          state_freq[k]++;
-        }
-      }
-    }
-
-    for (i = 0; i < states; i++)
-    {
-      if (state_freq[i] == 0)
-        continue;
-      for (j = i + 1; j < states; j++)
-      {
-        pair_rates[i * states + j] += state_freq[i] * state_freq[j]
-            * partition->pattern_weights[cur_site];
-      }
-    }
-    cur_site++;
-  }
-
-  k = 0;
-  double last_rate = pair_rates[(states-2)*states+states-1];
-  if (last_rate == 0) last_rate = 1;
-  for (i = 0; i < states-1; i++)
-  {
-      for (j = i+1; j < states; j++) {
-        subst_rates[k++] = pair_rates[i*states+j] / last_rate;
-          if (subst_rates[k-1] < 0.01) subst_rates[k-1] = 0.01;
-          if (subst_rates[k-1] > 50.0) subst_rates[k-1] = 50.0;
-      }
-  }
-  subst_rates[k-1] = 1.0;
-  return subst_rates;
 }

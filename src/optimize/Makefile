@@ -35,6 +35,7 @@ PROG=libpll_optimize.so
 all: $(PROG)
 
 OBJS=pll_optimize.o \
+  opt_algorithms.o opt_utils.o \
 	lbfgsb/lbfgsb.o lbfgsb/linesearch.o lbfgsb/linpack.o \
 	lbfgsb/miniCBLAS.o lbfgsb/subalgorithms.o
 

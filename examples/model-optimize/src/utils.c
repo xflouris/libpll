@@ -31,15 +31,15 @@ static void set_missing_branch_length_recursive (pll_utree_t * tree,
   if (tree)
   {
     /* set branch length to default if not set */
-    if (!tree->length)
+    //if (!tree->length)
       tree->length = length;
 
     if (tree->next)
     {
-      if (!tree->next->length)
+     //if (!tree->next->length)
         tree->next->length = length;
 
-      if (!tree->next->next->length)
+      //if (!tree->next->next->length)
         tree->next->next->length = length;
 
       set_missing_branch_length_recursive (tree->next->back, length);

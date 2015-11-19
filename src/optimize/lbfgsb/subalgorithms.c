@@ -300,7 +300,7 @@ int cauchy(int *n, double *x, double *l,
 
     /* Function Body */
     if (*sbgnrm <= 0.) {
-        DBG("[L-BFGS-B] Subnorm = 0. GCP = X.\n");
+        DBG("[L-BFGS-B] Subnorm = 0. GCP = X.\n", void);
         dcopy(n, &x[1], &c__1, &xcp[1], &c__1);
         return 0;
     }
@@ -311,7 +311,7 @@ int cauchy(int *n, double *x, double *l,
     bkmin = 0.;
     col2 = *col << 1;
     f1 = 0.;
-    DBG("[L-BFGS-B] CAUCHY entered\n");
+    DBG("[L-BFGS-B] CAUCHY entered\n", void);
 
     /*     We set p to zero and build it up as we determine d. */
     i__1 = col2;
@@ -409,12 +409,12 @@ int cauchy(int *n, double *x, double *l,
     if (nbreak == 0 && nfree == *n + 1) {
         /*                  is a zero vector, return with the initial xcp as GCP. */
 #ifdef DEBUG
-            DBG("[L-BFGS-B] Cauchy X = ");
+            DBG("[L-BFGS-B] Cauchy X = ", void);
             i__1 = *n;
             for (i = 1; i <= i__1; ++i) {
                 DBG("%5.2e ", xcp[i] );
             }
-            DBG("\n");
+            DBG("\n", void);
 #endif
         return 0;
     }
@@ -578,13 +578,13 @@ L999:
         daxpy(&col2, &dtm, &p[1], &c__1, &c__[1], &c__1);
     }
 #ifdef DEBUG
-  DBG("[L-BFGS-B] Cauchy X = ");
+  DBG("[L-BFGS-B] Cauchy X = ", void);
   i__1 = *n;
   for (i = 1; i <= i__1; ++i)
   {
     DBG("%5.2e ", xcp[i] );
   }
-  DBG("\n[L-BFGS-B] -------------- exit CAUCHY -----------\n");
+  DBG("\n[L-BFGS-B] -------------- exit CAUCHY -----------\n", void);
 #endif
     return 0;
 } /* cauchy */
@@ -1778,7 +1778,7 @@ int subsm(int *n, int *m, int *nsub, int *
     if (*nsub <= 0) {
         return 0;
     }
-    DBG("[L-BFGS-B] ---------------SUBSM entered---------\n");
+    DBG("[L-BFGS-B] ---------------SUBSM entered---------\n", void);
 
     /*     Compute wv = W'Zd. */
     pointr = *head;
@@ -1900,8 +1900,8 @@ int subsm(int *n, int *m, int *nsub, int *
     }
     if (dd_p__ > 0.) {
         dcopy(n, &xp[1], &c__1, &x[1], &c__1);
-        DBG("[L-BFGS-B] Positive dir derivative in projection \n");
-        DBG("[L-BFGS-B] Using the backtracking step\n");
+        DBG("[L-BFGS-B] Positive dir derivative in projection \n", void);
+        DBG("[L-BFGS-B] Using the backtracking step\n", void);
     } else {
         goto L911;
     }
@@ -1957,7 +1957,7 @@ int subsm(int *n, int *m, int *nsub, int *
     }
     /* ccccc */
 L911:
-    DBG("[L-BFGS-B] ----------------- exit SUBSM --------------\n");
+    DBG("[L-BFGS-B] ----------------- exit SUBSM --------------\n", void);
     return 0;
 } /* subsm */
 

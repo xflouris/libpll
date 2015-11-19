@@ -20,13 +20,13 @@
  */
 #include "utils.h"
 
-#define RATE_CATS 4
+#define RATE_CATS 1
 
 /* parameters to optimize */
 #define OPTIMIZE_BRANCHES     1
 #define OPTIMIZE_SUBST_PARAMS 1
-#define OPTIMIZE_ALPHA        1
-#define OPTIMIZE_FREQS        1
+#define OPTIMIZE_ALPHA        0
+#define OPTIMIZE_FREQS        0
 #define OPTIMIZE_PINV         0
 
 /* tolerances */

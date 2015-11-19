@@ -136,14 +136,11 @@ typedef struct
   double * sumtable;
 } pll_newton_tree_params_t;
 
-/* functions in pll_optimize.c */
+/* functions in opt_utils.c */
 PLL_EXPORT double * pll_compute_empirical_frequencies(pll_partition_t * partition);
 PLL_EXPORT double * pll_compute_empirical_subst_rates(pll_partition_t * partition);
 
-PLL_EXPORT double pll_derivative_func(void * parameters,
-                                      double proposal,
-                                      double *df, double *ddf);
-
+/* functions in opt_algorithms.c */
 /* core Newton-Raphson optimization function */
 PLL_EXPORT double pll_minimize_newton(double x1,
                                       double xguess,
@@ -154,7 +151,6 @@ PLL_EXPORT double pll_minimize_newton(double x1,
                                       double (deriv_func)(void *,
                                                           double,
                                                           double *, double *));
-
 /* core Brent optimization function */
 PLL_EXPORT double pll_minimize_brent(double xmin,
                                      double xguess,
@@ -166,6 +162,20 @@ PLL_EXPORT double pll_minimize_brent(double xmin,
                                      double (*target_funk)(
                                          void *,
                                          double));
+/* core Expectation-Maximization (EM) function */
+PLL_EXPORT void pll_minimize_em( double *w,
+                                 unsigned int w_count,
+                                 double *site_lh,
+                                 unsigned int *site_w,
+                                 unsigned int l
+                               );
+
+/* functions in pll_optimize.c */
+PLL_EXPORT double pll_derivative_func(void * parameters,
+                                      double proposal,
+                                      double *df, double *ddf);
+
+
 
 /* optimization functions */
 PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * p);
