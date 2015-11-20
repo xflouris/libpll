@@ -176,7 +176,7 @@ int main(int argc, char * argv[])
   RATE_CATS : number of rate categories we will use
   inner_nodes_count : how many scale buffers to use
   PLL_ATTRIB_ARCH_SSE : list of flags for hardware acceleration
-  PLL_ATTRIB_MIXT_GAMMA : flag for determining how to compute the CLVs on the mixture models
+  PLL_ATTRIB_MIXT_LINKED : flag for linking the matrices to the gamma rates
   */
 
   partition = pll_partition_create(tip_nodes_count,
@@ -284,7 +284,7 @@ int main(int argc, char * argv[])
     /*
     for (i = 0; i < branch_count; ++i)
     {
-      printf ("P-matrix (%d) for branch length %f\n", i, branch_lengths[i]);
+      printf ("P-matrices (%d) for branch length %f\n", i, branch_lengths[i]);
       pll_show_pmatrix(partition, i,4);
       printf ("\n");
     }
@@ -336,12 +336,13 @@ int main(int argc, char * argv[])
                            branch_lengths,
                            matrix_count);
 
-  /*
+  /* Uncomment to display the P matrices
+
   for (i = 0; i < branch_count; ++i)
   {
-    printf ("P-matrix (%d) for branch length %f\n", i, branch_lengths[i]);
-    pll_show_pmatrix(partition, i,4);
-    printf ("\n");
+      printf ("P-matrices (%d) for branch length %f\n", i, branch_lengths[i]);
+      pll_show_pmatrix (partition, i, 4);
+      printf ("\n");
   }
   */
 
