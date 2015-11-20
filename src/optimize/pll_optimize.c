@@ -24,7 +24,7 @@
 #define UPDATE_SCALERS 1
 #define BL_OPT_METHOD PLL_BRANCH_OPT_NEWTON
 
-static int is_nan(double v)
+static inline int is_nan(double v)
 {
   return v!=v;
 }
@@ -38,7 +38,7 @@ static int v_int_max (int * v, int n)
   return max;
 }
 
-static int d_equals(double a, double b)
+static inline int d_equals(double a, double b)
 {
   return (fabs(a-b) < 1e-10);
 }
@@ -369,32 +369,18 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
 
   /* L-BFGS-B parameters */
   //  double initial_score;
-  int max_corrections;
   unsigned int num_variables;
   double score = 0;
-  double *x, *g, *lower_bounds, *upper_bounds, *wa;
-  int *bound_type, *iwa;
-
-  int taskValue;
-  int *task = &taskValue;
-
-  int csaveValue;
-  int *csave = &csaveValue;
-  double dsave[29];
-  int isave[44];
-  logical lsave[4];
-
-  int iprint = -1;
+  double *x, *lower_bounds, *upper_bounds;
+  int *bound_type;
 
   /* ensure that the 2 branch optimization modes are not set together */
   assert(!((params->which_parameters & PLL_PARAMETER_BRANCHES_ALL)
       && (params->which_parameters & PLL_PARAMETER_BRANCHES_SINGLE)));
 
-  max_corrections = 5;
   num_variables = count_n_free_variables (params);
 
   x = (double *) calloc ((size_t) num_variables, sizeof(double));
-  g = (double *) calloc ((size_t) num_variables, sizeof(double));
   lower_bounds = (double *) calloc ((size_t) num_variables, sizeof(double));
   upper_bounds = (double *) calloc ((size_t) num_variables, sizeof(double));
   bound_type = (int *) calloc ((size_t) num_variables, sizeof(int));
@@ -568,65 +554,11 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     assert(check_n == num_variables);
   }
 
-  /*     We start the iteration by initializing task. */
-  *task = (int) START;
+  score = pll_minimize_lbfgsb(x, lower_bounds, upper_bounds, bound_type,
+                              num_variables, params->factr, params->pgtol,
+                              params, compute_negative_lnl_unrooted);
 
-  iwa = (int *) calloc (3 * (size_t)num_variables, sizeof(int));
-  wa = (double *) calloc (
-      (2 * (size_t)max_corrections + 5) * (size_t)num_variables
-          + 12 * (size_t)max_corrections * ((size_t)max_corrections + 1),
-      sizeof(double));
-
-  //initial_score = compute_negative_lnl_unrooted (params, x);
-  int continue_opt = 1;
-  while (continue_opt)
-  {
-    /*     This is the call to the L-BFGS-B code. */
-    setulb ((int *)&num_variables, &max_corrections, x, lower_bounds, upper_bounds,
-            bound_type, &score, g, &(params->factr), &(params->pgtol), wa, iwa,
-            task, &iprint, csave, lsave, isave, dsave);
-    if (IS_FG(*task))
-    {
-      /*
-       * the minimization routine has returned to request the
-       * function f and gradient g values at the current x.
-       * Compute function value f for the sample problem.
-       */
-
-      score = compute_negative_lnl_unrooted (params, x);
-
-      if (is_nan(score) || d_equals(score, -INFINITY))
-        break;
-
-      double h, temp;
-      for (i = 0; i < num_variables; i++)
-      {
-        temp = x[i];
-        h = PLL_LBFGSB_ERROR * fabs (temp);
-        if (h < 1e-12)
-          h = PLL_LBFGSB_ERROR;
-
-        x[i] = temp + h;
-        h = x[i] - temp;
-        double lnderiv = compute_negative_lnl_unrooted (params, x);
-
-        g[i] = (lnderiv - score) / h;
-
-        /* reset variable */
-        x[i] = temp;
-      }
-
-      if (!set_x_to_parameters (params, x))
-        return -INFINITY;
-    }
-    else if (*task != NEW_X)
-      continue_opt = 0;
-  }
-
-  free (iwa);
-  free (wa);
   free (x);
-  free (g);
   free (lower_bounds);
   free (upper_bounds);
   free (bound_type);
@@ -643,6 +575,9 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
 
   return score;
 } /* pll_optimize_parameters_lbfgsb */
+
+
+
 
 /******************************************************************************/
 /* GENERIC */

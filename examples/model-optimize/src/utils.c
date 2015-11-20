@@ -31,15 +31,15 @@ static void set_missing_branch_length_recursive (pll_utree_t * tree,
   if (tree)
   {
     /* set branch length to default if not set */
-    //if (!tree->length)
+    if (!tree->length)
       tree->length = length;
 
     if (tree->next)
     {
-     //if (!tree->next->length)
+     if (!tree->next->length)
         tree->next->length = length;
 
-      //if (!tree->next->next->length)
+      if (!tree->next->next->length)
         tree->next->next->length = length;
 
       set_missing_branch_length_recursive (tree->next->back, length);
@@ -284,3 +284,126 @@ pll_partition_t * partition_fasta_create (const char *file,
 
   return partition;
 } /* create_partition_fasta */
+
+static void update_clvs(pll_partition_t * partition,
+                        unsigned int params_index,
+                        unsigned int * matrix_indices,
+                        double * branch_lengths,
+                        pll_operation_t * operations)
+{
+  unsigned int n_branches = 2*partition->tips - 3;
+  unsigned int n_inner    = partition->tips - 2;
+
+  if (matrix_indices)
+    pll_update_prob_matrices (partition, 0,
+                              matrix_indices,
+                              branch_lengths,
+                              n_branches);
+  if (operations)
+    pll_update_partials (partition,
+                         operations,
+                         n_inner);
+}
+
+double target_rates_opt (void * p, double * x)
+{
+  my_params_t * params = (my_params_t *) p;
+  pll_partition_t * partition = params->partition;
+  double score;
+
+  /* set x to partition */
+  int * symm;
+  int n_subst_rates;
+  double * subst_rates;
+
+  symm = params->symmetries;
+  n_subst_rates = partition->states * (partition->states - 1) / 2;
+  subst_rates = (double *) malloc ((size_t) n_subst_rates * sizeof(double));
+
+  assert(subst_rates);
+
+  if (symm)
+  {
+    int i, j, k;
+    int n_subst_free_params = params->n_subst_params;
+
+    /* assign values to the substitution rates */
+    k = 0;
+    for (i = 0; i <= n_subst_free_params; i++)
+    {
+      double next_value = (i == symm[n_subst_rates - 1]) ? 1.0 : x[k++];
+      for (j = 0; j < n_subst_rates; j++)
+        if (symm[j] == i)
+        {
+          subst_rates[j] = next_value;
+        }
+    }
+  }
+  else
+  {
+    memcpy (subst_rates, x, ((size_t) n_subst_rates - 1) * sizeof(double));
+    subst_rates[n_subst_rates - 1] = 1.0;
+  }
+  pll_set_subst_params (partition, params->params_index, params->mixture_index,
+                        subst_rates);
+  free (subst_rates);
+
+  update_clvs(partition,
+              params->params_index,
+              params->matrix_indices,
+              params->branch_lengths,
+              params->operations);
+
+  score = -1
+      * pll_compute_edge_loglikelihood (partition, params->parent_clv_index,
+                                        params->parent_scaler_index,
+                                        params->child_clv_index,
+                                        params->child_scaler_index,
+                                        params->edge_pmatrix_index,
+                                        params->freqs_index);
+
+  return score;
+}
+
+double target_freqs_opt (void * p, double * x)
+{
+  my_params_t * params = (my_params_t *) p;
+  pll_partition_t * partition = params->partition;
+  double score;
+  unsigned int i;
+
+  unsigned int n_states = partition->states;
+  unsigned int cur_index;
+  double sum_ratios = 1.0;
+  double *freqs = (double *) malloc ((size_t) n_states * sizeof(double));
+  for (i = 0; i < (n_states - 1); ++i)
+  {
+    sum_ratios += x[i];
+  }
+  cur_index = 0;
+  for (i = 0; i < (n_states); ++i)
+  {
+    if (i != params->highest_freq_state)
+    {
+      freqs[i] = x[cur_index] / sum_ratios;
+      cur_index++;
+    }
+  }
+  freqs[params->highest_freq_state] = 1.0 / sum_ratios;
+  pll_set_frequencies (partition, params->params_index, params->mixture_index,
+                       freqs);
+  free (freqs);
+
+  update_clvs (partition, params->params_index, params->matrix_indices,
+               params->branch_lengths, params->operations);
+
+  score = -1
+      * pll_compute_edge_loglikelihood (partition, params->parent_clv_index,
+                                        params->parent_scaler_index,
+                                        params->child_clv_index,
+                                        params->child_scaler_index,
+                                        params->edge_pmatrix_index,
+                                        params->freqs_index);
+
+  return score;
+}

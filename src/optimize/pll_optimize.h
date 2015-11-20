@@ -85,6 +85,8 @@
 
 /* Structure with information necessary for evaluating the likelihood */
 
+/* Custom parameters structures provided by PLL for the
+ * high level optimization functions (L-BFGS-B + Brent). */
 typedef struct
 {
   pll_partition_t * partition;
@@ -111,8 +113,6 @@ typedef struct
   double alpha_value;
 } pll_likelihood_info_t;
 
-/* Structure with information for parameter optimization */
-
 typedef struct
 {
   pll_likelihood_info_t lk_params;
@@ -127,6 +127,8 @@ typedef struct
   double * sumtable;
 } pll_optimize_options_t;
 
+/* Custom parameters structure provided by PLL for the
+ * high level optimization functions (Newton-Raphson). */
  typedef struct
 {
   pll_partition_t * partition;
@@ -140,6 +142,8 @@ typedef struct
 PLL_EXPORT double * pll_compute_empirical_frequencies(pll_partition_t * partition);
 PLL_EXPORT double * pll_compute_empirical_subst_rates(pll_partition_t * partition);
 
+/******************************************************************************/
+
 /* functions in opt_algorithms.c */
 /* core Newton-Raphson optimization function */
 PLL_EXPORT double pll_minimize_newton(double x1,
@@ -147,10 +151,22 @@ PLL_EXPORT double pll_minimize_newton(double x1,
                                       double x2,
                                       unsigned int max_iters,
                                       double *score,
-                                      void * params,
+                                      void *params,
                                       double (deriv_func)(void *,
                                                           double,
                                                           double *, double *));
+/* core L-BFGS-B optimization function */
+PLL_EXPORT double pll_minimize_lbfgsb (double *x,
+                                       double *xmin,
+                                       double *xmax,
+                                       int *bound,
+                                       unsigned int n,
+                                       double factr,
+                                       double pgtol,
+                                       void *params,
+                                       double (*target_funk)(
+                                               void *,
+                                               double *));
 /* core Brent optimization function */
 PLL_EXPORT double pll_minimize_brent(double xmin,
                                      double xguess,
@@ -158,7 +174,7 @@ PLL_EXPORT double pll_minimize_brent(double xmin,
                                      double xtol,
                                      double *fx,
                                      double *f2x,
-                                     void * params,
+                                     void *params,
                                      double (*target_funk)(
                                          void *,
                                          double));
@@ -170,14 +186,14 @@ PLL_EXPORT void pll_minimize_em( double *w,
                                  unsigned int l
                                );
 
+/******************************************************************************/
+
 /* functions in pll_optimize.c */
 PLL_EXPORT double pll_derivative_func(void * parameters,
                                       double proposal,
                                       double *df, double *ddf);
 
-
-
-/* optimization functions */
+/* high level optimization functions */
 PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * p);
 PLL_EXPORT double pll_optimize_parameters_lbfgsb(pll_optimize_options_t * p);
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (

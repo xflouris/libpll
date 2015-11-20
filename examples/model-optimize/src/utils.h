@@ -18,6 +18,31 @@
 #define STATES    4
 #define SUBST_PARAMS (STATES*(STATES-1)/2)
 
+typedef struct
+{
+  pll_partition_t * partition;
+  unsigned int parent_clv_index;
+  unsigned int parent_scaler_index;
+  unsigned int child_clv_index;
+  unsigned int child_scaler_index;
+  unsigned int edge_pmatrix_index;
+  unsigned int freqs_index;
+  unsigned int params_index;
+  unsigned int mixture_index;
+
+  /* traverse */
+  unsigned int * matrix_indices;
+  double * branch_lengths;
+  pll_operation_t * operations;
+
+  /* subst rate specific */
+  int * symmetries;
+  int n_subst_params;
+
+  /* frequency specific */
+  unsigned int highest_freq_state;
+} my_params_t;
+
 void fatal (const char * format, ...) __attribute__ ((noreturn));
 
 pll_partition_t * partition_fasta_create (const char *file,
@@ -35,5 +60,10 @@ int * build_model_symmetries (const char * modelmatrix);
 
 /* a callback function for performing a full traversal */
 int cb_full_traversal(pll_utree_t * node);
+
+/* a callback function for rates optimization */
+double target_rates_opt(void * params, double * x);
+/* a callback function for frequencies optimization */
+double target_freqs_opt (void * p, double * x);
 
 #endif /* UTILS_H_ */

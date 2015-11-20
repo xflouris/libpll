@@ -25,8 +25,8 @@
 /* parameters to optimize */
 #define OPTIMIZE_BRANCHES     1
 #define OPTIMIZE_SUBST_PARAMS 1
-#define OPTIMIZE_ALPHA        0
-#define OPTIMIZE_FREQS        0
+#define OPTIMIZE_ALPHA        1
+#define OPTIMIZE_FREQS        1
 #define OPTIMIZE_PINV         0
 
 /* tolerances */
@@ -43,6 +43,24 @@
 /* if KEEP_UPDATE, branch lengths are iteratively updated during the
  * optimization process */
 #define KEEP_UPDATE 1
+
+#define MAX_LBFGSB_PARAMETERS 10
+
+static void fill_subst_rates(unsigned int n_subst_rates,
+                             unsigned int n_subst_free_params,
+                             double *subst_params,
+                             int * symmetries,
+                             double *x,
+                             int *bt,
+                             double *lb,
+                             double *ub);
+static void fill_frequencies(unsigned int n_frequencies,
+                             double *frequencies,
+                             unsigned int * highest_freq_state,
+                             double *x,
+                             int *bt,
+                             double *lb,
+                             double *ub);
 
 static int v_int_max (int * v, int n)
 {
@@ -78,6 +96,13 @@ int main (int argc, char * argv[])
   int parameters_to_optimize;
   int * subst_params_symmetries;
   int n_subst_free_params;
+
+  double x[MAX_LBFGSB_PARAMETERS],
+         lb[MAX_LBFGSB_PARAMETERS],
+         ub[MAX_LBFGSB_PARAMETERS];
+  int bt[MAX_LBFGSB_PARAMETERS];
+  double factr = 1e7,
+         pgtol = OPT_PARAM_EPSILON;
 
   time_t start_time, end_time;
 
@@ -238,7 +263,7 @@ int main (int argc, char * argv[])
   free (newick);
   printf ("Log-L: %f\n", logl);
 
-  /* pll stuff */
+  /* example using high level algorithms (structure provided by libpll) */
   params.lk_params.partition = partition;
   params.lk_params.operations = operations;
   params.lk_params.branch_lengths = branch_lengths;
@@ -259,6 +284,24 @@ int main (int argc, char * argv[])
   params.subst_params_symmetries = subst_params_symmetries;
   params.factr = 1e7;
   params.pgtol = OPT_PARAM_EPSILON;
+
+  /* example using low level minimization algorithms for L-BFGS-B */
+  my_params_t my_params;
+  my_params.partition = partition;
+  my_params.parent_clv_index = tree->clv_index;
+  my_params.parent_scaler_index = tree->scaler_index;
+  my_params.child_clv_index = tree->back->clv_index;
+  my_params.child_scaler_index = tree->back->scaler_index;
+  my_params.edge_pmatrix_index = tree->pmatrix_index;
+  my_params.freqs_index = 0;
+  my_params.params_index = 0;
+  my_params.mixture_index = 0;
+
+  my_params.symmetries = subst_params_symmetries;
+  my_params.n_subst_params = n_subst_free_params;
+  my_params.matrix_indices = matrix_indices;
+  my_params.branch_lengths = branch_lengths;
+  my_params.operations = operations;
 
   parameters_to_optimize =
       (OPTIMIZE_SUBST_PARAMS * PLL_PARAMETER_SUBST_RATES * n_subst_free_params > 0)
@@ -327,8 +370,6 @@ int main (int argc, char * argv[])
 
       printf ("  %5ld s [branches]: %f\n", time (NULL) - start_time, cur_logl);
 
-      assert(cur_logl >= lnl_monitor);
-
       if (CHECK_LOCAL_CONVERGENCE && cur_logl - lnl_monitor < OPT_EPSILON)
       {
         parameters_to_optimize &= ~PLL_PARAMETER_BRANCHES_ALL;
@@ -339,8 +380,15 @@ int main (int argc, char * argv[])
 
     if (parameters_to_optimize & PLL_PARAMETER_SUBST_RATES)
     {
-      params.which_parameters = PLL_PARAMETER_SUBST_RATES;
-      cur_logl = -1 * pll_optimize_parameters_lbfgsb (&params);
+      fill_subst_rates(6,
+                       n_subst_free_params,
+                       partition->subst_params[my_params.params_index],
+                       my_params.symmetries,
+                       x,bt,lb,ub);
+
+      cur_logl = -1
+          * pll_minimize_lbfgsb (x, lb, ub, bt, n_subst_free_params, factr,
+                                 pgtol, &my_params, target_rates_opt);
 
       printf ("  %5ld s [s_rates]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             %f %f %f %f %f %f\n", partition->subst_params[0][0],
@@ -348,10 +396,8 @@ int main (int argc, char * argv[])
               partition->subst_params[0][3], partition->subst_params[0][4],
               partition->subst_params[0][5]);
 
-      assert(cur_logl >= lnl_monitor);
-
       if (CHECK_LOCAL_CONVERGENCE && cur_logl - lnl_monitor < OPT_EPSILON)
-              parameters_to_optimize &= ~PLL_PARAMETER_SUBST_RATES;
+        parameters_to_optimize &= ~PLL_PARAMETER_SUBST_RATES;
 
       lnl_monitor = cur_logl;
     }
@@ -366,8 +412,6 @@ int main (int argc, char * argv[])
 #endif
       printf ("  %5ld s [alpha]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             %f\n", params.lk_params.alpha_value);
-
-      assert(cur_logl >= lnl_monitor);
 
       if (CHECK_LOCAL_CONVERGENCE && cur_logl - lnl_monitor < OPT_EPSILON)
         parameters_to_optimize &= ~PLL_PARAMETER_ALPHA;
@@ -386,8 +430,6 @@ int main (int argc, char * argv[])
       printf ("  %5ld s [p-inv]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             %f\n", partition->prop_invar[0]);
 
-      assert(cur_logl >= lnl_monitor);
-
       if (CHECK_LOCAL_CONVERGENCE && cur_logl - lnl_monitor < OPT_EPSILON)
         parameters_to_optimize &= ~PLL_PARAMETER_PINV;
 
@@ -396,20 +438,27 @@ int main (int argc, char * argv[])
 
     if (parameters_to_optimize & PLL_PARAMETER_FREQUENCIES)
     {
-      params.which_parameters = PLL_PARAMETER_FREQUENCIES;
-      cur_logl = -1 * pll_optimize_parameters_lbfgsb (&params);
+      unsigned int states = partition->states;
+      double * frequencies = partition->frequencies[my_params.params_index];
+
+      fill_frequencies(states,
+                       frequencies,
+                       &(params.highest_freq_state),
+                       x, bt, lb, ub);
+
+      cur_logl = -1
+          * pll_minimize_lbfgsb (x, lb, ub, bt, n_subst_free_params, factr,
+                                 pgtol, &my_params, target_freqs_opt);
+
       printf ("  %5ld s [freqs]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             ");
       for (i = 0; i < partition->states; i++)
         printf ("%f ", partition->frequencies[0][i]);
       printf ("\n");
 
-      assert(cur_logl >= lnl_monitor);
-
       if (CHECK_LOCAL_CONVERGENCE && cur_logl - lnl_monitor < OPT_EPSILON)
         parameters_to_optimize &= ~PLL_PARAMETER_FREQUENCIES;
 
-      lnl_monitor = cur_logl;
     }
 
     printf ("Iteration: %5ld s. : %f\n", time (NULL) - start_time, cur_logl);
@@ -444,4 +493,65 @@ int main (int argc, char * argv[])
   free (operations);
 
   return (0);
+}
+
+static void fill_subst_rates(unsigned int n_subst_rates,
+                             unsigned int n_subst_free_params,
+                             double *subst_params,
+                             int * symmetries,
+                             double *x,
+                             int *bt,
+                             double *lb,
+                             double *ub)
+{
+  unsigned int i;
+  int current_rate = 0;
+
+  for (i = 0; i < n_subst_free_params; i++)
+  {
+    bt[i] = PLL_LBFGSB_BOUND_BOTH;
+    unsigned int j = i;
+    if (symmetries[n_subst_rates - 1] == current_rate)
+      current_rate++;
+    for (j = 0; j < n_subst_rates; j++)
+    {
+      if (symmetries[j] == current_rate)
+        break;
+    }
+    current_rate++;
+
+    lb[i] = 1e-3;
+    ub[i] = 100;
+    double r = subst_params[j];
+    x[i] = (r > lb[i] && r < ub[i]) ? r : 1.0;
+  }
+}
+
+static void fill_frequencies(unsigned int n_frequencies,
+                             double *frequencies,
+                             unsigned int * highest_freq_state,
+                             double *x,
+                             int *bt,
+                             double *lb,
+                             double *ub)
+{
+  unsigned int i, cur_index = 0;
+
+  *highest_freq_state = 3;
+  for (i = 1; i < n_frequencies; i++)
+    if (frequencies[i] > frequencies[*highest_freq_state])
+      *highest_freq_state = i;
+
+  for (i = 0; i < n_frequencies; i++)
+  {
+    if (i != *highest_freq_state)
+    {
+      bt[cur_index] = PLL_LBFGSB_BOUND_BOTH;
+      double r = frequencies[i] / frequencies[*highest_freq_state];
+      lb[cur_index] = PLL_OPT_MIN_FREQ;
+      ub[cur_index] = PLL_OPT_MAX_FREQ;
+      x[i] = (r > lb[i] && r < ub[i]) ? r : 1.0;
+      cur_index++;
+    }
+  }
 }

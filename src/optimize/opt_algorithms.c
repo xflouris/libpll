@@ -21,6 +21,226 @@
 #include "pll_optimize.h"
 #include "lbfgsb/lbfgsb.h"
 
+static inline int is_nan(double v)
+{
+  return v!=v;
+}
+
+static inline int d_equals(double a, double b)
+{
+  return (fabs(a-b) < 1e-10);
+}
+
+/******************************************************************************/
+/* NEWTON-RAPHSON OPTIMIZATION */
+/******************************************************************************/
+
+PLL_EXPORT double pll_minimize_newton(double x1,
+                                      double xguess,
+                                      double x2,
+                                      unsigned int max_iters,
+                                      double *score,
+                                      void * params,
+                                      double (deriv_func)(void *,
+                                                          double,
+                                                          double *, double *))
+{
+  unsigned int i;
+  double df, dx, dxold, f;
+  double temp, xh, xl, rts, rts_old;
+
+  double tolerance = 1e-4; //params->pgtol
+
+  rts = xguess;
+  if (rts < x1)
+    rts = x1;
+  if (rts > x2)
+    rts = x2;
+
+  deriv_func((void *)params, rts, &f, &df);
+
+  DBG("[NR deriv] BL=%f   f=%f  df=%f  nextBL=%f\n", rts, f, df, rts-f/df);
+  if (!isfinite(f) || !isfinite(df))
+  {
+    snprintf (pll_errmsg, 200, "wrong likelihood derivatives");
+    pll_errno = PLL_ERROR_NEWTON_DERIV;
+    return 0.0;
+  }
+  if (df >= 0.0 && fabs (f) < tolerance)
+    return rts;
+  if (f < 0.0)
+  {
+    xl = rts;
+    xh = x2;
+  }
+  else
+  {
+    xh = rts;
+    xl = x1;
+  }
+
+  dx = dxold = fabs (xh - xl);
+  for (i = 1; i <= max_iters; i++)
+  {
+    rts_old = rts;
+    if ((df <= 0.0) // function is concave
+    || (((rts - xh) * df - f) * ((rts - xl) * df - f) >= 0.0) // out of bound
+        )
+    {
+      dxold = dx;
+      dx = 0.5 * (xh - xl);
+      rts = xl + dx;
+      if (xl == rts)
+        return rts;
+    }
+    else
+    {
+      dxold = dx;
+      dx = f / df;
+      temp = rts;
+      rts -= dx;
+      if (temp == rts)
+        return rts;
+    }
+    if (fabs (dx) < tolerance || (i == max_iters))
+      return rts_old;
+
+    if (rts < x1) rts = x1;
+
+    *score = deriv_func((void *)params, rts, &f, &df);
+
+    if (!isfinite(f) || !isfinite(df))
+    {
+      snprintf (pll_errmsg, 200, "wrong likelihood derivatives [it]");
+      pll_errno = PLL_ERROR_NEWTON_DERIV;
+      return 0.0;;
+    }
+
+    if (df > 0.0 && fabs (f) < tolerance)
+    {
+      return rts;
+    }
+
+    if (f < 0.0)
+      xl = rts;
+    else
+      xh = rts;
+  }
+
+  snprintf(pll_errmsg, 200, "Exceeded maximum number of iterations");
+  pll_errno = PLL_ERROR_NEWTON_LIMIT;
+  return 0.0;
+}
+
+/******************************************************************************/
+/* L-BFGS-B OPTIMIZATION */
+/******************************************************************************/
+
+PLL_EXPORT double pll_minimize_lbfgsb (double * x,
+                                       double * xmin,
+                                       double * xmax,
+                                       int * bound,
+                                       unsigned int n,
+                                       double factr,
+                                       double pgtol,
+                                       void * params,
+                                       double (*target_funk)(
+                                               void *,
+                                               double *))
+{
+  unsigned int i;
+
+  /* L-BFGS-B parameters */
+  //  double initial_score;
+  int max_corrections;
+  double score = 0;
+  double *g, *wa;
+  int *iwa;
+
+  int taskValue;
+  int *task = &taskValue;
+
+  int csaveValue;
+  int *csave = &csaveValue;
+  double dsave[29];
+  int isave[44];
+  logical lsave[4];
+
+  int iprint = -1;
+
+  max_corrections = 5;
+
+  g = (double *) calloc ((size_t) n, sizeof(double));
+
+  /*     We start the iteration by initializing task. */
+  *task = (int) START;
+
+  iwa = (int *) calloc (3 * (size_t)n, sizeof(int));
+  wa = (double *) calloc (
+      (2 * (size_t)max_corrections + 5) * (size_t)n
+          + 12 * (size_t)max_corrections * ((size_t)max_corrections + 1),
+      sizeof(double));
+
+  //initial_score = compute_negative_lnl_unrooted (params, x);
+  int continue_opt = 1;
+  while (continue_opt)
+  {
+    /*     This is the call to the L-BFGS-B code. */
+    setulb ((int *)&n, &max_corrections, x, xmin, xmax,
+            bound, &score, g, &factr, &pgtol, wa, iwa,
+            task, &iprint, csave, lsave, isave, dsave);
+    if (IS_FG(*task))
+    {
+      /*
+       * the minimization routine has returned to request the
+       * function f and gradient g values at the current x.
+       * Compute function value f for the sample problem.
+       */
+
+      score = target_funk(params, x);
+
+      if (is_nan(score) || d_equals(score, -INFINITY))
+        break;
+
+      double h, temp;
+      for (i = 0; i < n; i++)
+      {
+        temp = x[i];
+        h = PLL_LBFGSB_ERROR * fabs (temp);
+        if (h < 1e-12)
+          h = PLL_LBFGSB_ERROR;
+
+        x[i] = temp + h;
+        h = x[i] - temp;
+        double lnderiv = target_funk(params, x);
+
+        g[i] = (lnderiv - score) / h;
+
+        /* reset variable */
+        x[i] = temp;
+      }
+    }
+    else if (*task != NEW_X)
+      continue_opt = 0;
+  }
+
+  free (iwa);
+  free (wa);
+  free (g);
+
+  if (is_nan(score))
+  {
+    score = -INFINITY;
+    if (!pll_errno)
+    {
+      pll_errno = PLL_ERROR_LBFGSB_UNKNOWN;
+      snprintf(pll_errmsg, 200, "Unknown LBFGSB error");
+    }
+  }
+
+  return score;
+} /* pll_minimize_lbfgsb */
+
 /******************************************************************************/
 /* BRENT'S OPTIMIZATION */
 /******************************************************************************/
@@ -219,107 +439,9 @@ PLL_EXPORT double pll_minimize_brent(double xmin,
 }
 
 /******************************************************************************/
-/* NEWTON-RAPHSON OPTIMIZATION */
+/* EXPECTATION-MAXIMIZATION (EM)     */
+/* Wang, Li, Susko, and Roger (2008) */
 /******************************************************************************/
-
-PLL_EXPORT double pll_minimize_newton(double x1,
-                                      double xguess,
-                                      double x2,
-                                      unsigned int max_iters,
-                                      double *score,
-                                      void * params,
-                                      double (deriv_func)(void *,
-                                                          double,
-                                                          double *, double *))
-{
-  unsigned int i;
-  double df, dx, dxold, f;
-  double temp, xh, xl, rts, rts_old;
-
-  double tolerance = 1e-4; //params->pgtol
-
-  rts = xguess;
-  if (rts < x1)
-    rts = x1;
-  if (rts > x2)
-    rts = x2;
-
-  deriv_func((void *)params, rts, &f, &df);
-
-  DBG("[NR deriv] BL=%f   f=%f  df=%f  nextBL=%f\n", rts, f, df, rts-f/df);
-  if (!isfinite(f) || !isfinite(df))
-  {
-    snprintf (pll_errmsg, 200, "wrong likelihood derivatives");
-    pll_errno = PLL_ERROR_NEWTON_DERIV;
-    return 0.0;
-  }
-  if (df >= 0.0 && fabs (f) < tolerance)
-    return rts;
-  if (f < 0.0)
-  {
-    xl = rts;
-    xh = x2;
-  }
-  else
-  {
-    xh = rts;
-    xl = x1;
-  }
-
-  dx = dxold = fabs (xh - xl);
-  for (i = 1; i <= max_iters; i++)
-  {
-    rts_old = rts;
-    if ((df <= 0.0) // function is concave
-    || (((rts - xh) * df - f) * ((rts - xl) * df - f) >= 0.0) // out of bound
-        )
-    {
-      dxold = dx;
-      dx = 0.5 * (xh - xl);
-      rts = xl + dx;
-      if (xl == rts)
-        return rts;
-    }
-    else
-    {
-      dxold = dx;
-      dx = f / df;
-      temp = rts;
-      rts -= dx;
-      if (temp == rts)
-        return rts;
-    }
-    if (fabs (dx) < tolerance || (i == max_iters))
-      return rts_old;
-
-    if (rts < x1) rts = x1;
-
-    *score = deriv_func((void *)params, rts, &f, &df);
-
-    if (!isfinite(f) || !isfinite(df))
-    {
-      snprintf (pll_errmsg, 200, "wrong likelihood derivatives [it]");
-      pll_errno = PLL_ERROR_NEWTON_DERIV;
-      return 0.0;;
-    }
-
-    if (df > 0.0 && fabs (f) < tolerance)
-    {
-      return rts;
-    }
-
-    if (f < 0.0)
-      xl = rts;
-    else
-      xh = rts;
-  }
-
-  snprintf(pll_errmsg, 200, "Exceeded maximum number of iterations");
-  pll_errno = PLL_ERROR_NEWTON_LIMIT;
-  return 0.0;
-}
-
-// Wang, Li, Susko, and Roger (2008)
 PLL_EXPORT void pll_minimize_em( double *w,
                                  unsigned int w_count,
                                  double *site_lh,
