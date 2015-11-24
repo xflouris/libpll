@@ -204,6 +204,7 @@ PLL_EXPORT int pll_utree_TBR(pll_utree_t * b_edge, pll_edge_t * r_edge)
   /* 1. bisection point must not be a leaf branch */
   if (!(b_edge->next && b_edge->back->next))
   {
+    snprintf (pll_errmsg, 200, "attempting to bisect at a leaf node");
     pll_errno = PLL_ERROR_TBR_LEAF_BISECTION;
     return PLL_FAILURE;
   }
@@ -218,6 +219,7 @@ PLL_EXPORT int pll_utree_TBR(pll_utree_t * b_edge, pll_edge_t * r_edge)
       b_edge->back == r_edge->edge.utree.child ||
       b_edge->back == r_edge->edge.utree.child->back)
   {
+    snprintf (pll_errmsg, 200, "TBR nodes are overlapped");
     pll_errno = PLL_ERROR_TBR_OVERLAPPED_NODES;
     return PLL_FAILURE;
   }
@@ -230,6 +232,7 @@ PLL_EXPORT int pll_utree_TBR(pll_utree_t * b_edge, pll_edge_t * r_edge)
       !(utree_find_node_in_subtree(b_edge->back, r_edge->edge.utree.parent) &&
         utree_find_node_in_subtree(b_edge, r_edge->edge.utree.child)))
   {
+    snprintf (pll_errmsg, 200, "TBR reconnection in same subtree");
     pll_errno = PLL_ERROR_TBR_SAME_SUBTREE;
     return PLL_FAILURE;
   }
@@ -349,6 +352,43 @@ PLL_EXPORT int pll_utree_nodes_at_edge_dist(pll_utree_t * root,
 
   utree_nodes_at_dist(root->back, outbuffer, n_nodes, distance, depth+1, fixed);
   utree_nodes_at_dist(root, outbuffer, n_nodes, distance, depth, fixed);
+
+  return PLL_SUCCESS;
+}
+
+static void interchange_attributes(pll_utree_t * node1,
+                                   pll_utree_t * node2)
+{
+  unsigned int tmp_clvid = node1->clv_index;
+  int tmp_scalerindex    = node1->scaler_index;
+  void *tmp_data         = node1->data;
+  char *tmp_label        = node1->label;
+  node2->clv_index       = tmp_clvid;
+  node2->scaler_index    = tmp_scalerindex;
+  node2->data            = tmp_data;
+  node2->label           = tmp_label;
+}
+
+PLL_EXPORT int pll_utree_interchange(pll_utree_t * node1,
+                                     pll_utree_t * node2)
+{
+  pll_utree_t *next1 = node1->next;
+  pll_utree_t *next2 = node2->next;
+
+
+  if (!(next1 || next2))
+  {
+    snprintf (pll_errmsg, 200, "attempting to interchange a leaf node");
+    pll_errno = PLL_ERROR_INTERCHANGE_LEAF;
+    return PLL_FAILURE;
+  }
+
+  next1->next->next = node2;
+  node2->next = next1;
+  next2->next->next = node1;
+  node1->next = next2;
+
+  interchange_attributes(node1, node2);
 
   return PLL_SUCCESS;
 }

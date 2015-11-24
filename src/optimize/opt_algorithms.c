@@ -444,36 +444,49 @@ PLL_EXPORT double pll_minimize_brent(double xmin,
 /******************************************************************************/
 PLL_EXPORT void pll_minimize_em( double *w,
                                  unsigned int w_count,
-                                 double *site_lh,
+                                 double *sitecat_lh,
                                  unsigned int *site_w,
-                                 unsigned int l
-                               )
+                                 unsigned int l,
+                                 void * params,
+                                 double (*update_sitecatlk_funk)(
+                                     void *,
+                                     double *))
 {
   unsigned int i, c;
   unsigned int max_steps = 10;
   int converged = 0;
+  int ratio_scale = 0;
 
   double *new_prop = (double *) malloc(sizeof(double) * w_count);
   double *ratio_prop = (double *) malloc(sizeof(double) * w_count);
 
   while (!converged && max_steps--)
   {
+    /* update site-cat LK */
+    double lnl = update_sitecatlk_funk(params, sitecat_lh);
+
     // Expectation
-    double *this_lk_cat = site_lh;
-    for (i = 0; i < l; ++i)
+    double *this_lk_cat = sitecat_lh;
+    if (ratio_scale)
     {
-      for (c = 0; c < w_count; c++)
+      for (i = 0; i < l; ++i)
       {
-        this_lk_cat[c] *= ratio_prop[c];
+        for (c = 0; c < w_count; c++)
+        {
+          this_lk_cat[c] *= ratio_prop[c];
+        }
+        this_lk_cat += w_count;
       }
-      this_lk_cat += w_count;
     }
+    else
+      ratio_scale = 1;
+
     memset (new_prop, 0, w_count * sizeof(double));
 
-    this_lk_cat = site_lh;
+    this_lk_cat = sitecat_lh;
     for (i=0; i<l; ++i)
     {
-      //TODO: freqs * p_invar can be precomputed
+      //TODO: Check for p_invar
       double lk_ptn = 0;
       for (c = 0; c < w_count; c++)
       {

@@ -173,6 +173,42 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
     free(rate_cats);
     xptr++;
   }
+
+  /* update free rates */
+  if (params->which_parameters & PLL_PARAMETER_FREE_RATES)
+  {
+    pll_set_category_rates (partition, xptr);
+    xptr += params->lk_params.partition->rate_cats;
+  }
+
+  /* update rate weights */
+  if (params->which_parameters & PLL_PARAMETER_RATE_WEIGHTS)
+  {
+    unsigned int i;
+        unsigned int n_rate_cats = params->lk_params.partition->rate_cats;
+        unsigned int cur_index;
+        double sum_ratios = 1.0;
+        double *weights = (double *) malloc((size_t)n_rate_cats*sizeof(double));
+        for (i = 0; i < (n_rate_cats - 1); ++i)
+        {
+          assert(!is_nan(xptr[i]));
+          sum_ratios += xptr[i];
+        }
+        cur_index = 0;
+        for (i = 0; i < (n_rate_cats); ++i)
+        {
+          if (i != params->highest_freq_state)
+          {
+            weights[i] = xptr[cur_index] / sum_ratios;
+            cur_index++;
+          }
+        }
+        weights[params->highest_freq_state] = 1.0 / sum_ratios;
+        pll_set_category_weights(partition, weights);
+        free (weights);
+        xptr += (n_rate_cats - 1);
+  }
+
   /* update all branch lengths */
   if (params->which_parameters & PLL_PARAMETER_BRANCHES_ALL)
   {
@@ -180,6 +216,7 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
     memcpy (branch_lengths, xptr, (size_t)n_branches * sizeof(double));
     xptr += n_branches;
   }
+
   /* update single branch */
   if (params->which_parameters & PLL_PARAMETER_BRANCHES_SINGLE)
    {
@@ -264,6 +301,10 @@ static unsigned int count_n_free_variables (pll_optimize_options_t * params)
     num_variables += partition->states - 1;
   num_variables += (params->which_parameters & PLL_PARAMETER_PINV) != 0;
   num_variables += (params->which_parameters & PLL_PARAMETER_ALPHA) != 0;
+  if (params->which_parameters & PLL_PARAMETER_FREE_RATES)
+    num_variables += partition->rate_cats;
+  if (params->which_parameters & PLL_PARAMETER_RATE_WEIGHTS)
+    num_variables += partition->rate_cats - 1;
   num_variables += (params->which_parameters & PLL_PARAMETER_BRANCHES_SINGLE)
       != 0;
   if (params->which_parameters & PLL_PARAMETER_BRANCHES_ALL)
@@ -507,6 +548,85 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
       l_ptr++;
       u_ptr++;
     }
+
+    /* update free rates */
+      if (params->which_parameters & PLL_PARAMETER_FREE_RATES)
+      {
+        int n_cats = params->lk_params.partition->rate_cats;
+        int i;
+        double *xptr = &x[check_n];
+        memcpy(xptr, partition->rates, sizeof(double) * n_cats);
+        for (i=0; i<n_cats; i++)
+        {
+          set_range (0,
+                     1,
+                     5,
+                     PLL_OPT_ALPHA_OFFSET,
+                     xptr, l_ptr, u_ptr);
+          *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
+          xptr++;
+          nbd_ptr++;
+          l_ptr++;
+          u_ptr++;
+        }
+        check_n += n_cats;
+      }
+
+      if (params->which_parameters & PLL_PARAMETER_RATE_WEIGHTS)
+      {
+        unsigned int n_rates = params->lk_params.partition->rate_cats;
+              unsigned int n_weights_free_params = n_rates - 1;
+              unsigned int cur_index;
+
+              double * rate_weights =
+                  params->lk_params.partition->rate_weights;
+
+              params->highest_freq_state = 3;
+              for (i = 1; i < n_rates; i++)
+                      if (rate_weights[i] > rate_weights[params->highest_weight_state])
+                        params->highest_freq_state = i;
+
+              cur_index = 0;
+              for (i = 0; i < n_rates; i++)
+              {
+                if (i != params->highest_freq_state)
+                {
+                  nbd_ptr[cur_index] = PLL_LBFGSB_BOUND_BOTH;
+                  x[check_n + cur_index] = rate_weights[i]
+                      / rate_weights[params->highest_freq_state];
+                  set_range (PLL_OPT_MIN_FREQ,
+                             PLL_OPT_DEFAULT_FREQ_RATIO,
+                             PLL_OPT_MAX_FREQ,
+                             PLL_OPT_FREQ_OFFSET,
+                             &x[check_n + cur_index],
+                             &l_ptr[cur_index], &u_ptr[cur_index]);
+                  cur_index++;
+                }
+              }
+              check_n += n_weights_free_params;
+              nbd_ptr += n_weights_free_params;
+              l_ptr += n_weights_free_params;
+              u_ptr += n_weights_free_params;
+//
+//        int n_cats = params->lk_params.partition->rate_cats;
+//        int i;
+//        double *xptr = &x[check_n];
+//        memcpy(xptr, partition->rate_weights, sizeof(double) * n_cats);
+//        for (i=0; i<n_cats; i++)
+//        {
+//          set_range (1e-4,
+//                     0.25,
+//                     1,
+//                     1e-4,
+//                     xptr, l_ptr, u_ptr);
+//          *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
+//          xptr++;
+//          nbd_ptr++;
+//          l_ptr++;
+//          u_ptr++;
+//        }
+//        check_n += n_cats;
+      }
 
     /* topology (UNIMPLEMENTED) */
     if (params->which_parameters & PLL_PARAMETER_TOPOLOGY)

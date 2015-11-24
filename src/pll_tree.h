@@ -19,6 +19,8 @@
 #define PLL_ERROR_TBR_OVERLAPPED_NODES 5002
 /* the reconnection branches belong to the same subtree */
 #define PLL_ERROR_TBR_SAME_SUBTREE     5003
+/* attempting to interchange a leaf */
+#define PLL_ERROR_INTERCHANGE_LEAF     6001
 
 typedef struct pll_edge
 {
@@ -69,7 +71,7 @@ PLL_EXPORT int pll_utree_bisect(pll_utree_t * edge,
 /**
  * Reconnects two subtrees by adding 2 new nodes and 1 edge.
  *
- * Addes 1 new edge connecting edges \p edge.parent and \p edge.child with
+ * Adds 1 new edge connecting edges \p edge.parent and \p edge.child with
  * length \p edge.length.
  *
  *   A       C         A              C
@@ -142,4 +144,14 @@ PLL_EXPORT int pll_utree_nodes_at_node_dist(pll_utree_t * node,
  */
 PLL_EXPORT int pll_utree_TBR(pll_utree_t * b_edge, pll_edge_t * r_edge);
 
+/**
+ * Interchanges 2 edges, represented by 2 internal nodes
+ *
+ * CLV and scaler indices, and labels are interchanged between nodes to match
+ * the other 2 nodes in the triplet.
+ *
+ * @returns true, if the move was applied correctly
+ */
+PLL_EXPORT int pll_utree_interchange(pll_utree_t * edge1,
+                                     pll_utree_t * edge2);
 #endif /* PLL_TREE_H_ */

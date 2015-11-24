@@ -679,11 +679,10 @@ int formk(int *n, int *nsub, int *ind, int *
 	    wy_dim1, wy_offset, sy_dim1, sy_offset, i__1, i__2, i__3;
 
     /* Local variables */
-    static int i__, k, k1, m2, is, js, iy, jy, is1, js1, col2, dend, pend;
-    static int upcl;
-    static double temp1, temp2, temp3, temp4;
-    static int ipntr, jpntr, dbegin, pbegin;
-
+    int i__, k, k1, m2, is, js, iy, jy, is1, js1, col2, dend, pend;
+    int upcl;
+    double temp1, temp2, temp3, temp4;
+    int ipntr, jpntr, dbegin, pbegin;
 /*     ************ */
 
 /*     Subroutine formk */
@@ -1061,8 +1060,8 @@ int formt(int *m, double *wt, double *sy,
 	    i__2, i__3;
 
     /* Local variables */
-    static int i__, j, k, k1;
-    static double ddum;
+    int i__, j, k, k1;
+    double ddum;
 
 /*     ************ */
 
@@ -1150,7 +1149,7 @@ int freev(int *n, int *nfree, int *index,
     int i__1;
 
     /* Local variables */
-    static int i__, k, iact;
+    int i__, k, iact;
 
 
 /*     ************ */
@@ -1257,9 +1256,9 @@ int hpsolb (int *n, double *t, int *iorder, int *iheap)
     int i__1;
 
     /* Local variables */
-    static int i__, j, k;
-    static double out, ddum;
-    static int indxin, indxou;
+    int i__, j, k;
+    double out, ddum;
+    int indxin, indxou;
 
 /*     ************ */
 
@@ -1379,8 +1378,8 @@ int matupd(int *n, int *m, double *ws,
 	    ss_dim1, ss_offset, i__1, i__2;
 
     /* Local variables */
-    static int j;
-    static int pointr;
+    int j;
+    int pointr;
 
 /*     ************ */
 
@@ -1486,8 +1485,8 @@ int projgr(int *n, double *l, double *u,
     double d__1, d__2;
 
     /* Local variables */
-    static int i__;
-    static double gi;
+    int i__;
+    double gi;
 
 /*     ************ */
 
@@ -1567,13 +1566,13 @@ int subsm(int *n, int *m, int *nsub, int *
     double d__1, d__2;
 
     /* Local variables */
-    static int i__, j, k, m2;
-    static double dk;
-    static int js, jy;
-    static double xk;
-    static int ibd, col2;
-    static double dd_p__, temp1, temp2, alpha;
-    static int pointr;
+    int i__, j, k, m2;
+    double dk;
+    int js, jy;
+    double xk;
+    int ibd, col2;
+    double dd_p__, temp1, temp2, alpha;
+    int pointr;
 
 /*     ********************************************************************** */
 

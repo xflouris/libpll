@@ -201,6 +201,97 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
   return logl;
 }
 
+PLL_EXPORT double pll_compute_edge_persite_loglikelihood(
+                                                 pll_partition_t * partition,
+                                                 unsigned int parent_clv_index,
+                                                 int parent_scaler_index,
+                                                 unsigned int child_clv_index,
+                                                 int child_scaler_index,
+                                                 unsigned int matrix_index,
+                                                 unsigned int freqs_index,
+                                                 double * persite_lk)
+{
+  unsigned int n,i,j,k;
+  double logl = 0;
+  double terma_r, termb;
+  double site_lk, inv_site_lk;
+
+  const double * clvp = partition->clv[parent_clv_index];
+  const double * clvc = partition->clv[child_clv_index];
+  const double * freqs = NULL;
+  const double * pmatrix = partition->pmatrix[matrix_index];
+  double prop_invar = partition->prop_invar[freqs_index];
+  unsigned int states = partition->states;
+  unsigned int states_padded = partition->states_padded;
+  double * weights = partition->rate_weights;
+  unsigned int scale_factors;
+
+  unsigned int * parent_scaler;
+  unsigned int * child_scaler;
+
+  assert(persite_lk);
+
+  if (child_scaler_index == PLL_SCALE_BUFFER_NONE)
+    child_scaler = NULL;
+  else
+    child_scaler = partition->scale_buffer[child_scaler_index];
+
+  if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
+    parent_scaler = NULL;
+  else
+    parent_scaler = partition->scale_buffer[parent_scaler_index];
+
+  for (n = 0; n < partition->sites; ++n)
+  {
+    double sitecat_lk;
+    site_lk = 0;
+    pmatrix = partition->pmatrix[matrix_index];
+    freqs = partition->frequencies[freqs_index];
+
+    inv_site_lk = (!partition->invariant || partition->invariant[n] == -1) ?
+                              0 : freqs[partition->invariant[n]];
+
+    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
+    scale_factors += (child_scaler) ? child_scaler[n] : 0;
+
+    for (i = 0; i < partition->rate_cats; ++i)
+    {
+      terma_r = 0;
+      for (j = 0; j < partition->states; ++j)
+      {
+        termb = 0;
+        for (k = 0; k < partition->states; ++k)
+          termb += pmatrix[k] * clvc[k];
+        terma_r += clvp[j] * freqs[j] * termb;
+        pmatrix += states;
+      }
+      sitecat_lk = terma_r * weights[i];
+
+      /* account for invariant sites */
+      sitecat_lk = sitecat_lk * (1. - prop_invar) +
+                   inv_site_lk * prop_invar;
+
+      persite_lk[n*partition->rate_cats + i] = sitecat_lk ;
+      if (scale_factors)
+        for (j=0; j<scale_factors; ++j)
+          persite_lk[n*partition->rate_cats + i] *= PLL_SCALE_THRESHOLD;
+
+      clvp += states;
+      clvc += states;
+      if (partition->mixture > 1)
+        freqs += states_padded;
+
+      site_lk += sitecat_lk;
+    }
+
+    logl += log(site_lk) * partition->pattern_weights[n];
+    if (scale_factors)
+      logl += scale_factors * log(PLL_SCALE_THRESHOLD);
+  }
+
+  return logl;
+}
+
 PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  unsigned int parent_clv_index,
                                                  int parent_scaler_index,

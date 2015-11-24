@@ -336,6 +336,16 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
                                                  int scaler_index,
                                                  unsigned int freqs_index);
 
+PLL_EXPORT double pll_compute_edge_persite_loglikelihood(
+                                                 pll_partition_t * partition,
+                                                 unsigned int parent_clv_index,
+                                                 int parent_scaler_index,
+                                                 unsigned int child_clv_index,
+                                                 int child_scaler_index,
+                                                 unsigned int matrix_index,
+                                                 unsigned int freqs_index,
+                                                 double * persite_lnl);
+
 PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  unsigned int parent_clv_index,
                                                  int parent_scaler_index,

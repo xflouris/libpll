@@ -28,14 +28,16 @@
 //#include <search.h>
 
 /* Parameters mask */
-#define PLL_PARAMETER_SUBST_RATES          1
-#define PLL_PARAMETER_ALPHA                2
-#define PLL_PARAMETER_PINV                 4
-#define PLL_PARAMETER_FREQUENCIES          8
-#define PLL_PARAMETER_BRANCHES_SINGLE     16
-#define PLL_PARAMETER_BRANCHES_ALL        32
-#define PLL_PARAMETER_BRANCHES_ITERATIVE  64
-#define PLL_PARAMETER_TOPOLOGY           128
+#define PLL_PARAMETER_SUBST_RATES         (1<<0)
+#define PLL_PARAMETER_ALPHA               (1<<1)
+#define PLL_PARAMETER_PINV                (1<<2)
+#define PLL_PARAMETER_FREQUENCIES         (1<<3)
+#define PLL_PARAMETER_BRANCHES_SINGLE     (1<<4)
+#define PLL_PARAMETER_BRANCHES_ALL        (1<<5)
+#define PLL_PARAMETER_BRANCHES_ITERATIVE  (1<<6)
+#define PLL_PARAMETER_TOPOLOGY            (1<<7)
+#define PLL_PARAMETER_FREE_RATES          (1<<8)
+#define PLL_PARAMETER_RATE_WEIGHTS        (1<<9)
 
 /* L-BFGS-B bound type */
 #define PLL_LBFGSB_BOUND_NONE  0
@@ -117,6 +119,7 @@ typedef struct
 {
   pll_likelihood_info_t lk_params;
   unsigned int highest_freq_state;
+  unsigned int highest_weight_state;
   unsigned int params_index;
   unsigned int mixture_index;
   unsigned int which_parameters;
@@ -181,10 +184,13 @@ PLL_EXPORT double pll_minimize_brent(double xmin,
 /* core Expectation-Maximization (EM) function */
 PLL_EXPORT void pll_minimize_em( double *w,
                                  unsigned int w_count,
-                                 double *site_lh,
+                                 double *sitecat_lh,
                                  unsigned int *site_w,
-                                 unsigned int l
-                               );
+                                 unsigned int l,
+                                 void * params,
+                                 double (*update_sitecatlk_funk)(
+                                     void *,
+                                     double *));
 
 /******************************************************************************/
 

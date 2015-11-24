@@ -43,18 +43,18 @@ static int c__1 = 1;
 
 
     /* Table of constant values */
-    static double c_b14 = PLL_LBFGSB_DEFAULT_FTOL;
-    static double c_b15 = PLL_LBFGSB_DEFAULT_GTOL;
-    static double c_b16 = PLL_LBFGSB_DEFAULT_XTOL;
-    static double c_b17 = PLL_LBFGSB_DEFAULT_STEPMIN;
+    double c_b14 = PLL_LBFGSB_DEFAULT_FTOL;
+    double c_b15 = PLL_LBFGSB_DEFAULT_GTOL;
+    double c_b16 = PLL_LBFGSB_DEFAULT_XTOL;
+    double c_b17 = PLL_LBFGSB_DEFAULT_STEPMIN;
     /* System generated locals */
     int i__1;
     double d__1;
 
 
     /* Local variables */
-    static int i__;
-    static double a1, a2;
+    int i__;
+    double a1, a2;
 
     /* Parameter adjustments */
     --z__;
@@ -168,10 +168,10 @@ int dcsrch(double *f, double *g, double *stp,
 
 
     /* Local variables */
-    static double fm, gm, fx, fy, gx, gy, fxm, fym, gxm, gym, stx, sty;
-    static int stage;
-    static double finit, ginit, width, ftest, gtest, stmin, stmax, width1;
-    static logical brackt;
+    double fm, gm, fx, fy, gx, gy, fxm, fym, gxm, gym, stx, sty;
+    int stage;
+    double finit, ginit, width, ftest, gtest, stmin, stmax, width1;
+    logical brackt;
 
     /*
      ********** 
@@ -491,7 +491,7 @@ int dcstep(double *stx, double *fx, double *dx,
     double d__1, d__2, d__3;
 
     /* Local variables */
-    static double p, q, r__, s, sgnd, stpc, stpf, stpq, gamma, theta;
+    double p, q, r__, s, sgnd, stpc, stpf, stpq, gamma, theta;
 
     /*
      ********** 
