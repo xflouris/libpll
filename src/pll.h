@@ -309,6 +309,9 @@ PLL_EXPORT void pll_set_category_rates(pll_partition_t * partition,
 PLL_EXPORT void pll_set_category_weights(pll_partition_t * partition,
                                          const double * rate_weights);
 
+PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
+                                 unsigned int params_index);
+
 PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
                                          unsigned int params_index, 
                                          unsigned int * matrix_indices, 

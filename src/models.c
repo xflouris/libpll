@@ -246,6 +246,83 @@ static double ** create_ratematrix(double * params,
   return qmatrix;
 }
 
+PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
+                                 unsigned int params_index)
+{
+  unsigned int i,j,k;
+  unsigned int i_m;
+  double *e, *d;
+  double ** a;
+
+  unsigned int mixture = partition->mixture;
+
+  double * eigenvecs = partition->eigenvecs[params_index];
+  double * inv_eigenvecs = partition->inv_eigenvecs[params_index];
+  double * eigenvals = partition->eigenvals[params_index];
+  double * freqs = partition->frequencies[params_index];
+  double * subst_params = partition->subst_params[params_index];
+
+  unsigned int states = partition->states;
+  unsigned int states_padded = partition->states_padded;
+
+  for (i_m = 0; i_m < mixture; ++i_m)
+      {
+        a = create_ratematrix(subst_params,
+                              freqs,
+                              partition->states);
+
+        d = (double *)malloc(states*sizeof(double));
+        e = (double *)malloc(states*sizeof(double));
+
+        mytred2(a, states, d, e);
+        mytqli(d, e, states, a);
+
+        /* store eigen vectors */
+        for (i = 0; i < states; ++i)
+          memcpy(eigenvecs + i*states, a[i], states*sizeof(double));
+
+        /* store eigen values */
+        memcpy(eigenvals, d, states*sizeof(double));
+
+        /* store inverse eigen vectors */
+        for (k = 0, i = 0; i < states; ++i)
+          for (j = i; j < states*states; j += states)
+            inv_eigenvecs[k++] = eigenvecs[j];
+
+        /* multiply the inverse eigen vectors from the left with sqrt(pi)^-1 */
+        for (i = 0; i < states; ++i)
+          for (j = 0; j < states; ++j)
+            inv_eigenvecs[i*states+j] /= sqrt(freqs[i]);
+
+        /* multiply the eigen vectors from the right with sqrt(pi) */
+        for (i = 0; i < states; ++i)
+          for (j = 0; j < states; ++j)
+            eigenvecs[i*states+j] *= sqrt(freqs[j]);
+
+        partition->eigen_decomp_valid[params_index] = 1;
+
+        free(d);
+        free(e);
+        for (i = 0; i < states; ++i)
+          free(a[i]);
+        free(a);
+
+        /* switch to Q matrix and freqs corresponding to current rate */
+        eigenvecs     += states_padded*states_padded;
+        inv_eigenvecs += states_padded*states_padded;
+        eigenvals     += states_padded;
+        freqs         += states_padded;
+        subst_params  += (states*states - states)/2;
+      }
+
+      /* reset pointers */
+      eigenvecs     = partition->eigenvecs[params_index];
+      inv_eigenvecs = partition->inv_eigenvecs[params_index];
+      eigenvals     = partition->eigenvals[params_index];
+      freqs         = partition->frequencies[params_index];
+      subst_params  = partition->subst_params[params_index];
+}
+
 PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
                                          unsigned int params_index,
                                          unsigned int * matrix_indices, 
@@ -253,9 +330,6 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
                                          unsigned int count)
 {
   unsigned int i,j,k,m,n;
-  unsigned int i_m;
-  double *e, *d;
-  double ** a;
   double * expd;
   double * temp;
 
@@ -280,62 +354,7 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
   /* check whether we have cached an eigen decomposition. If not, compute it */
   if (!partition->eigen_decomp_valid[params_index])
   {
-    for (i_m = 0; i_m < mixture; ++i_m)
-    {
-      a = create_ratematrix(subst_params,
-                            freqs,
-                            partition->states);
-
-      d = (double *)malloc(states*sizeof(double));
-      e = (double *)malloc(states*sizeof(double));
-
-      mytred2(a, states, d, e);
-      mytqli(d, e, states, a);
-
-      /* store eigen vectors */
-      for (i = 0; i < states; ++i)
-        memcpy(eigenvecs + i*states, a[i], states*sizeof(double));
-
-      /* store eigen values */
-      memcpy(eigenvals, d, states*sizeof(double));
-
-      /* store inverse eigen vectors */
-      for (k = 0, i = 0; i < states; ++i)
-        for (j = i; j < states*states; j += states)
-          inv_eigenvecs[k++] = eigenvecs[j];
-
-      /* multiply the inverse eigen vectors from the left with sqrt(pi)^-1 */
-      for (i = 0; i < states; ++i)
-        for (j = 0; j < states; ++j)
-          inv_eigenvecs[i*states+j] /= sqrt(freqs[i]);
-
-      /* multiply the eigen vectors from the right with sqrt(pi) */
-      for (i = 0; i < states; ++i)
-        for (j = 0; j < states; ++j)
-          eigenvecs[i*states+j] *= sqrt(freqs[j]);
-
-      partition->eigen_decomp_valid[params_index] = 1;
-
-      free(d);
-      free(e);
-      for (i = 0; i < states; ++i)
-        free(a[i]);
-      free(a);
-
-      /* switch to Q matrix and freqs corresponding to current rate */
-      eigenvecs     += states_padded*states_padded;
-      inv_eigenvecs += states_padded*states_padded;
-      eigenvals     += states_padded;
-      freqs         += states_padded;
-      subst_params  += (states*states - states)/2;
-    }
-
-    /* reset pointers */
-    eigenvecs     = partition->eigenvecs[params_index];
-    inv_eigenvecs = partition->inv_eigenvecs[params_index];
-    eigenvals     = partition->eigenvals[params_index];
-    freqs         = partition->frequencies[params_index];
-    subst_params  = partition->subst_params[params_index];
+    pll_update_eigen(partition, params_index);
   }
 
   expd = (double *)malloc(states * sizeof(double));
