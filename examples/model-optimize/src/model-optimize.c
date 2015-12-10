@@ -20,7 +20,7 @@
  */
 #include "utils.h"
 
-#define RATE_CATS 1
+#define RATE_CATS 4
 
 /* parameters to optimize */
 #define OPTIMIZE_BRANCHES     1
@@ -30,8 +30,8 @@
 #define OPTIMIZE_PINV         0
 
 /* tolerances */
-#define OPT_EPSILON       1e-1
-#define OPT_PARAM_EPSILON 1e-1
+#define OPT_EPSILON       1e-2
+#define OPT_PARAM_EPSILON 1e-2
 
 /* use L-BFGS-B instead of Brent for single parameters (alpha / pInv) */
 #define USE_LBFGSB 0
@@ -69,6 +69,15 @@ static int v_int_max (int * v, int n)
     if (v[i] > max)
       max = v[i];
   return max;
+}
+
+static void update_local_parameters(my_params_t * my_params, pll_utree_t *tree)
+{
+  my_params->parent_clv_index = tree->clv_index;
+  my_params->parent_scaler_index = tree->scaler_index;
+  my_params->child_clv_index = tree->back->clv_index;
+  my_params->child_scaler_index = tree->back->scaler_index;
+  my_params->edge_pmatrix_index = tree->pmatrix_index;
 }
 
 int main (int argc, char * argv[])
@@ -327,6 +336,7 @@ int main (int argc, char * argv[])
       int inner_index = rand () % inner_nodes_count;
 
       tree = innernodes[inner_index];
+
       pll_utree_traverse (tree, cb_full_traversal, travbuffer, &traversal_size);
       pll_utree_create_operations (travbuffer, traversal_size, branch_lengths,
                                    matrix_indices, operations, &matrix_count,
@@ -386,6 +396,9 @@ int main (int argc, char * argv[])
                        my_params.symmetries,
                        x,bt,lb,ub);
 
+      /* tree might have change */
+      update_local_parameters(&my_params, tree);
+
       cur_logl = -1
           * pll_minimize_lbfgsb (x, lb, ub, bt, n_subst_free_params, factr,
                                  pgtol, &my_params, target_rates_opt);
@@ -443,12 +456,24 @@ int main (int argc, char * argv[])
 
       fill_frequencies(states,
                        frequencies,
-                       &(params.highest_freq_state),
+                       &(my_params.highest_freq_state),
                        x, bt, lb, ub);
+
+      /* tree might have change */
+      update_local_parameters(&my_params, tree);
 
       cur_logl = -1
           * pll_minimize_lbfgsb (x, lb, ub, bt, n_subst_free_params, factr,
                                  pgtol, &my_params, target_freqs_opt);
+
+//      pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths,
+//                                        2 * tip_count - 3);
+//              pll_update_partials (partition, operations, tip_count - 2);
+//      cur_logl = pll_compute_edge_loglikelihood (partition, my_params.parent_clv_index,
+//                                                 my_params.parent_scaler_index,
+//                                                 my_params.child_clv_index,
+//                                                 my_params.child_scaler_index,
+//                                                 my_params.edge_pmatrix_index, 0);
 
       printf ("  %5ld s [freqs]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             ");
@@ -537,7 +562,7 @@ static void fill_frequencies(unsigned int n_frequencies,
 {
   unsigned int i, cur_index = 0;
 
-  *highest_freq_state = 3;
+  *highest_freq_state = 0;
   for (i = 1; i < n_frequencies; i++)
     if (frequencies[i] > frequencies[*highest_freq_state])
       *highest_freq_state = i;
