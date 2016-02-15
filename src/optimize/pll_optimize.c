@@ -245,9 +245,12 @@ static double utree_derivative_func (void * parameters, double proposal,
 {
   pll_newton_tree_params_t * params = (pll_newton_tree_params_t *) parameters;
   double score = pll_compute_likelihood_derivatives (
-      params->partition, params->tree->clv_index, params->tree->scaler_index,
-      params->tree->back->clv_index, params->tree->back->scaler_index, proposal,
-      params->params_index, params->freqs_index, params->sumtable, df, ddf);
+      params->partition,
+      params->tree->scaler_index,
+      params->tree->back->scaler_index,
+      proposal,
+      params->params_index, params->freqs_index,
+      params->sumtable, df, ddf);
   return score;
 }
 
@@ -991,9 +994,7 @@ PLL_EXPORT double pll_derivative_func(void * parameters,
   pll_optimize_options_t * params = (pll_optimize_options_t *) parameters;
   double score = pll_compute_likelihood_derivatives (
       params->lk_params.partition,
-      params->lk_params.where.unrooted_t.parent_clv_index,
       params->lk_params.where.unrooted_t.parent_scaler_index,
-      params->lk_params.where.unrooted_t.child_clv_index,
       params->lk_params.where.unrooted_t.child_scaler_index,
       proposal,
       params->params_index,

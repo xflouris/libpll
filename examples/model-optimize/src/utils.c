@@ -199,6 +199,29 @@ pll_partition_t * partition_fasta_create (const char *file,
       return PLL_FAILURE;
     }
 
+    const unsigned int * pll_map = 0;
+          switch (states)
+          {
+            case 4:
+              pll_map = pll_map_nt;
+              break;
+            case 20:
+              pll_map = pll_map_aa;
+              break;
+            default:
+            {
+                /* clean and return */
+                for (j = 0; j < tip_count; ++j)
+                {
+                  free (seqdata[j]);
+                  free (headers[j]);
+                }
+                free (seqdata);
+                free (headers);
+              return PLL_FAILURE;
+            }
+          }
+
     partition = pll_partition_create (
         tip_count, rooted ? (tip_count - 1) : (tip_count - 2),
         states,
@@ -208,6 +231,7 @@ pll_partition_t * partition_fasta_create (const char *file,
         rooted ? (2 * tip_count - 2) : (2 * tip_count - 3),
         n_rate_cats,
         rooted ? (tip_count - 1) : (tip_count - 2),
+        pll_map,
         attributes);
     if (!partition)
     {
@@ -237,28 +261,6 @@ pll_partition_t * partition_fasta_create (const char *file,
         return PLL_FAILURE;
       }
 
-      const unsigned int * pll_map = 0;
-      switch (states)
-      {
-        case 4:
-          pll_map = pll_map_nt;
-          break;
-        case 20:
-          pll_map = pll_map_aa;
-          break;
-        default:
-        {
-            /* clean and return */
-            for (j = 0; j < tip_count; ++j)
-            {
-              free (seqdata[j]);
-              free (headers[j]);
-            }
-            free (seqdata);
-            free (headers);
-          return PLL_FAILURE;
-        }
-      }
       int set_states = pll_set_tip_states (partition,
                                            (unsigned int) tip_clv_index,
                                            pll_map,

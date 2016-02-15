@@ -576,6 +576,7 @@ PLL_EXPORT double pll_compute_edge_persite_loglikelihood(
 
   return logl;
 }
+
 static double edge_loglikelihood_tipinner(pll_partition_t * partition,
                                           unsigned int parent_clv_index,
                                           int parent_scaler_index,
@@ -777,25 +778,58 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
   return logl; 
 }
 
-PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
-                                      unsigned int parent_clv_index,
-                                      unsigned int child_clv_index,
-                                      unsigned int params_index,
-                                      unsigned int freqs_index,
-                                      double *sumtable)
+static int update_sumbable_tipinner(const char * t_tipchars,
+                                    const double * clv_inner,
+                                    const double * eigenvecs,
+                                    const double * inv_eigenvecs,
+                                    const double * freqs,
+                                    unsigned int states,
+                                    unsigned int n_rates,
+                                    unsigned int sites,
+                                    unsigned int * revmap,
+                                    double *sumtable)
 {
-  unsigned int i,j,k,n;
-  const double * clvp = partition->clv[parent_clv_index];
-  const double * clvc = partition->clv[child_clv_index];
-  const double * eigenvecs = partition->eigenvecs[params_index];
-  const double * inv_eigenvecs = partition->inv_eigenvecs[params_index];
-  const double * freqs = partition->frequencies[freqs_index];
-  unsigned int states = partition->states;
-  unsigned int n_rates = partition->rate_cats;
-  unsigned int sites = partition->sites;
+  unsigned int i, j, k, n;
 
-  /* so far not available for mixture models */
-  assert(partition->mixture == 1);
+  /* build sumtable */
+  double * sum = sumtable;
+  const double * t_clvc = clv_inner;
+  for (n = 0; n < sites; n++)
+  {
+    for (i = 0; i < n_rates; ++i)
+    {
+      for (j = 0; j < states; ++j)
+      {
+        unsigned int tipstate = revmap[(int)t_tipchars[n]];
+        double lefterm = 0;
+        double righterm = 0;
+        for (k = 0; k < states; ++k)
+        {
+          lefterm += (tipstate & 1) * freqs[k] * inv_eigenvecs[k * states + j];
+          righterm += eigenvecs[j * states + k] * t_clvc[k];
+          tipstate >>= 1;
+        }
+        sum[j] = lefterm * righterm;
+      }
+      t_clvc += states;
+      sum += states;
+    }
+  }
+
+  return PLL_SUCCESS;
+}
+
+static int update_sumbable(const double * clvp,
+                           const double * clvc,
+                           const double * eigenvecs,
+                           const double * inv_eigenvecs,
+                           const double * freqs,
+                           unsigned int states,
+                           unsigned int n_rates,
+                           unsigned int sites,
+                           double *sumtable)
+{
+  unsigned int i, j, k, n;
 
   /* build sumtable */
   double * sum = sumtable;
@@ -825,10 +859,60 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
   return PLL_SUCCESS;
 }
 
+/* computes the table containing the constant parts of the likelihood function
+ * partial derivatives on the branch lengths.
+ * sumtable: [output] must be allocated for storing (rates x states) values */
+PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
+                                      unsigned int parent_clv_index,
+                                      unsigned int child_clv_index,
+                                      unsigned int params_index,
+                                      unsigned int freqs_index,
+                                      double *sumtable)
+{
+  int retval;
+  const double * clvp = partition->clv[parent_clv_index];
+  const double * clvc = partition->clv[child_clv_index];
+  const double * eigenvecs = partition->eigenvecs[params_index];
+  const double * inv_eigenvecs = partition->inv_eigenvecs[params_index];
+  const double * freqs = partition->frequencies[freqs_index];
+  unsigned int states = partition->states;
+  unsigned int n_rates = partition->rate_cats;
+  unsigned int sites = partition->sites;
+
+  /* so far not available for mixture models */
+  assert(partition->mixture == 1);
+
+  if ((partition->attributes & PLL_ATTRIB_PATTERN_TIP) &&
+      ((parent_clv_index < partition->tips) ||
+       (child_clv_index < partition->tips)))
+  {
+    if (parent_clv_index < partition->tips)
+      retval = update_sumbable_tipinner(partition->tipchars[parent_clv_index],
+                                        clvc, eigenvecs, inv_eigenvecs,
+                                        freqs, states, n_rates, sites,
+                                        partition->revmap, sumtable);
+    else
+      retval = update_sumbable_tipinner(partition->tipchars[child_clv_index],
+                                        clvp, eigenvecs, inv_eigenvecs,
+                                        freqs, states, n_rates, sites,
+                                        partition->revmap, sumtable);
+  }
+  else
+    retval = update_sumbable(clvp, clvc, eigenvecs, inv_eigenvecs,
+                             freqs, states, n_rates, sites, sumtable);
+
+  return retval;
+}
+
+/* Computes partial derivatives on the branch lengths.
+ * branch_length: [input] value where the derivative is computed
+ * sumtable: [input] must be computed at the edge where the derivatives will
+ *                   be computed
+ * d_f:  [output] first derivative
+ * dd_f: [output] second derivative
+ */
 PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition,
-                                                 unsigned int parent_clv_index,
                                                  int parent_scaler_index,
-                                                 unsigned int child_clv_index,
                                                  int child_scaler_index,
                                                  double branch_length,
                                                  unsigned int params_index,
@@ -870,7 +954,7 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
   *dd_f = 0.0;
 
   double
-    diagptable[1024] = {0}, /* TODO make this dynamic */
+    *diagptable = (double *) calloc (n_rates * states * 3, sizeof(double)),
     *diagp,
     ki;
 
@@ -951,5 +1035,6 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
     *dd_f += partition->pattern_weights[n] * deriv2;
   }
 
+  free(diagptable);
   return logLK;
 }

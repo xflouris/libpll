@@ -385,9 +385,7 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
                                       double *sumtable);
 
 PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition,
-                                                  unsigned int parent_clv_index,
                                                   int parent_scaler_index,
-                                                  unsigned int child_clv_index,
                                                   int child_scaler_index,
                                                   double branch_length,
                                                   unsigned int params_index,
