@@ -70,6 +70,12 @@
 #define PLL_OPT_PINV_OFFSET             0.1
 #define PLL_OPT_LNL_UNLIKELY         -1e+80
 
+/* mixture models limits */
+#define PLL_OPT_MIN_RATE               0.02
+#define PLL_OPT_MAX_RATE               100.
+#define PLL_OPT_MIN_RATE_WEIGHT      1.0e-3
+#define PLL_OPT_MAX_RATE_WEIGHT        100.
+
 /* Branch lengths optimization algorithm */
 #define PLL_BRANCH_OPT_NEWTON 1
 #define PLL_BRANCH_OPT_BRENT  2
@@ -144,6 +150,7 @@ typedef struct
 /* functions in opt_utils.c */
 PLL_EXPORT double * pll_compute_empirical_frequencies(pll_partition_t * partition);
 PLL_EXPORT double * pll_compute_empirical_subst_rates(pll_partition_t * partition);
+PLL_EXPORT double pll_compute_empirical_invariant_sites(pll_partition_t *partition);
 
 /******************************************************************************/
 
@@ -159,17 +166,17 @@ PLL_EXPORT double pll_minimize_newton(double x1,
                                                           double,
                                                           double *, double *));
 /* core L-BFGS-B optimization function */
-PLL_EXPORT double pll_minimize_lbfgsb (double *x,
-                                       double *xmin,
-                                       double *xmax,
-                                       int *bound,
-                                       unsigned int n,
-                                       double factr,
-                                       double pgtol,
-                                       void *params,
-                                       double (*target_funk)(
-                                               void *,
-                                               double *));
+PLL_EXPORT double pll_minimize_lbfgsb(double *x,
+                                      double *xmin,
+                                      double *xmax,
+                                      int *bound,
+                                      unsigned int n,
+                                      double factr,
+                                      double pgtol,
+                                      void *params,
+                                      double (*target_funk)(
+                                              void *,
+                                              double *));
 /* core Brent optimization function */
 PLL_EXPORT double pll_minimize_brent(double xmin,
                                      double xguess,
@@ -200,8 +207,12 @@ PLL_EXPORT double pll_derivative_func(void * parameters,
                                       double *df, double *ddf);
 
 /* high level optimization functions */
-PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * p);
-PLL_EXPORT double pll_optimize_parameters_lbfgsb(pll_optimize_options_t * p);
+PLL_EXPORT double pll_optimize_parameters_onedim(pll_optimize_options_t * p,
+                                                 double min,
+                                                 double max);
+PLL_EXPORT double pll_optimize_parameters_multidim(pll_optimize_options_t * p,
+                                                   double *umin,
+                                                   double *umax);
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                               pll_partition_t * partition,
                                               pll_utree_t * tree,

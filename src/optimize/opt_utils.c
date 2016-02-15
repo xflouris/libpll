@@ -22,33 +22,58 @@
 
 PLL_EXPORT double * pll_compute_empirical_frequencies(pll_partition_t * partition)
 {
-  unsigned int i, j, k;
+  unsigned int i, j, k, n;
   double sum_test = 0.0;
-  unsigned int states = partition->states;
-  unsigned int sites = partition->sites;
-  unsigned int cats  = partition->rate_cats;
-  unsigned int tips  = partition->tips;
+  unsigned int states         = partition->states;
+  unsigned int sites          = partition->sites;
+  unsigned int cats           = partition->rate_cats;
+  unsigned int tips           = partition->tips;
+  const unsigned int * revmap = partition->revmap;
+  const unsigned int * w      = partition->pattern_weights;
+  double * frequencies = (double *) calloc (states, sizeof(double));
 
-  double * frequencies = (double *) calloc(states, sizeof(double));
-  for (i=0; i<tips; ++i)
+  if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
   {
-    for (j=0; j<sites*states*cats; j+=(states*cats))
+    for (i = 0; i < tips; ++i)
+    {
+      const char *tipchars = partition->tipchars[i];
+      for (n = 0; n < sites; ++n)
+      {
+        unsigned int state = revmap[(int) tipchars[n]];
+        double sum_site = (double)__builtin_popcount(state);
+        for (k = 0; k < states; ++k)
+        {
+          if (state & 1)
+            frequencies[k] += w[n] / sum_site;
+          state >>= 1;
+        }
+      }
+    }
+  }
+  else
+  {
+    for (i = 0; i < tips; ++i)
+    {
+      for (n = 0, j = 0; j < sites * states * cats; j += (states * cats), ++n)
       {
         double sum_site = 0.0;
-        for (k=0; k<states; ++k)
-          sum_site += partition->clv[i][j+k];
-        for (k=0; k<states; ++k)
-          frequencies[k] += partition->clv[i][j+k] / sum_site;
+        for (k = 0; k < states; ++k)
+          sum_site += partition->clv[i][j + k];
+        for (k = 0; k < states; ++k)
+          frequencies[k] += w[n] * partition->clv[i][j + k] / sum_site;
       }
+    }
   }
 
 #ifndef NDEBUG
-  for (k=0; k<states; ++k)
+  for (k = 0; k < states; ++k)
   {
     frequencies[k] /= sites * tips;
+    printf("%.4f ", frequencies[k]);
     sum_test += frequencies[k];
   }
-  assert ( fabs(sum_test - 1) < 1e-6);
+  printf("\n");
+  assert(fabs (sum_test - 1) < 1e-6);
 #endif
 
   return frequencies;
@@ -57,67 +82,131 @@ PLL_EXPORT double * pll_compute_empirical_frequencies(pll_partition_t * partitio
 PLL_EXPORT double * pll_compute_empirical_subst_rates(pll_partition_t * partition)
 {
   unsigned int i, j, k, n;
-  unsigned int states = partition->states;
-  unsigned int sites = partition->sites;
-  unsigned int tips = partition->tips;
-  unsigned int cats = partition->rate_cats;
-  unsigned int n_subst_rates = (states * (states - 1) / 2);
-  double * subst_rates = (double *) calloc (n_subst_rates, sizeof(double));
+  unsigned int states         = partition->states;
+  unsigned int sites          = partition->sites;
+  unsigned int tips           = partition->tips;
+  unsigned int cats           = partition->rate_cats;
+  const unsigned int * revmap = partition->revmap;
+  const unsigned int * w      = partition->pattern_weights;
+  char * const * tipchars     = partition->tipchars;
+
+  unsigned int n_subst_rates  = (states * (states - 1) / 2);
+  double * subst_rates        = (double *) calloc (n_subst_rates, sizeof(double));
 
   unsigned *pair_rates = (unsigned *) alloca(
       states * states * sizeof(unsigned));
   memset (pair_rates, 0, sizeof(unsigned) * states * states);
   unsigned *state_freq = (unsigned *) alloca(states * sizeof(unsigned));
 
-  unsigned int cur_site = 0;
-  for (n = 0; n < sites * states * cats; n += (states * cats))
+  unsigned int undef_state = pow (2, states) - 1;
+  if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
   {
-    memset (state_freq, 0, sizeof(unsigned) * (states));
-    for (i = 0; i < tips; ++i)
+    for (n = 0; n < sites; ++n)
     {
-      int unstate = 1;
-      for (k = 0; k < states; ++k)
-        if (partition->clv[i][n + k] == 0)
-        {
-          unstate = 0;
-          break;
-        }
-      if (unstate) continue;
-      for (k = 0; k < states; ++k)
+      memset (state_freq, 0, sizeof(unsigned) * (states));
+      for (i = 0; i < tips; ++i)
       {
-        if (partition->clv[i][n + k])
+        unsigned int state = revmap[(int) tipchars[i][n]];
+        if (state == undef_state)
+          continue;
+        for (k = 0; k < states; ++k)
         {
-          state_freq[k]++;
+          if (state & 1)
+            state_freq[k]++;
+          state >>= 1;
         }
       }
-    }
 
-    for (i = 0; i < states; i++)
-    {
-      if (state_freq[i] == 0)
-        continue;
-      for (j = i + 1; j < states; j++)
+      for (i = 0; i < states; i++)
       {
-        pair_rates[i * states + j] += state_freq[i] * state_freq[j]
-            * partition->pattern_weights[cur_site];
+        if (state_freq[i] == 0)
+          continue;
+        for (j = i + 1; j < states; j++)
+        {
+          pair_rates[i * states + j] += state_freq[i] * state_freq[j]
+              * w[n];
+        }
       }
     }
-    cur_site++;
+  }
+  else
+  {
+    unsigned int cur_site = 0;
+    for (n = 0; n < sites * states * cats; n += (states * cats))
+    {
+      memset (state_freq, 0, sizeof(unsigned) * (states));
+      for (i = 0; i < tips; ++i)
+      {
+        int unstate = 1;
+        for (k = 0; k < states; ++k)
+          if (partition->clv[i][n + k] == 0)
+          {
+            unstate = 0;
+            break;
+          }
+        if (unstate)
+          continue;
+        for (k = 0; k < states; ++k)
+        {
+          if (partition->clv[i][n + k])
+          {
+            state_freq[k]++;
+          }
+        }
+      }
+
+      for (i = 0; i < states; i++)
+      {
+        if (state_freq[i] == 0)
+          continue;
+        for (j = i + 1; j < states; j++)
+        {
+          pair_rates[i * states + j] += state_freq[i] * state_freq[j]
+              * w[cur_site];
+        }
+      }
+      cur_site++;
+    }
   }
 
   k = 0;
-  double last_rate = pair_rates[(states-2)*states+states-1];
-  if (last_rate == 0) last_rate = 1;
-  for (i = 0; i < states-1; i++)
+  double last_rate = pair_rates[(states - 2) * states + states - 1];
+  if (last_rate == 0)
+    last_rate = 1;
+  for (i = 0; i < states - 1; i++)
   {
-      for (j = i+1; j < states; j++) {
-        subst_rates[k++] = pair_rates[i*states+j] / last_rate;
-          if (subst_rates[k-1] < 0.01) subst_rates[k-1] = 0.01;
-          if (subst_rates[k-1] > 50.0) subst_rates[k-1] = 50.0;
-      }
+    for (j = i + 1; j < states; j++)
+    {
+      subst_rates[k++] = pair_rates[i * states + j] / last_rate;
+      if (subst_rates[k - 1] < 0.01)
+        subst_rates[k - 1] = 0.01;
+      if (subst_rates[k - 1] > 50.0)
+        subst_rates[k - 1] = 50.0;
+    }
   }
-  subst_rates[k-1] = 1.0;
+
+  subst_rates[k - 1] = 1.0;
   return subst_rates;
 }
 
+PLL_EXPORT double pll_compute_empirical_invariant_sites(pll_partition_t *partition)
+{
+  unsigned int n;
+  unsigned int n_inv   = 0;
+  unsigned int sites   = partition->sites;
 
+  /* reset errno */
+  pll_errno = 0;
+
+  if (!partition->invariant)
+    if (!pll_update_invariant_sites(partition))
+      return NAN;
+
+  const int * invariant = partition->invariant;
+
+  for (n=0; n<sites; ++n)
+    if (invariant[n] > -1) n_inv++;
+
+  double empirical_pinv = (double)1.0*n_inv/sites;
+  return empirical_pinv;
+}

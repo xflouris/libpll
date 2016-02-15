@@ -228,7 +228,7 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
                          &params->lk_params.where.unrooted_t.edge_pmatrix_index,
                          xptr,
                          1);
-     xptr += 1;
+     xptr++;
    }
   else
    {
@@ -253,6 +253,7 @@ static double utree_derivative_func (void * parameters, double proposal,
       params->sumtable, df, ddf);
   return score;
 }
+
 
 static double compute_negative_lnl_unrooted (void * p, double *x)
 {
@@ -327,31 +328,14 @@ static unsigned int count_n_free_variables (pll_optimize_options_t * params)
 
 static double brent_target(void * p, double x)
 {
-  return compute_negative_lnl_unrooted(p, &x);
+  double score = compute_negative_lnl_unrooted(p, &x);
+  return score;
 }
 
-static void set_range(double abs_min,
-                      double defaultv,
-                      double abs_max,
-                      double deltav,
-                      double *guess,
-                      double *minv,
-                      double *maxv)
-{
-        *minv = abs_min;
-        *maxv = abs_max;
-        if (*guess < abs_min || *guess > abs_max)
-        {
-          *guess = defaultv;
-        }
-        else
-        {
-          *minv = max(abs_min, *guess - deltav);
-          *maxv = min(abs_max, *guess + deltav);
-        }
-}
-
-PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * params)
+PLL_EXPORT double pll_optimize_parameters_onedim(
+                                              pll_optimize_options_t * params,
+                                              double umin,
+                                              double umax)
 {
   double score = 0;
 
@@ -365,27 +349,18 @@ PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * params)
   {
     case PLL_PARAMETER_ALPHA:
       xguess = params->lk_params.alpha_value;
-      set_range (PLL_OPT_MIN_ALPHA,
-                 PLL_OPT_DEFAULT_ALPHA,
-                 PLL_OPT_MAX_ALPHA,
-                 PLL_OPT_ALPHA_OFFSET,
-                 &xguess, &xmin, &xmax);
+      xmin   = (umin>0)?umin:PLL_OPT_MIN_ALPHA;
+      xmax   = (umax>0)?umax:PLL_OPT_MAX_ALPHA;
       break;
     case PLL_PARAMETER_PINV:
       xguess = params->lk_params.partition->prop_invar[params->params_index];
-      set_range (PLL_OPT_MIN_PINV,
-                 PLL_OPT_DEFAULT_PINV,
-                 PLL_OPT_MAX_PINV,
-                 PLL_OPT_PINV_OFFSET,
-                 &xguess, &xmin, &xmax);
+      xmin   = (umin>0)?umin:PLL_OPT_MIN_PINV;
+      xmax   = (umax>0)?umax:PLL_OPT_MAX_PINV;
       break;
     case PLL_PARAMETER_BRANCHES_SINGLE:
       xguess = params->lk_params.branch_lengths[0];
-      set_range (PLL_OPT_MIN_BRANCH_LEN,
-                 PLL_OPT_DEFAULT_BRANCH_LEN,
-                 PLL_OPT_MAX_BRANCH_LEN,
-                 PLL_OPT_BRANCH_LEN_OFFSET,
-                 &xguess, &xmin, &xmax);
+      xmin   = (umin>0)?umin:PLL_OPT_MIN_BRANCH_LEN;
+      xmax   = (umax>0)?umax:PLL_OPT_MAX_BRANCH_LEN;
       break;
     default:
       /* unavailable or multiple parameter */
@@ -394,19 +369,22 @@ PLL_EXPORT double pll_optimize_parameters_brent(pll_optimize_options_t * params)
 
   double xres = pll_minimize_brent(xmin, xguess, xmax,
                                    params->pgtol,
-                                   &score, &f2x,
+                                   &score,
+                                   &f2x,
                                    (void *) params,
                                    &brent_target);
   score = brent_target(params, xres);
   return score;
-}
+} /* pll_optimize_parameters_multidim */
 
 /******************************************************************************/
 /* L-BFGS-B OPTIMIZATION */
 /******************************************************************************/
 
-PLL_EXPORT double pll_optimize_parameters_lbfgsb (
-                                              pll_optimize_options_t * params)
+PLL_EXPORT double pll_optimize_parameters_multidim (
+                                              pll_optimize_options_t * params,
+                                              double *umin,
+                                              double *umax)
 {
   unsigned int i;
   pll_partition_t * partition = params->lk_params.partition;
@@ -431,7 +409,10 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
 
   {
     int * nbd_ptr = bound_type;
+    /* effective boundaries */
     double * l_ptr = lower_bounds, *u_ptr = upper_bounds;
+    /* user defined boundaries */
+    double * ul_ptr = umin, *uu_ptr = umax;
     unsigned int check_n = 0;
 
     /* substitution rate parameters */
@@ -470,11 +451,8 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
         }
 
         x[check_n + i] = partition->subst_params[params->params_index][j];
-        set_range (PLL_OPT_MIN_SUBST_RATE,
-                   PLL_OPT_DEFAULT_RATE_RATIO,
-                   PLL_OPT_MAX_SUBST_RATE,
-                   PLL_OPT_SUBST_RATE_OFFSET,
-                   &x[check_n + i], &l_ptr[i], &u_ptr[i]);
+        l_ptr[i] = ul_ptr?(*(ul_ptr++)):PLL_OPT_MIN_SUBST_RATE;
+        u_ptr[i] = uu_ptr?(*(uu_ptr++)):PLL_OPT_MAX_SUBST_RATE;
       }
       nbd_ptr += n_subst_free_params;
       l_ptr += n_subst_free_params;
@@ -505,12 +483,8 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
           nbd_ptr[cur_index] = PLL_LBFGSB_BOUND_BOTH;
           x[check_n + cur_index] = frequencies[i]
               / frequencies[params->highest_freq_state];
-          set_range (PLL_OPT_MIN_FREQ,
-                     PLL_OPT_DEFAULT_FREQ_RATIO,
-                     PLL_OPT_MAX_FREQ,
-                     PLL_OPT_FREQ_OFFSET,
-                     &x[check_n + cur_index],
-                     &l_ptr[cur_index], &u_ptr[cur_index]);
+          l_ptr[cur_index] = ul_ptr?(*(ul_ptr++)):PLL_OPT_MIN_FREQ;
+          u_ptr[cur_index] = uu_ptr?(*(uu_ptr++)):PLL_OPT_MAX_FREQ;
           cur_index++;
         }
       }
@@ -525,12 +499,9 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     {
       *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
       x[check_n] = partition->prop_invar[params->params_index];
-      set_range (PLL_OPT_MIN_PINV + PLL_LBFGSB_ERROR,
-                 PLL_OPT_DEFAULT_PINV,
-                 PLL_OPT_MAX_PINV,
-                 PLL_OPT_PINV_OFFSET,
-                 &x[check_n], l_ptr, u_ptr);
-      check_n += 1;
+      *l_ptr = ul_ptr?(*(ul_ptr++)):PLL_OPT_MIN_PINV + PLL_LBFGSB_ERROR;
+      *u_ptr = uu_ptr?(*(uu_ptr++)):PLL_OPT_MAX_PINV;
+      check_n++;
       nbd_ptr++;
       l_ptr++;
       u_ptr++;
@@ -541,12 +512,9 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     {
       *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
       x[check_n] = params->lk_params.alpha_value;
-      set_range (PLL_OPT_MIN_ALPHA,
-                 PLL_OPT_DEFAULT_ALPHA,
-                 PLL_OPT_MAX_ALPHA,
-                 PLL_OPT_ALPHA_OFFSET,
-                 &x[check_n], l_ptr, u_ptr);
-      check_n += 1;
+      *l_ptr = ul_ptr?(*(ul_ptr++)):PLL_OPT_MIN_ALPHA;
+      *u_ptr = uu_ptr?(*(uu_ptr++)):PLL_OPT_MAX_ALPHA;
+      check_n++;
       nbd_ptr++;
       l_ptr++;
       u_ptr++;
@@ -557,22 +525,17 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
       {
         int n_cats = params->lk_params.partition->rate_cats;
         int i;
-        double *xptr = &x[check_n];
-        memcpy(xptr, partition->rates, sizeof(double) * n_cats);
         for (i=0; i<n_cats; i++)
         {
-          set_range (0,
-                     1,
-                     5,
-                     PLL_OPT_ALPHA_OFFSET,
-                     xptr, l_ptr, u_ptr);
-          *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
-          xptr++;
-          nbd_ptr++;
-          l_ptr++;
-          u_ptr++;
+          x[check_n + i]  = params->lk_params.partition->rates[i];
+          l_ptr[i] = ul_ptr?(*(ul_ptr++)):PLL_OPT_MIN_RATE;
+          u_ptr[i] = uu_ptr?(*(uu_ptr++)):PLL_OPT_MAX_RATE;
+          nbd_ptr[i] = PLL_LBFGSB_BOUND_BOTH;
         }
         check_n += n_cats;
+        nbd_ptr += n_cats;
+        l_ptr += n_cats;
+        u_ptr += n_cats;
       }
 
       if (params->which_parameters & PLL_PARAMETER_RATE_WEIGHTS)
@@ -584,25 +547,21 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
               double * rate_weights =
                   params->lk_params.partition->rate_weights;
 
-              params->highest_freq_state = 3;
+              params->highest_weight_state = n_rates - 1;
               for (i = 1; i < n_rates; i++)
                       if (rate_weights[i] > rate_weights[params->highest_weight_state])
-                        params->highest_freq_state = i;
+                        params->highest_weight_state = i;
 
               cur_index = 0;
               for (i = 0; i < n_rates; i++)
               {
-                if (i != params->highest_freq_state)
+                if (i != params->highest_weight_state)
                 {
                   nbd_ptr[cur_index] = PLL_LBFGSB_BOUND_BOTH;
                   x[check_n + cur_index] = rate_weights[i]
-                      / rate_weights[params->highest_freq_state];
-                  set_range (PLL_OPT_MIN_FREQ,
-                             PLL_OPT_DEFAULT_FREQ_RATIO,
-                             PLL_OPT_MAX_FREQ,
-                             PLL_OPT_FREQ_OFFSET,
-                             &x[check_n + cur_index],
-                             &l_ptr[cur_index], &u_ptr[cur_index]);
+                      / rate_weights[params->highest_weight_state];
+                  l_ptr[cur_index] = ul_ptr?(*(ul_ptr++)):PLL_OPT_MIN_RATE_WEIGHT;
+                  u_ptr[cur_index] = uu_ptr?(*(uu_ptr++)):PLL_OPT_MAX_RATE_WEIGHT;
                   cur_index++;
                 }
               }
@@ -610,25 +569,6 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
               nbd_ptr += n_weights_free_params;
               l_ptr += n_weights_free_params;
               u_ptr += n_weights_free_params;
-//
-//        int n_cats = params->lk_params.partition->rate_cats;
-//        int i;
-//        double *xptr = &x[check_n];
-//        memcpy(xptr, partition->rate_weights, sizeof(double) * n_cats);
-//        for (i=0; i<n_cats; i++)
-//        {
-//          set_range (1e-4,
-//                     0.25,
-//                     1,
-//                     1e-4,
-//                     xptr, l_ptr, u_ptr);
-//          *nbd_ptr = PLL_LBFGSB_BOUND_BOTH;
-//          xptr++;
-//          nbd_ptr++;
-//          l_ptr++;
-//          u_ptr++;
-//        }
-//        check_n += n_cats;
       }
 
     /* topology (UNIMPLEMENTED) */
@@ -640,14 +580,11 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
     /* single branch length */
     if (params->which_parameters & PLL_PARAMETER_BRANCHES_SINGLE)
     {
-        *nbd_ptr = PLL_LBFGSB_BOUND_LOWER;
+        nbd_ptr [check_n]= PLL_LBFGSB_BOUND_LOWER;
         x[check_n] = params->lk_params.branch_lengths[0];
-        set_range (PLL_OPT_MIN_BRANCH_LEN + PLL_LBFGSB_ERROR,
-                   PLL_OPT_DEFAULT_BRANCH_LEN,
-                   PLL_OPT_MAX_BRANCH_LEN,
-                   PLL_OPT_BRANCH_LEN_OFFSET,
-                   &x[check_n], l_ptr, u_ptr);
-        check_n += 1;
+        l_ptr[check_n] = ul_ptr?(*(ul_ptr++)):PLL_OPT_MIN_BRANCH_LEN;
+        u_ptr[check_n] = uu_ptr?(*(uu_ptr++)):PLL_OPT_MAX_BRANCH_LEN;
+        check_n++;
         nbd_ptr++;
         l_ptr++;
         u_ptr++;
@@ -663,11 +600,8 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
       {
         nbd_ptr[i] = PLL_LBFGSB_BOUND_LOWER;
         x[check_n + i] = params->lk_params.branch_lengths[i];
-        set_range (PLL_OPT_MIN_BRANCH_LEN + PLL_LBFGSB_ERROR,
-                   PLL_OPT_DEFAULT_BRANCH_LEN,
-                   PLL_OPT_MAX_BRANCH_LEN,
-                   PLL_OPT_BRANCH_LEN_OFFSET,
-                   &x[check_n + i], &l_ptr[i], &u_ptr[i]);
+        l_ptr[check_n + i] = ul_ptr?(*(ul_ptr++)):PLL_OPT_MIN_BRANCH_LEN;
+        u_ptr[check_n + i] = uu_ptr?(*(uu_ptr++)):PLL_OPT_MAX_BRANCH_LEN;
       }
       check_n += num_branch_lengths;
       nbd_ptr += num_branch_lengths;
@@ -697,7 +631,7 @@ PLL_EXPORT double pll_optimize_parameters_lbfgsb (
   }
 
   return score;
-} /* pll_optimize_parameters_lbfgsb */
+} /* pll_optimize_parameters_multidim */
 
 
 
@@ -781,9 +715,9 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
   assert(d_equals(tr_p->length, tr_p->back->length));
 
 #if(BL_OPT_METHOD == PLL_BRANCH_OPT_LBFGSB)
-  new_lnl = -1 * pll_optimize_parameters_lbfgsb(params);
+  new_lnl = -1 * pll_optimize_parameters_multidim(params);
 #elif(BL_OPT_METHOD == PLL_BRANCH_OPT_BRENT)
-  new_lnl = -1 * pll_optimize_parameters_brent(params);
+  new_lnl = -1 * pll_optimize_parameters_onedim(params);
 #else
   double xmin, xguess, xmax;
 
