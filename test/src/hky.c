@@ -50,6 +50,7 @@ int main(int argc, char * argv[])
                                    2*n_tips-3,  /* probability matrices */
                                    n_cat_gamma, /* gamma categories */
                                    0,           /* scale buffers */
+                                   pll_map_nt,
                                    0);          /* attributes */
   double branch_lengths[4] = { 0.1, 0.2, 1, 1};
   double frequencies[4] = { 0.3, 0.4, 0.1, 0.2 };

@@ -89,6 +89,7 @@ int main(int argc, char * argv[])
                                    8,            /* probability matrices */
                                    N_CAT_GAMMA,       /* rate categories */
                                    1,
+                                   pll_map_aa,
                                    0);
   
   double branch_lengths[4] = { 0.1, 0.2, 1, 1};

@@ -200,6 +200,7 @@ int main (int argc, char * argv[])
                                     branch_count,
                                     RATE_CATS,
                                     inner_nodes_count,
+                                    pll_map_nt,
                                     PLL_ATTRIB_ARCH_CPU);
 
   /* find sequences in hash table and link them with the corresponding taxa */

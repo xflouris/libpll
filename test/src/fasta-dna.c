@@ -57,7 +57,9 @@ static int bigtest()
                                     1, /* different rate parameters */
                                     8, /* probability matrices */
                                     N_CAT_GAMMA, /* rate categories */
-                                    1, 0);
+                                    1, 
+                                    pll_map_nt,
+                                    0);
 
   fp = pll_fasta_open ("testdata/worms16s.fas", pll_map_fasta);
   if (!fp)
@@ -125,7 +127,9 @@ static int smalltest ()
                                    N_STATES,
                                    num_sites, 0, 1, 2 * N_TAXA_SMALL - 3,
                                    N_CAT_GAMMA,
-                                   1, 2);
+                                   1, 
+                                   pll_map_nt,
+                                   2);
 
   fp = pll_fasta_open ("testdata/small.fas", pll_map_fasta);
   i = 0;

@@ -80,6 +80,7 @@ int main(int argc, char * argv[])
                                 2*n_tips-3,  /* probability matrices */
                                 n_cat_gamma[k], /* gamma categories */
                                 0,           /* scale buffers */
+                                pll_map_nt,
                                 0);          /* attributes */
 
     if (!partition) 
