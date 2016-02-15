@@ -21,6 +21,196 @@
 
 #include "pll.h"
 
+static void create_tiptip_lookup(pll_partition_t * partition,
+                                 const pll_operation_t * op)
+{
+  unsigned int i,j,k,n,m;
+  unsigned int index = 0;
+  unsigned int states = partition->states;
+  unsigned int maxstates = partition->maxstates;
+  unsigned int rate_cats = partition->rate_cats;
+  unsigned int * revmap = partition->revmap;
+
+  unsigned int log2_maxstates = partition->log2_maxstates;
+  unsigned int log2_states = partition->log2_states;
+  unsigned int log2_rates = partition->log2_rates;
+
+  const double * left_matrix = partition->pmatrix[op->child1_matrix_index];
+  const double * right_matrix = partition->pmatrix[op->child2_matrix_index];
+
+  /* precompute first the entries that contain only one 1 */
+  double termj = 0;
+  double termk = 0;
+
+  const double * jmat;
+  const double * kmat;
+  double * lh_statepair;
+
+  /* go through all pairs j,k of states for the two tips; i is the inner
+     node state */
+  for (j = 0; j < maxstates; ++j)
+  {
+    for (k = 0; k < maxstates; ++k)
+    {
+      jmat = left_matrix;
+      kmat = right_matrix;
+      index = 0;
+
+      /* find offset of state-pair in the precomputation table */
+      lh_statepair = partition->lh_statepair;
+      lh_statepair += ((j << log2_maxstates) + k) << (log2_states+log2_rates);
+
+      /* precompute the likelihood for each state and each rate */
+      for (n = 0; n < rate_cats; ++n)
+      {
+        for (i = 0; i < states; ++i)
+        {
+          termj = 0;
+          termk = 0;
+
+          unsigned int jstate = revmap[j];
+          unsigned int kstate = revmap[k];
+
+          /* decompose basecall into the encoded residues and set the appropriate
+             positions in the tip vector */
+          for (m = 0; m < states; ++m)
+          {
+            if (jstate & 1)
+              termj += jmat[m];
+
+            if (kstate & 1)
+              termk += kmat[m];
+
+            jstate >>= 1;
+            kstate >>= 1;
+          }
+
+          jmat += states;
+          kmat += states;
+          lh_statepair[index++] = termj*termk;
+        }
+      }
+    }
+  }
+}
+
+static void update_partials_tipinner(pll_partition_t * partition,
+                                     const pll_operation_t * op)
+{
+  int scaling;
+  unsigned int i,j,k,n;
+  unsigned int tip_clv_index;
+  unsigned int inner_clv_index;
+  unsigned int tip_matrix_index;
+  unsigned int inner_matrix_index;
+
+  /* determine which child is the tip and mark it as the left (first) child */
+  if (op->child1_clv_index < partition->tips)
+  {
+    tip_clv_index = op->child1_clv_index;
+    tip_matrix_index = op->child1_matrix_index;
+    inner_clv_index = op->child2_clv_index;
+    inner_matrix_index = op->child2_matrix_index;
+  }
+  else
+  {
+    tip_clv_index = op->child2_clv_index;
+    tip_matrix_index = op->child2_matrix_index;
+    inner_clv_index = op->child1_clv_index;
+    inner_matrix_index = op->child1_matrix_index;
+  }
+
+  const char * left_tipchars = partition->tipchars[tip_clv_index];
+  const double * right_clv = partition->clv[inner_clv_index];
+  const double * tip_matrix = partition->pmatrix[tip_matrix_index];
+  const double * inner_matrix = partition->pmatrix[inner_matrix_index];
+  double * parent_clv = partition->clv[op->parent_clv_index];
+  unsigned int * scaler = (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE) ?
+                        NULL : partition->scale_buffer[op->parent_scaler_index];
+  const double * lmat;
+  const double * rmat;
+
+  unsigned int states = partition->states;
+  unsigned int span = states * partition->rate_cats;
+
+  unsigned int * revmap = partition->revmap;
+
+  for (n = 0; n < partition->sites; ++n)
+  {
+    lmat = tip_matrix;
+    rmat = inner_matrix;
+
+    scaling = (scaler) ? 1 : 0;
+
+    for (k = 0; k < partition->rate_cats; ++k)
+    {
+      for (i = 0; i < states; ++i)
+      {
+        double terma = 0;
+        double termb = 0;
+        unsigned int lstate = revmap[(int)left_tipchars[n]];
+        for (j = 0; j < states; ++j)
+        {
+          if (lstate & 1)
+            terma += lmat[j];
+
+          termb += rmat[j] * right_clv[j];
+
+          lstate >>= 1;
+        }
+        parent_clv[i] = terma*termb;
+        lmat += states;
+        rmat += states;
+
+        scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
+      }
+      parent_clv += states;
+      right_clv  += states;
+    }
+    /* if *all* entries of the site CLV were below the threshold then scale
+       (all) entries by PLL_SCALE_FACTOR */
+    if (scaling)
+    {
+      parent_clv -= span;
+      for (i = 0; i < span; ++i)
+        parent_clv[i] *= PLL_SCALE_FACTOR;
+      parent_clv += span;
+      scaler[n] += 1;
+    }
+  }
+}
+
+static void update_partials_tiptip(pll_partition_t * partition,
+                                   const pll_operation_t * op)
+{
+  unsigned int j,k,n;
+  unsigned int log2_maxstates = partition->log2_maxstates;
+  unsigned int log2_states = partition->log2_states;
+  unsigned int log2_rates = partition->log2_rates;
+
+  const char * left_tipchars = partition->tipchars[op->child1_clv_index];
+  const char * right_tipchars = partition->tipchars[op->child2_clv_index];
+  double * lh_statepair;
+
+  double * parent_clv = partition->clv[op->parent_clv_index];
+
+  unsigned int states = partition->states;
+  unsigned int span = states * partition->rate_cats;
+
+  for (n = 0; n < partition->sites; ++n)
+  {
+    j = (unsigned int)(left_tipchars[n]);
+    k = (unsigned int)(right_tipchars[n]);
+
+    lh_statepair = partition->lh_statepair;
+    lh_statepair += ((j << log2_maxstates) + k) << (log2_states+log2_rates);
+
+    memcpy(parent_clv, lh_statepair, span*sizeof(double));
+
+    parent_clv += span;
+  }
+}
+
 static void update_partials(pll_partition_t * partition,
                             const pll_operation_t * op)
 {
@@ -121,10 +311,34 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
           parent_scaler[j] += c2_scaler[j];
       }
     }
+
     /* select vectorization method */
     #ifdef HAVE_AVX
     if (partition->attributes & PLL_ATTRIB_ARCH_AVX)
-      pll_update_partials_avx(partition, &(operations[i]));
+    {
+      if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
+      {
+        if ((operations[i].child1_clv_index < partition->tips) &&
+            (operations[i].child2_clv_index < partition->tips))
+        {
+          /* precompute... */
+          create_tiptip_lookup(partition,&(operations[i]));
+
+          /* ... and update CLV at inner node */
+          update_partials_tiptip(partition, &(operations[i]));
+        }
+        else if ((operations[i].child1_clv_index < partition->tips) ||
+                 (operations[i].child2_clv_index < partition->tips))
+        {
+          /* tip-inner */
+          update_partials_tipinner(partition, &(operations[i]));
+        }
+        else
+          pll_update_partials_avx(partition, &(operations[i]));
+      }
+      else
+        pll_update_partials_avx(partition, &(operations[i]));
+    }
     else
     #endif
     #ifdef HAVE_SSE
@@ -132,7 +346,78 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
       assert(0);
     else
     #endif
+    if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
+    {
+      if ((operations[i].child1_clv_index < partition->tips) &&
+          (operations[i].child2_clv_index < partition->tips))
+      {
+        /* precompute... */
+        create_tiptip_lookup(partition,&(operations[i]));
+
+        /* ... and update CLV at inner node */
+        update_partials_tiptip(partition, &(operations[i]));
+      }
+      else if ((operations[i].child1_clv_index < partition->tips) ||
+               (operations[i].child2_clv_index < partition->tips))
+      {
+        /* tip-inner */
+        update_partials_tipinner(partition, &(operations[i]));
+      }
+      else
+        update_partials(partition, &(operations[i]));
+    }
+    else
       update_partials(partition, &(operations[i]));
+
+
+//    if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
+//    {
+//      if ((operations[i].child1_clv_index < partition->tips) &&
+//          (operations[i].child2_clv_index < partition->tips))
+//      {
+//        /* precompute... */
+//        create_tiptip_lookup(partition,&(operations[i]));
+//
+//        /* ... and update CLV at inner node */
+//        update_partials_tiptip(partition, &(operations[i]));
+//      }
+//      else if ((operations[i].child1_clv_index < partition->tips) ||
+//               (operations[i].child2_clv_index < partition->tips))
+//      {
+//        /* tip-inner */
+//        update_partials_tipinner(partition, &(operations[i]));
+//      }
+//      else
+//      {
+//        /* select vectorization method */
+//        #ifdef HAVE_AVX
+//        if (partition->attributes & PLL_ATTRIB_ARCH_AVX)
+//          pll_update_partials_avx(partition, &(operations[i]));
+//        else
+//        #endif
+//        #ifdef HAVE_SSE
+//        if (partition->attributes & PLL_ATTRIB_ARCH_SSE)
+//          assert(0);
+//        else
+//        #endif
+//          update_partials(partition, &(operations[i]));
+//      }
+//    }
+//    else
+//    {
+//    /* select vectorization method */
+//    #ifdef HAVE_AVX
+//    if (partition->attributes & PLL_ATTRIB_ARCH_AVX)
+//      pll_update_partials_avx(partition, &(operations[i]));
+//    else
+//    #endif
+//    #ifdef HAVE_SSE
+//    if (partition->attributes & PLL_ATTRIB_ARCH_SSE)
+//      assert(0);
+//    else
+//    #endif
+//      update_partials(partition, &(operations[i]));
+//    }
   }
 
 }
@@ -291,14 +576,97 @@ PLL_EXPORT double pll_compute_edge_persite_loglikelihood(
 
   return logl;
 }
+static double edge_loglikelihood_tipinner(pll_partition_t * partition,
+                                          unsigned int parent_clv_index,
+                                          int parent_scaler_index,
+                                          unsigned int child_clv_index,
+                                          unsigned int matrix_index,
+                                          unsigned int freqs_index)
+{
+  unsigned int n,i,j,k;
+  double logl = 0;
+  double terma, terma_r, termb;
+  double site_lk, inv_site_lk;
 
-PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
-                                                 unsigned int parent_clv_index,
-                                                 int parent_scaler_index,
-                                                 unsigned int child_clv_index,
-                                                 int child_scaler_index,
-                                                 unsigned int matrix_index,
-                                                 unsigned int freqs_index)
+  const double * clvp = partition->clv[parent_clv_index];
+  const double * freqs = NULL;
+  const double * pmatrix = partition->pmatrix[matrix_index];
+  double prop_invar = partition->prop_invar[freqs_index];
+  unsigned int states = partition->states;
+  unsigned int states_padded = partition->states_padded;
+  double * weights = partition->rate_weights;
+  unsigned int scale_factors;
+
+  unsigned int * parent_scaler;
+
+  /* child is the tip sequence, gets its tipchar */
+  char * tipchar = partition->tipchars[child_clv_index];
+  unsigned int * revmap = partition->revmap;
+  unsigned int cstate;
+
+  if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
+    parent_scaler = NULL;
+  else
+    parent_scaler = partition->scale_buffer[parent_scaler_index];
+
+  for (n = 0; n < partition->sites; ++n)
+  {
+    pmatrix = partition->pmatrix[matrix_index];
+    freqs = partition->frequencies[freqs_index];
+    terma = 0;
+    for (i = 0; i < partition->rate_cats; ++i)
+    {
+      terma_r = 0;
+      for (j = 0; j < partition->states; ++j)
+      {
+        termb = 0;
+        cstate = revmap[(int)(*tipchar)];
+        for (k = 0; k < partition->states; ++k)
+        {
+          if (cstate & 1)
+            termb += pmatrix[k];
+          cstate >>= 1;
+        }
+        terma_r += clvp[j] * freqs[j] * termb;
+        pmatrix += states;
+      }
+      terma += terma_r * weights[i];
+      clvp += states;
+      if (partition->mixture > 1)
+        freqs += states_padded;
+    }
+
+    site_lk = terma;
+
+    /* account for invariant sites */
+    if (prop_invar > 0)
+    {
+      inv_site_lk = (partition->invariant[n] == -1) ? 
+                        0 : freqs[partition->invariant[n]];
+
+      site_lk = site_lk * (1. - prop_invar) +
+                inv_site_lk * prop_invar;
+    }
+
+    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
+
+    logl += log(site_lk) * partition->pattern_weights[n];
+    if (scale_factors)
+      logl += scale_factors * log(PLL_SCALE_THRESHOLD);
+
+    tipchar++;
+  }
+
+  return logl;
+}
+
+double edge_loglikelihood(pll_partition_t * partition,
+                          unsigned int parent_clv_index,
+                          int parent_scaler_index,
+                          unsigned int child_clv_index,
+                          int child_scaler_index,
+                          unsigned int matrix_index,
+                          unsigned int freqs_index)
 {
   unsigned int n,i,j,k;
   double logl = 0;
@@ -340,7 +708,9 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
       {
         termb = 0;
         for (k = 0; k < partition->states; ++k)
+        {
           termb += pmatrix[k] * clvc[k];
+        }
         terma_r += clvp[j] * freqs[j] * termb;
         pmatrix += states;
       }
@@ -372,6 +742,39 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
   }
 
   return logl;
+}
+
+PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
+                                                 unsigned int parent_clv_index,
+                                                 int parent_scaler_index,
+                                                 unsigned int child_clv_index,
+                                                 int child_scaler_index,
+                                                 unsigned int matrix_index,
+                                                 unsigned int freqs_index)
+{
+  double logl;
+
+  if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
+    if ((parent_clv_index < partition->tips) ||
+        (child_clv_index < partition->tips))
+      return edge_loglikelihood_tipinner(partition,
+                                        (parent_clv_index < partition->tips) ? 
+                                            child_clv_index : parent_clv_index,
+                                        (parent_clv_index < partition->tips) ? 
+                                            child_scaler_index : parent_scaler_index,
+                                        (parent_clv_index < partition->tips) ? 
+                                            parent_clv_index : child_clv_index,
+                                        matrix_index,
+                                        freqs_index);
+
+  logl = edge_loglikelihood(partition,
+                            parent_clv_index,
+                            parent_scaler_index,
+                            child_clv_index,
+                            child_scaler_index,
+                            matrix_index,
+                            freqs_index);
+  return logl; 
 }
 
 PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,

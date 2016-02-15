@@ -1,8 +1,28 @@
+/*
+    Copyright (C) 2015 Tomas Flouri, Diego Darriba
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    Contact: Tomas Flouri <Tomas.Flouri@h-its.org>,
+    Exelixis Lab, Heidelberg Instutute for Theoretical Studies
+    Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
+*/
+
 #include "pll.h"
 #include <stdarg.h>
 #include <search.h>
 #include <time.h>
-
 
 #define STATES    4
 #define RATE_CATS 4
@@ -197,7 +217,8 @@ int main(int argc, char * argv[])
                                    branch_count,
                                    RATE_CATS,
                                    inner_nodes_count,
-                                   PLL_ATTRIB_ARCH_CPU);
+                                   pll_map_nt,
+                                   PLL_ATTRIB_ARCH_AVX);
 
   /* initialize the array of base frequencies */
   double frequencies[4] = { 0.17, 0.19, 0.25, 0.39 };
@@ -314,7 +335,8 @@ int main(int argc, char * argv[])
 
   /* use the operations array to compute all ops_count inner CLVs. Operations
      will be carried out sequentially starting from operation 0 towrds ops_count-1 */
-  pll_update_partials(partition, operations, ops_count);
+  for (i = 0; i < 100; ++i)
+    pll_update_partials(partition, operations, ops_count);
 
   /* Uncomment to print on screen the CLVs at tip and inner nodes. From 0 to
      tip_nodes_count-1 are tip CLVs, the rest are inner node CLVs.

@@ -513,19 +513,32 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
   }
 
   memset(partition->invariant, 0, partition->sites*sizeof(int));
-  for (i = 0; i < partition->tips; ++i)
+
+  if (partition->attributes == PLL_ATTRIB_PATTERN_TIP)
   {
-    tipclv = partition->clv[i];
-    for (j = 0; j < partition->sites; ++j)
-    {
-      state = 0;
-      for (k = 0; k < partition->states; ++k)
+    for (i = 0; i < partition->tips; ++i)
+      for (j = 0; j < partition->sites; ++j)
       {
-        state |= ((unsigned int)tipclv[k] << k);
-      }
-      if ((unsigned int)__builtin_popcount(state) < partition->states)
+        state =  partition->revmap[(int)(partition->tipchars[i][j])];
         partition->invariant[j] |= state;
-      tipclv += (partition->rate_cats * partition->states);
+      }
+  }
+  else
+  {
+    for (i = 0; i < partition->tips; ++i)
+    {
+      tipclv = partition->clv[i];
+      for (j = 0; j < partition->sites; ++j)
+      {
+        state = 0;
+        for (k = 0; k < partition->states; ++k)
+        {
+          state |= ((unsigned int)tipclv[k] << k);
+        }
+        if ((unsigned int)__builtin_popcount(state) < partition->states)
+          partition->invariant[j] |= state;
+        tipclv += (partition->rate_cats * partition->states);
+      }
     }
   }
 

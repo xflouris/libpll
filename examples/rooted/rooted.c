@@ -16,7 +16,8 @@ int main(int argc, char * argv[])
                                    5,       /* How many probability matrices should we allocate */
                                    4,       /* Number of rate categories */
                                    4,       /* How many scale buffers do we want */
-                                   PLL_ATTRIB_ARCH_CPU);        /* various attributes */
+                                   pll_map_nt,
+                                   PLL_ATTRIB_PATTERN_TIP | PLL_ATTRIB_ARCH_CPU);        /* various attributes */
   
   /* initialize an array of two different branch lengths */
   double branch_lengths[5] = { 0.36, 0.722, 0.985, 0.718, 1.44};
@@ -111,16 +112,19 @@ int main(int argc, char * argv[])
   pll_update_partials(partition, operations, 4);
 
   /* print out the CLVs at tip and inner nodes*/
-  printf ("Tip 0: ");
-  pll_show_clv(partition,0,PLL_SCALE_BUFFER_NONE,7);
-  printf ("Tip 1: ");
-  pll_show_clv(partition,1,PLL_SCALE_BUFFER_NONE,7);
-  printf ("Tip 2: ");
-  pll_show_clv(partition,2,PLL_SCALE_BUFFER_NONE,7);
-  printf ("Tip 3: ");
-  pll_show_clv(partition,3,PLL_SCALE_BUFFER_NONE,7);
-  printf ("Tip 4: ");
-  pll_show_clv(partition,4,PLL_SCALE_BUFFER_NONE,7);
+  if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
+  {
+    printf ("Tip 0: ");
+    pll_show_clv(partition,0,PLL_SCALE_BUFFER_NONE,7);
+    printf ("Tip 1: ");
+    pll_show_clv(partition,1,PLL_SCALE_BUFFER_NONE,7);
+    printf ("Tip 2: ");
+    pll_show_clv(partition,2,PLL_SCALE_BUFFER_NONE,7);
+    printf ("Tip 3: ");
+    pll_show_clv(partition,3,PLL_SCALE_BUFFER_NONE,7);
+    printf ("Tip 4: ");
+    pll_show_clv(partition,4,PLL_SCALE_BUFFER_NONE,7);
+  }
   printf ("CLV 5: ");
   pll_show_clv(partition,5,0,7);
   printf ("CLV 6: ");

@@ -1,3 +1,24 @@
+/*
+    Copyright (C) 2015 Tomas Flouri, Diego Darriba
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    Contact: Tomas Flouri <Tomas.Flouri@h-its.org>,
+    Exelixis Lab, Heidelberg Instutute for Theoretical Studies
+    Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
+*/
+
 #include "pll.h"
 #include <stdarg.h>
 #include <search.h>
@@ -239,6 +260,7 @@ int main(int argc, char * argv[])
                                    branch_count,
                                    RATE_CATS,
                                    inner_nodes_count,
+                                   pll_map_nt,
                                    PLL_ATTRIB_ARCH_CPU);
 
   /* initialize the array of base frequencies */

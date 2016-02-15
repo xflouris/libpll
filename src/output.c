@@ -66,6 +66,10 @@ PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
   unsigned int rates = partition->rate_cats;
   double prob;
 
+  if ((clv_index < partition->tips) &&
+      (partition->attributes & PLL_ATTRIB_PATTERN_TIP))
+    return;
+
   printf ("[ ");
   for (i = 0; i < partition->sites; ++i)
   {

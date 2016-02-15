@@ -1,4 +1,4 @@
-/* Copyright (C) 2015 Diego Darriba
+/* Copyright (C) 2015 Diego Darriba, Tomas Flouri
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -57,6 +57,7 @@ int main(int argc, char * argv[])
   partition = pll_partition_create(4, 2, 4, 6, 0,
                                    num_models,  /* How many different models */
                                    5, 4, 2,
+                                   pll_map_nt,
                                    PLL_ATTRIB_ARCH_CPU);
 
   pll_set_tip_states(partition, 0, pll_map_nt, "WAAAAB");

@@ -52,6 +52,8 @@
 
 #define PLL_LINEALLOC 2048
 
+#define PLL_ASCII_SIZE 256
+
 #define PLL_SCALE_FACTOR 115792089237316195423570985008687907853269984665640564039457584007913129639936.0  /*  2**256 (exactly)  */
 #define PLL_SCALE_THRESHOLD (1.0/PLL_SCALE_FACTOR)
 #define PLL_SCALE_FACTOR_SQRT 340282366920938463463374607431768211456.0 /* 2**128 */
@@ -66,9 +68,12 @@
 #define PLL_ATTRIB_ARCH_AVX2      1 << 2
 #define PLL_ATTRIB_ARCH_AVX512    1 << 3
 #define PLL_ATTRIB_ARCH_MASK         0xF
+
 #define PLL_ATTRIB_MIXT_LINKED    1 << 4  /** Q matrices linked to rate categories */
 #define PLL_ATTRIB_MIXT_UNLINKED  1 << 5  /** Q matrices unlinked */
-#define PLL_ATTRIB_MIXT_MASK        0xF0
+#define PLL_ATTRIB_MIXT_MASK        0x30
+
+#define PLL_ATTRIB_PATTERN_TIP    1 << 6
 
 /* error codes */
 
@@ -82,6 +87,7 @@
 #define PLL_ERROR_NEWICK_SYNTAX            8
 #define PLL_ERROR_TIP_DATA_ILLEGAL_STATE   9
 #define PLL_ERROR_MULTIPLE_ARCH           10
+#define PLL_ERROR_INIT_CHARMAP            11
 
 #define PLL_ERROR_ALPHA                  101
 #define PLL_ERROR_PINV                   102
@@ -111,6 +117,8 @@ typedef struct pll_partition
   unsigned int scale_buffers;
   unsigned int attributes;
 
+  const unsigned int * map;
+
   /* vectorization options */
   size_t alignment;
   unsigned int states_padded;
@@ -131,6 +139,17 @@ typedef struct pll_partition
   double ** eigenvecs;
   double ** inv_eigenvecs;
   double ** eigenvals;
+
+  /* tip-tip precomputation data */
+  unsigned int maxstates;
+  unsigned int log2_maxstates;
+  unsigned int log2_states;
+  unsigned int log2_rates;
+  char ** tipchars;
+  char * charmap;
+  double * lh_statepair;
+  unsigned int * revmap;
+
 } pll_partition_t;
 
 
@@ -269,6 +288,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                                                   unsigned int prob_matrices,
                                                   unsigned int rate_cats,
                                                   unsigned int scale_buffers,
+                                                  const unsigned int * map,
                                                   unsigned int attributes);
 
 PLL_EXPORT void pll_partition_destroy(pll_partition_t * partition);
