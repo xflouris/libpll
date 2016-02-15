@@ -10,7 +10,7 @@
 
 #ifndef PLL_H_
 #define PLL_H_
-#include <pll.h>
+#include "pll.h"
 #endif
 
 /* the bisection edge is a leaf */
