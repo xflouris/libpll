@@ -421,3 +421,51 @@ PLL_EXPORT int pll_utree_check_integrity(pll_utree_t * root)
   return utree_traverse_check(start_node->back, cb_check_integrity) &&
          utree_traverse_check(start_node, cb_check_integrity);
 }
+
+static pll_utree_t * clone_node( pll_utree_t * tree )
+{
+  pll_utree_t * new_tree = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
+  memcpy(new_tree, tree, sizeof(pll_utree_t));
+  if (tree->label)
+  {
+    new_tree->label = (char *) malloc( strlen(tree->label) + 1);
+    strcpy(new_tree->label, tree->label);
+  }
+
+  if (tree->next)
+  {
+    new_tree->next               = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
+    memcpy(new_tree->next, tree->next, sizeof(pll_utree_t));
+    new_tree->next->next         = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
+    memcpy(new_tree->next->next, tree->next->next, sizeof(pll_utree_t));
+    new_tree->next->next->next   = new_tree;
+    new_tree->next->label = new_tree->next->next->label = new_tree->label;
+  }
+  return new_tree;
+}
+
+static void utree_recurse_clone(pll_utree_t * new_tree, pll_utree_t * root)
+{
+    if (root->back)
+      new_tree->back = clone_node(root->back);
+      new_tree->back->back = new_tree;
+      if (root->back->next)
+      {
+        utree_recurse_clone(new_tree->back->next, root->back->next);
+        utree_recurse_clone(new_tree->back->next->next, root->back->next->next);
+      }
+}
+
+PLL_EXPORT pll_utree_t * pll_utree_clone(pll_utree_t * root)
+{
+  pll_utree_t * new_tree = clone_node(root);
+
+  utree_recurse_clone(new_tree, root);
+  if (root->next)
+  {
+    utree_recurse_clone(new_tree->next, root->next);
+    utree_recurse_clone(new_tree->next->next, root->next->next);
+  }
+
+  return new_tree;
+}
