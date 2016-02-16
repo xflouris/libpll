@@ -8,6 +8,7 @@
 #define RATE_CATS 4
 
 #define SHOW_ASCII_TREE 0
+#define OPTIMIZE_BRANCH_LENGTHS 0
 
 static void fatal (const char * format, ...) __attribute__ ((noreturn));
 
@@ -83,6 +84,9 @@ static void show_tree (pll_utree_t * tree)
   return;
 #endif
 }
+
+static int parameters_index = 0;
+static int frequencies_index = 0;
 
 int main (int argc, char * argv[])
 {
@@ -200,8 +204,8 @@ int main (int argc, char * argv[])
                                     inner_nodes_count,
                                     STATES,
                                     (unsigned int) sites,
-                                    0,
-                                    1,
+                                    0, /* mixture */
+                                    1, /* rate matrices */
                                     branch_count,
                                     RATE_CATS,
                                     inner_nodes_count,
@@ -320,25 +324,32 @@ int main (int argc, char * argv[])
                                                 tree->back->clv_index,
                                                 tree->back->scaler_index,
                                                 tree->pmatrix_index,
-                                                0);
+                                                frequencies_index);
 
   printf ("Log-L at %s-%s: %f\n", tree->label, tree->back->label, logl);
 
+#if (OPTIMIZE_BRANCH_LENGTHS)
   /* optimize branch lengths */
-  printf ("Optimizing branch length parameters\n");
-  pll_optimize_branch_lengths_iterative (partition, tree, 0, 0,
+  printf ("\nOptimizing all branch length parameters\n");
+  pll_optimize_branch_lengths_iterative (partition,
+                                         tree,
+                                         parameters_index,
+                                         frequencies_index,
                                          branch_opt_epsilon,
-                                         branch_opt_smoothings);
-
+                                         branch_opt_smoothings,
+                                         1);
   logl = pll_compute_edge_loglikelihood (partition,
                                          tree->clv_index,
                                          tree->scaler_index,
                                          tree->back->clv_index,
                                          tree->back->scaler_index,
                                          tree->pmatrix_index,
-                                         0);
+                                         frequencies_index);
 
   printf ("Log-L* at %s-%s: %f\n", tree->label, tree->back->label, logl);
+#else
+  printf ("Branch lengths are not globally optimized\n");
+#endif
 
   /* Test TBR */
 
@@ -362,18 +373,23 @@ int main (int argc, char * argv[])
     if (!(bisect_edge->next && bisect_edge->back->next))
       continue;
 
-    /* find nodes at a certain distance */
+    /* find nodes at a certain distance from one side of the bisection */
     pll_utree_nodes_at_node_dist (bisect_edge, nodes_at_dist, &n_nodes_at_dist,
                                   distance, 1);
     if (!n_nodes_at_dist)
       continue;
+    /* select random parent edge */
     reconnect.edge.utree.parent = nodes_at_dist[rand () % n_nodes_at_dist];
+
+    /* find nodes at a certain distance from the other side of the bisection */
     pll_utree_nodes_at_node_dist (bisect_edge->back, nodes_at_dist,
                                   &n_nodes_at_dist, distance, 1);
     if (!n_nodes_at_dist)
           continue;
     else
       max_tests = -1;
+
+    /* select random child edge */
     reconnect.edge.utree.child = nodes_at_dist[rand () % n_nodes_at_dist];
   }
 
@@ -404,30 +420,43 @@ int main (int argc, char * argv[])
     fatal ("Tree is not consistent");
   printf ("OK\n");
 
-  /* traversing the new tree */
+  /* since the topology has changed, and we have removed and created branches,
+   * we need to compute a new tree traversal... */
   if (!pll_utree_traverse (tree, cb_full_traversal, travbuffer,
                            &traversal_size))
     fatal ("Function pll_utree_traverse() requires inner nodes as parameters");
 
-  pll_utree_create_operations (travbuffer, traversal_size, branch_lengths,
-                               matrix_indices, operations, &matrix_count,
+  pll_utree_create_operations (travbuffer,
+                               traversal_size,
+                               branch_lengths,
+                               matrix_indices,
+                               operations,
+                               &matrix_count,
                                &ops_count);
   show_tree (reconnect.edge.utree.child);
-  pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths,
+
+  /* ...update the probability matrices... */
+  pll_update_prob_matrices (partition,
+                            parameters_index,
+                            matrix_indices,
+                            branch_lengths,
                             matrix_count);
+
+  /* ...and the conditional likelihoods */
   pll_update_partials (partition, operations, ops_count);
 
-  /* compute marginal likelihoods */
+  /* compute marginal likelihoods at the reconnection points */
   printf("\nMarginal likelihoods:\n");
   logl = pll_compute_root_loglikelihood (partition,
                                          tree->clv_index,
                                          tree->scaler_index,
-                                         0);
+                                         frequencies_index);
   printf ("  Log-L Partial at %s: %f\n", tree->label, logl);
+
   logl = pll_compute_root_loglikelihood (partition,
                                          tree->back->clv_index,
                                          tree->back->scaler_index,
-                                         0);
+                                         frequencies_index);
   printf ("  Log-L Partial at %s: %f\n", tree->back->label, logl);
 
   /* compute global likelihood */
@@ -437,21 +466,51 @@ int main (int argc, char * argv[])
                                          tree->back->clv_index,
                                          tree->back->scaler_index,
                                          tree->pmatrix_index,
-                                         0);
+                                         frequencies_index);
 
   printf ("  Log-L at %s-%s: %f\n", tree->label, tree->back->label, logl);
 
   printf ("\nOptimizing branch length parameters locally (radius = 2)\n");
-  pll_optimize_branch_lengths_local (partition, tree, 0, 0, 1e-2, 4, 2);
+  pll_optimize_branch_lengths_local (partition,
+                                     tree,
+                                     parameters_index,
+                                     frequencies_index,
+                                     1e-2, /* tolerance */
+                                     4,    /* smoothings */
+                                     2,    /* radius */
+                                     1);   /* keep update */
   logl = pll_compute_edge_loglikelihood (partition,
                                          tree->clv_index,
                                          tree->scaler_index,
                                          tree->back->clv_index,
                                          tree->back->scaler_index,
                                          tree->pmatrix_index,
-                                         0);
+                                         frequencies_index);
 
   printf ("Log-L* at %s-%s: %f\n", tree->label, tree->back->label, logl);
+
+#if (OPTIMIZE_BRANCH_LENGTHS)
+  /* optimize branch lengths */
+  printf ("\nOptimizing all branch length parameters\n");
+  pll_optimize_branch_lengths_iterative (partition,
+                                         tree,
+                                         parameters_index,
+                                         frequencies_index,
+                                         branch_opt_epsilon,
+                                         branch_opt_smoothings,
+                                         1);
+  logl = pll_compute_edge_loglikelihood (partition,
+                                         tree->clv_index,
+                                         tree->scaler_index,
+                                         tree->back->clv_index,
+                                         tree->back->scaler_index,
+                                         tree->pmatrix_index,
+                                         frequencies_index);
+
+  printf ("Log-L* at %s-%s: %f\n", tree->label, tree->back->label, logl);
+#else
+  printf ("Branch lengths are not globally optimized\n");
+#endif
 
   /* destroy all structures allocated for the concrete PLL partition instance */
   pll_partition_destroy (partition);

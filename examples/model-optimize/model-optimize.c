@@ -141,10 +141,12 @@ int main (int argc, char * argv[])
 
   /* create the partition instance */
   partition = partition_fasta_create (argv[2],
-  STATES,
+                                      STATES,
                                       1,
                                       RATE_CATS,
-                                      PLL_ATTRIB_ARCH_SSE, 0, tip_count,
+                                      PLL_ATTRIB_ARCH_SSE | PLL_ATTRIB_PATTERN_TIP,
+                                      0,
+                                      tip_count,
                                       (const char **) tipnames);
 
   if (!partition)
@@ -219,12 +221,12 @@ int main (int argc, char * argv[])
   if (n_subst_free_params < 5)
   {
     /* if there are symmetries in the rate matrix, we average on them */
-    for (i = 0; i < n_subst_free_params; ++i)
+    for (i = 0; i < (unsigned int)n_subst_free_params; ++i)
     {
       int n_symm = 0;
       double cur_rate = 0.0;
       for (j = 0; j < SUBST_PARAMS; ++j)
-        if (subst_params_symmetries[j] == i)
+        if (subst_params_symmetries[j] == (int)i)
         {
           n_symm++;
           cur_rate += empirical_subst_rates[j];
@@ -232,7 +234,7 @@ int main (int argc, char * argv[])
       assert(n_symm);
       cur_rate /= n_symm;
       for (j = 0; j < SUBST_PARAMS; ++j)
-        if (subst_params_symmetries[j] == i)
+        if (subst_params_symmetries[j] == (int)i)
           empirical_subst_rates[j] = cur_rate;
     }
     /* normalize */
