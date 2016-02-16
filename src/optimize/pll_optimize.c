@@ -75,7 +75,14 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
 
     symm = params->subst_params_symmetries;
     n_subst_rates = partition->states * (partition->states - 1) / 2;
-    subst_rates = (double *) malloc ((size_t) n_subst_rates * sizeof(double));
+    if ((subst_rates = (double *) malloc (
+        (size_t) n_subst_rates * sizeof(double))) == NULL)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf (pll_errmsg, 200,
+                "Cannot allocate memory for substitution rate parameters");
+      return PLL_FAILURE;
+    }
 
     assert(subst_rates);
 
@@ -121,7 +128,14 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
     unsigned int n_states = partition->states;
     unsigned int cur_index;
     double sum_ratios = 1.0;
-    double *freqs = (double *) malloc ((size_t) n_states * sizeof(double));
+    double *freqs;
+    if ((freqs = (double *) malloc ((size_t) n_states * sizeof(double))) == NULL)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf (pll_errmsg, 200, "Cannot allocate memory for frequencies");
+      return PLL_FAILURE;
+    }
+
     for (i = 0; i < (n_states - 1); ++i)
     {
       assert(!is_nan(xptr[i]));
@@ -162,7 +176,15 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
     assert(!is_nan(xptr[0]));
     /* assign discrete rates */
     double * rate_cats;
-    rate_cats = malloc((size_t)partition->rate_cats * sizeof(double));
+    if ((rate_cats = malloc ((size_t) partition->rate_cats * sizeof(double)))
+        == NULL)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf (pll_errmsg, 200,
+                "Cannot allocate memory for substitution rate categories");
+      return PLL_FAILURE;
+    }
+
     params->lk_params.alpha_value = xptr[0];
     if (!pll_compute_gamma_cats (xptr[0], partition->rate_cats, rate_cats))
     {
@@ -185,28 +207,37 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
   if (params->which_parameters & PLL_PARAMETER_RATE_WEIGHTS)
   {
     unsigned int i;
-        unsigned int n_rate_cats = params->lk_params.partition->rate_cats;
-        unsigned int cur_index;
-        double sum_ratios = 1.0;
-        double *weights = (double *) malloc((size_t)n_rate_cats*sizeof(double));
-        for (i = 0; i < (n_rate_cats - 1); ++i)
-        {
-          assert(!is_nan(xptr[i]));
-          sum_ratios += xptr[i];
-        }
-        cur_index = 0;
-        for (i = 0; i < (n_rate_cats); ++i)
-        {
-          if (i != params->highest_freq_state)
-          {
-            weights[i] = xptr[cur_index] / sum_ratios;
-            cur_index++;
-          }
-        }
-        weights[params->highest_freq_state] = 1.0 / sum_ratios;
-        pll_set_category_weights(partition, weights);
-        free (weights);
-        xptr += (n_rate_cats - 1);
+    unsigned int n_rate_cats = params->lk_params.partition->rate_cats;
+    unsigned int cur_index;
+    double sum_ratios = 1.0;
+    double *weights;
+    if ((weights = (double *) malloc ((size_t) n_rate_cats * sizeof(double)))
+        == NULL)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf (pll_errmsg, 200,
+                "Cannot allocate memory for substitution rate weights");
+      return PLL_FAILURE;
+    }
+
+    for (i = 0; i < (n_rate_cats - 1); ++i)
+    {
+      assert(!is_nan (xptr[i]));
+      sum_ratios += xptr[i];
+    }
+    cur_index = 0;
+    for (i = 0; i < (n_rate_cats); ++i)
+    {
+      if (i != params->highest_freq_state)
+      {
+        weights[i] = xptr[cur_index] / sum_ratios;
+        cur_index++;
+      }
+    }
+    weights[params->highest_freq_state] = 1.0 / sum_ratios;
+    pll_set_category_weights (partition, weights);
+    free (weights);
+    xptr += (n_rate_cats - 1);
   }
 
   /* update all branch lengths */
@@ -406,6 +437,22 @@ PLL_EXPORT double pll_optimize_parameters_multidim (
   lower_bounds = (double *) calloc ((size_t) num_variables, sizeof(double));
   upper_bounds = (double *) calloc ((size_t) num_variables, sizeof(double));
   bound_type = (int *) calloc ((size_t) num_variables, sizeof(int));
+
+  if (!(x && lower_bounds && upper_bounds && bound_type))
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200,
+              "Cannot allocate memory for l-bfgs-b parameters");
+    if (x)
+      free (x);
+    if (lower_bounds)
+      free (lower_bounds);
+    if (upper_bounds)
+      free (upper_bounds);
+    if (bound_type)
+      free (bound_type);
+    return -INFINITY;
+  }
 
   {
     int * nbd_ptr = bound_type;
@@ -740,7 +787,6 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
 
   if (pll_errno)
   {
-    printf ("ERROR: %s\n", pll_errmsg);
     return PLL_FAILURE;
   }
 
@@ -868,12 +914,15 @@ PLL_EXPORT double pll_optimize_branch_lengths_local (
   params.params_index = params_index;
   params.freqs_index = freqs_index;
   params.sumtable = 0;
-      if ((params.sumtable = (double *) calloc (
-          partition->sites
-              * partition->rate_cats
-              * partition->states,
-          sizeof(double))) == NULL)
-        return PLL_FAILURE;
+
+  if ((params.sumtable = (double *) calloc (
+      partition->sites * partition->rate_cats * partition->states,
+      sizeof(double))) == NULL)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200, "Cannot allocate memory for bl opt variables");
+    return PLL_FAILURE;
+  }
 
   lnl = pll_compute_edge_loglikelihood (partition,
                                         tree->back->clv_index,

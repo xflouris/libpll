@@ -30,7 +30,15 @@ PLL_EXPORT double * pll_compute_empirical_frequencies(pll_partition_t * partitio
   unsigned int tips           = partition->tips;
   const unsigned int * revmap = partition->revmap;
   const unsigned int * w      = partition->pattern_weights;
-  double * frequencies = (double *) calloc (states, sizeof(double));
+  double * frequencies;
+
+  if ((frequencies = (double *) calloc ((size_t) states, sizeof(double)))
+      == NULL)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200, "Cannot allocate memory for empirical frequencies");
+    return NULL;
+  }
 
   if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
   {
@@ -91,12 +99,25 @@ PLL_EXPORT double * pll_compute_empirical_subst_rates(pll_partition_t * partitio
   char * const * tipchars     = partition->tipchars;
 
   unsigned int n_subst_rates  = (states * (states - 1) / 2);
-  double * subst_rates        = (double *) calloc (n_subst_rates, sizeof(double));
+  double * subst_rates = (double *) calloc ((size_t) n_subst_rates, sizeof(double));
 
-  unsigned *pair_rates = (unsigned *) alloca(
-      states * states * sizeof(unsigned));
-  memset (pair_rates, 0, sizeof(unsigned) * states * states);
-  unsigned *state_freq = (unsigned *) alloca(states * sizeof(unsigned));
+  unsigned *pair_rates = (unsigned *) calloc(
+      states * states, sizeof(unsigned));
+  unsigned *state_freq = (unsigned *) malloc(states * sizeof(unsigned));
+
+  if (!(subst_rates && pair_rates && state_freq))
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200,
+              "Cannot allocate memory for empirical subst rates");
+    if (subst_rates)
+      free (subst_rates);
+    if (pair_rates)
+      free (pair_rates);
+    if (state_freq)
+      free (state_freq);
+    return NULL;
+  }
 
   unsigned int undef_state = pow (2, states) - 1;
   if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)

@@ -958,6 +958,13 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
     *diagp,
     ki;
 
+  if (!diagptable)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200, "Cannot allocate memory for diagptable");
+    return -INFINITY;
+  }
+
   branch_length /= (1.0 - prop_invar);
 
   /* pre-compute the derivatives of the P matrix for all discrete GAMMA rates */

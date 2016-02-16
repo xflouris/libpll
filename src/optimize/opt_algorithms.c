@@ -51,6 +51,9 @@ PLL_EXPORT double pll_minimize_newton(double x1,
 
   double tolerance = 1e-4; //params->pgtol
 
+  /* reset errno */
+  pll_errno = 0;
+
   rts = xguess;
   if (rts < x1)
     rts = x1;
@@ -64,7 +67,7 @@ PLL_EXPORT double pll_minimize_newton(double x1,
   {
     snprintf (pll_errmsg, 200, "wrong likelihood derivatives");
     pll_errno = PLL_ERROR_NEWTON_DERIV;
-    return 0.0;
+    return -INFINITY;
   }
   if (df >= 0.0 && fabs (f) < tolerance)
     return rts;
@@ -111,9 +114,9 @@ PLL_EXPORT double pll_minimize_newton(double x1,
 
     if (!isfinite(f) || !isfinite(df))
     {
-      snprintf (pll_errmsg, 200, "wrong likelihood derivatives [it]");
+      snprintf (pll_errmsg, 200, "Wrong likelihood derivatives [it]");
       pll_errno = PLL_ERROR_NEWTON_DERIV;
-      return 0.0;;
+      return -INFINITY;
     }
 
     if (df > 0.0 && fabs (f) < tolerance)
@@ -129,7 +132,7 @@ PLL_EXPORT double pll_minimize_newton(double x1,
 
   snprintf(pll_errmsg, 200, "Exceeded maximum number of iterations");
   pll_errno = PLL_ERROR_NEWTON_LIMIT;
-  return 0.0;
+  return -INFINITY;
 }
 
 /******************************************************************************/
@@ -170,16 +173,32 @@ PLL_EXPORT double pll_minimize_lbfgsb (double * x,
 
   max_corrections = 5;
 
+  /* reset errno */
+  pll_errno = 0;
+
   g = (double *) calloc ((size_t) n, sizeof(double));
 
   /*     We start the iteration by initializing task. */
   *task = (int) START;
 
-  iwa = (int *) calloc (3 * (size_t)n, sizeof(int));
+  iwa = (int *) calloc (3 * (size_t) n, sizeof(int));
   wa = (double *) calloc (
       (2 * (size_t)max_corrections + 5) * (size_t)n
           + 12 * (size_t)max_corrections * ((size_t)max_corrections + 1),
       sizeof(double));
+
+  if (!(wa && iwa && g))
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200, "Cannot allocate memory for l-bfgs-b variables");
+    if (g)
+      free (g);
+    if (iwa)
+      free (iwa);
+    if (wa)
+      free (wa);
+    return -INFINITY;
+  }
 
   //initial_score = compute_negative_lnl_unrooted (params, x);
   int continue_opt = 1;
@@ -231,6 +250,7 @@ PLL_EXPORT double pll_minimize_lbfgsb (double * x,
   if (is_nan(score))
   {
     score = -INFINITY;
+    /* set errno only if it was not set by some inner function */
     if (!pll_errno)
     {
       pll_errno = PLL_ERROR_LBFGSB_UNKNOWN;
@@ -436,83 +456,4 @@ PLL_EXPORT double pll_minimize_brent(double xmin,
   }
 
   return optx; /* return optimal x */
-}
-
-/******************************************************************************/
-/* EXPECTATION-MAXIMIZATION (EM)     */
-/* Wang, Li, Susko, and Roger (2008) */
-/******************************************************************************/
-PLL_EXPORT void pll_minimize_em( double *w,
-                                 unsigned int w_count,
-                                 double *sitecat_lh,
-                                 unsigned int *site_w,
-                                 unsigned int l,
-                                 void * params,
-                                 double (*update_sitecatlk_funk)(
-                                     void *,
-                                     double *))
-{
-  unsigned int i, c;
-  unsigned int max_steps = 10;
-  int converged = 0;
-  int ratio_scale = 0;
-
-  double *new_prop = (double *) malloc(sizeof(double) * w_count);
-  double *ratio_prop = (double *) malloc(sizeof(double) * w_count);
-
-  while (!converged && max_steps--)
-  {
-    /* update site-cat LK */
-    double lnl = update_sitecatlk_funk(params, sitecat_lh);
-
-    // Expectation
-    double *this_lk_cat = sitecat_lh;
-    if (ratio_scale)
-    {
-      for (i = 0; i < l; ++i)
-      {
-        for (c = 0; c < w_count; c++)
-        {
-          this_lk_cat[c] *= ratio_prop[c];
-        }
-        this_lk_cat += w_count;
-      }
-    }
-    else
-      ratio_scale = 1;
-
-    memset (new_prop, 0, w_count * sizeof(double));
-
-    this_lk_cat = sitecat_lh;
-    for (i=0; i<l; ++i)
-    {
-      //TODO: Check for p_invar
-      double lk_ptn = 0;
-      for (c = 0; c < w_count; c++)
-      {
-        lk_ptn += this_lk_cat[c];
-      }
-      lk_ptn = site_w[i] / lk_ptn;
-      for (c = 0; c < w_count; c++)
-      {
-        new_prop[c] += this_lk_cat[c] * lk_ptn;
-      }
-      this_lk_cat += w_count;
-    }
-
-    // Maximization
-    converged = 1;
-    for (c = 0; c < w_count; c++)
-    {
-      new_prop[c] /= l;
-
-      // check for convergence
-      converged = converged && (fabs (w[c] - new_prop[c]) < 1e-4);
-      ratio_prop[c] = new_prop[c] / w[c];
-      w[c] = new_prop[c];
-    }
-  }
-
-  free(ratio_prop);
-  free(new_prop);
 }
