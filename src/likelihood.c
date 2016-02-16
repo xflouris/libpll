@@ -778,7 +778,7 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
   return logl; 
 }
 
-static int update_sumbable_tipinner(const char * t_tipchars,
+static int update_sumtable_tipinner(const char * t_tipchars,
                                     const double * clv_inner,
                                     const double * eigenvecs,
                                     const double * inv_eigenvecs,
@@ -819,7 +819,7 @@ static int update_sumbable_tipinner(const char * t_tipchars,
   return PLL_SUCCESS;
 }
 
-static int update_sumbable(const double * clvp,
+static int update_sumtable(const double * clvp,
                            const double * clvc,
                            const double * eigenvecs,
                            const double * inv_eigenvecs,
@@ -887,18 +887,18 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
        (child_clv_index < partition->tips)))
   {
     if (parent_clv_index < partition->tips)
-      retval = update_sumbable_tipinner(partition->tipchars[parent_clv_index],
+      retval = update_sumtable_tipinner(partition->tipchars[parent_clv_index],
                                         clvc, eigenvecs, inv_eigenvecs,
                                         freqs, states, n_rates, sites,
                                         partition->revmap, sumtable);
     else
-      retval = update_sumbable_tipinner(partition->tipchars[child_clv_index],
+      retval = update_sumtable_tipinner(partition->tipchars[child_clv_index],
                                         clvp, eigenvecs, inv_eigenvecs,
                                         freqs, states, n_rates, sites,
                                         partition->revmap, sumtable);
   }
   else
-    retval = update_sumbable(clvp, clvc, eigenvecs, inv_eigenvecs,
+    retval = update_sumtable(clvp, clvc, eigenvecs, inv_eigenvecs,
                              freqs, states, n_rates, sites, sumtable);
 
   return retval;
