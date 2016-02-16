@@ -27,10 +27,10 @@
 #define OPTIMIZE_SUBST_PARAMS 1
 #define OPTIMIZE_ALPHA        1
 #define OPTIMIZE_FREQS        1
-#define OPTIMIZE_PINV         0
+#define OPTIMIZE_PINV         1
 
 /* tolerances */
-#define OPT_EPSILON       1e-2
+#define OPT_EPSILON       1e-1
 #define OPT_PARAM_EPSILON 1e-2
 
 /* use L-BFGS-B instead of Brent for single parameters (alpha / pInv) */
@@ -46,21 +46,13 @@
 
 #define MAX_LBFGSB_PARAMETERS 10
 
-static void fill_subst_rates(unsigned int n_subst_rates,
-                             unsigned int n_subst_free_params,
-                             double *subst_params,
-                             int * symmetries,
-                             double *x,
-                             int *bt,
-                             double *lb,
-                             double *ub);
-static void fill_frequencies(unsigned int n_frequencies,
-                             double *frequencies,
-                             unsigned int * highest_freq_state,
-                             double *x,
-                             int *bt,
-                             double *lb,
-                             double *ub);
+static void fill_subst_rates (unsigned int n_subst_rates,
+                              unsigned int n_subst_free_params,
+                              double *subst_params, int * symmetries, double *x,
+                              int *bt, double *lb, double *ub);
+static void fill_frequencies (unsigned int n_frequencies, double *frequencies,
+                              unsigned int * highest_freq_state, double *x,
+                              int *bt, double *lb, double *ub);
 
 static int v_int_max (int * v, int n)
 {
@@ -71,7 +63,7 @@ static int v_int_max (int * v, int n)
   return max;
 }
 
-static void update_local_parameters(my_params_t * my_params, pll_utree_t *tree)
+static void update_local_parameters (my_params_t * my_params, pll_utree_t *tree)
 {
   my_params->parent_clv_index = tree->clv_index;
   my_params->parent_scaler_index = tree->scaler_index;
@@ -83,35 +75,29 @@ static void update_local_parameters(my_params_t * my_params, pll_utree_t *tree)
 int main (int argc, char * argv[])
 {
   /* iterators */
-  unsigned int i;
+  unsigned int i, j;
 
   /* tree properties */
-  pll_utree_t     * tree           = NULL;
-  pll_partition_t * partition      = NULL;
-  pll_operation_t * operations     = NULL;
-  double          * branch_lengths = NULL;
-  unsigned int    * matrix_indices = NULL;
-  pll_utree_t    ** travbuffer     = NULL;
-  unsigned int    * data           = NULL;
-  unsigned int      matrix_count,
-                    ops_count;
-  unsigned int tip_count,
-               nodes_count,
-               branch_count,
-               inner_nodes_count;
+  pll_utree_t * tree = NULL;
+  pll_partition_t * partition = NULL;
+  pll_operation_t * operations = NULL;
+  double * branch_lengths = NULL;
+  unsigned int * matrix_indices = NULL;
+  pll_utree_t ** travbuffer = NULL;
+  unsigned int * data = NULL;
+  unsigned int matrix_count, ops_count;
+  unsigned int tip_count, nodes_count, branch_count, inner_nodes_count;
 
   /* optimization parameters */
-  pll_optimize_options_t params;
+  pll_optimize_options_t hl_opt_params;
   int parameters_to_optimize;
   int * subst_params_symmetries;
   int n_subst_free_params;
 
-  double x[MAX_LBFGSB_PARAMETERS],
-         lb[MAX_LBFGSB_PARAMETERS],
-         ub[MAX_LBFGSB_PARAMETERS];
+  double x[MAX_LBFGSB_PARAMETERS], lb[MAX_LBFGSB_PARAMETERS],
+      ub[MAX_LBFGSB_PARAMETERS];
   int bt[MAX_LBFGSB_PARAMETERS];
-  double factr = 1e7,
-         pgtol = OPT_PARAM_EPSILON;
+  double factr = 1e7, pgtol = OPT_PARAM_EPSILON;
 
   time_t start_time, end_time;
 
@@ -155,10 +141,10 @@ int main (int argc, char * argv[])
 
   /* create the partition instance */
   partition = partition_fasta_create (argv[2],
-                                      STATES,
+  STATES,
                                       1,
                                       RATE_CATS,
-                                      PLL_ATTRIB_ARCH_AVX, 0, tip_count,
+                                      PLL_ATTRIB_ARCH_SSE, 0, tip_count,
                                       (const char **) tipnames);
 
   if (!partition)
@@ -199,7 +185,7 @@ int main (int argc, char * argv[])
 
   /* compute the discretized category rates from a gamma distribution
    with alpha shape 1 and store them in rate_cats  */
-  pll_compute_gamma_cats (1, RATE_CATS, rate_cats);
+  pll_compute_gamma_cats (1.0, RATE_CATS, rate_cats);
 
   /* set frequencies at model with index 0 (we currently have only one model) */
   double * empirical_freqs = pll_compute_empirical_frequencies (partition);
@@ -225,28 +211,47 @@ int main (int argc, char * argv[])
     printf ("%d", subst_params_symmetries[i]);
   printf ("\n");
 
-  n_subst_free_params = v_int_max (
-                          subst_params_symmetries,
-                          (int) SUBST_PARAMS);
+  n_subst_free_params = v_int_max (subst_params_symmetries, (int) SUBST_PARAMS);
 
   /* set empirical substitution rates for GTR model */
-  if (n_subst_free_params == 5)
+  double * empirical_subst_rates = pll_compute_empirical_subst_rates (
+      partition);
+  if (n_subst_free_params < 5)
   {
-    double * empirical_subst_rates = pll_compute_empirical_subst_rates (
-        partition);
-    printf ("Empirical rates: ");
-    for (i = 0; i < SUBST_PARAMS; i++)
-      printf ("%.4f ", empirical_subst_rates[i]);
-    printf ("\n");
-    pll_set_subst_params (partition, 0, 0, empirical_subst_rates);
-    free (empirical_subst_rates);
+    /* if there are symmetries in the rate matrix, we average on them */
+    for (i = 0; i < n_subst_free_params; ++i)
+    {
+      int n_symm = 0;
+      double cur_rate = 0.0;
+      for (j = 0; j < SUBST_PARAMS; ++j)
+        if (subst_params_symmetries[j] == i)
+        {
+          n_symm++;
+          cur_rate += empirical_subst_rates[j];
+        }
+      assert(n_symm);
+      cur_rate /= n_symm;
+      for (j = 0; j < SUBST_PARAMS; ++j)
+        if (subst_params_symmetries[j] == i)
+          empirical_subst_rates[j] = cur_rate;
+    }
+    /* normalize */
+    for (j = 0; j < SUBST_PARAMS; ++j)
+      empirical_subst_rates[j] /= empirical_subst_rates[SUBST_PARAMS - 1];
   }
-  else
+  printf ("Empirical rates: ");
+  for (i = 0; i < SUBST_PARAMS; i++)
+    printf ("%.4f ", empirical_subst_rates[i]);
+  printf ("\n");
+  pll_set_subst_params (partition, 0, 0, empirical_subst_rates);
+  free (empirical_subst_rates);
+
+  if (OPTIMIZE_PINV)
   {
-    /* if there are symmetries in the rate matrix, we initialize it to
-     * {1,1,1,1,1,1} */
-    double start_subst_rates[SUBST_PARAMS] = {1,1,1,1,1,1};
-    pll_set_subst_params (partition, 0, 0, start_subst_rates);
+    double empirical_pinv = pll_compute_empirical_invariant_sites (partition);
+    printf ("Empirical pinv: %f\n", empirical_pinv);
+    printf ("Setting initial pinv to %f\n", empirical_pinv / 2);
+    pll_update_invariant_sites_proportion (partition, 0, empirical_pinv / 2);
   }
 
   /* set rate categories */
@@ -273,48 +278,47 @@ int main (int argc, char * argv[])
   printf ("Log-L: %f\n", logl);
 
   /* example using high level algorithms (structure provided by libpll) */
-  params.lk_params.partition = partition;
-  params.lk_params.operations = operations;
-  params.lk_params.branch_lengths = branch_lengths;
-  params.lk_params.matrix_indices = matrix_indices;
-  params.lk_params.alpha_value = 0;
-  params.lk_params.freqs_index = 0;
-  params.lk_params.rooted = 0;
-  params.lk_params.where.unrooted_t.parent_clv_index = tree->clv_index;
-  params.lk_params.where.unrooted_t.parent_scaler_index = tree->scaler_index;
-  params.lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
-  params.lk_params.where.unrooted_t.child_scaler_index =
+  hl_opt_params.lk_params.partition = partition;
+  hl_opt_params.lk_params.operations = operations;
+  hl_opt_params.lk_params.branch_lengths = branch_lengths;
+  hl_opt_params.lk_params.matrix_indices = matrix_indices;
+  hl_opt_params.lk_params.alpha_value = 0;
+  hl_opt_params.lk_params.freqs_index = 0;
+  hl_opt_params.lk_params.rooted = 0;
+  hl_opt_params.lk_params.where.unrooted_t.parent_clv_index = tree->clv_index;
+  hl_opt_params.lk_params.where.unrooted_t.parent_scaler_index = tree->scaler_index;
+  hl_opt_params.lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
+  hl_opt_params.lk_params.where.unrooted_t.child_scaler_index =
       tree->back->scaler_index;
-  params.lk_params.where.unrooted_t.edge_pmatrix_index = tree->pmatrix_index;
+  hl_opt_params.lk_params.where.unrooted_t.edge_pmatrix_index = tree->pmatrix_index;
 
   /* optimization parameters */
-  params.params_index = 0;
-  params.mixture_index = 0;
-  params.subst_params_symmetries = subst_params_symmetries;
-  params.factr = 1e7;
-  params.pgtol = OPT_PARAM_EPSILON;
+  hl_opt_params.params_index = 0;
+  hl_opt_params.mixture_index = 0;
+  hl_opt_params.subst_params_symmetries = subst_params_symmetries;
+  hl_opt_params.factr = 1e7;
+  hl_opt_params.pgtol = OPT_PARAM_EPSILON;
 
   /* example using low level minimization algorithms for L-BFGS-B */
-  my_params_t my_params;
-  my_params.partition = partition;
-  my_params.parent_clv_index = tree->clv_index;
-  my_params.parent_scaler_index = tree->scaler_index;
-  my_params.child_clv_index = tree->back->clv_index;
-  my_params.child_scaler_index = tree->back->scaler_index;
-  my_params.edge_pmatrix_index = tree->pmatrix_index;
-  my_params.freqs_index = 0;
-  my_params.params_index = 0;
-  my_params.mixture_index = 0;
+  my_params_t ll_opt_params;
+  ll_opt_params.partition = partition;
+  ll_opt_params.parent_clv_index = tree->clv_index;
+  ll_opt_params.parent_scaler_index = tree->scaler_index;
+  ll_opt_params.child_clv_index = tree->back->clv_index;
+  ll_opt_params.child_scaler_index = tree->back->scaler_index;
+  ll_opt_params.edge_pmatrix_index = tree->pmatrix_index;
+  ll_opt_params.freqs_index = 0;
+  ll_opt_params.params_index = 0;
+  ll_opt_params.mixture_index = 0;
 
-  my_params.symmetries = subst_params_symmetries;
-  my_params.n_subst_params = n_subst_free_params;
-  my_params.matrix_indices = matrix_indices;
-  my_params.branch_lengths = branch_lengths;
-  my_params.operations = operations;
+  ll_opt_params.symmetries = subst_params_symmetries;
+  ll_opt_params.n_subst_params = n_subst_free_params;
+  ll_opt_params.matrix_indices = matrix_indices;
+  ll_opt_params.branch_lengths = branch_lengths;
+  ll_opt_params.operations = operations;
 
-  parameters_to_optimize =
-      (OPTIMIZE_SUBST_PARAMS * PLL_PARAMETER_SUBST_RATES * n_subst_free_params > 0)
-      | (OPTIMIZE_ALPHA * PLL_PARAMETER_ALPHA)
+  parameters_to_optimize = (OPTIMIZE_SUBST_PARAMS * PLL_PARAMETER_SUBST_RATES
+      * n_subst_free_params > 0) | (OPTIMIZE_ALPHA * PLL_PARAMETER_ALPHA)
       | (OPTIMIZE_BRANCHES * PLL_PARAMETER_BRANCHES_ALL)
       | (OPTIMIZE_PINV * PLL_PARAMETER_PINV)
       | (OPTIMIZE_FREQS * PLL_PARAMETER_FREQUENCIES);
@@ -330,6 +334,7 @@ int main (int argc, char * argv[])
   {
     logl = cur_logl;
 
+    /* 1. Optimize branch lengths */
     if (parameters_to_optimize & PLL_PARAMETER_BRANCHES_ALL)
     {
       /* move to random node */
@@ -337,6 +342,7 @@ int main (int argc, char * argv[])
 
       tree = innernodes[inner_index];
 
+      /* update operations and partials */
       pll_utree_traverse (tree, cb_full_traversal, travbuffer, &traversal_size);
       pll_utree_create_operations (travbuffer, traversal_size, branch_lengths,
                                    matrix_indices, operations, &matrix_count,
@@ -345,23 +351,28 @@ int main (int argc, char * argv[])
                                 branch_count);
       pll_update_partials (partition, operations, tip_count - 2);
 
-      params.which_parameters = PLL_PARAMETER_BRANCHES_SINGLE;
+      hl_opt_params.which_parameters = PLL_PARAMETER_BRANCHES_SINGLE;
 
-      cur_logl = -1 * pll_optimize_branch_lengths_iterative (
-          partition, tree, params.params_index, params.lk_params.freqs_index,
-          params.pgtol, smoothings++, KEEP_UPDATE);
+      /* optimize */
+      cur_logl = -1
+          * pll_optimize_branch_lengths_iterative (partition, tree,
+                                                   hl_opt_params.params_index,
+                                                   hl_opt_params.lk_params.freqs_index,
+                                                   hl_opt_params.pgtol, smoothings++,
+                                                   KEEP_UPDATE);
 
+      /* update operations */
       pll_utree_traverse (tree, cb_full_traversal, travbuffer, &traversal_size);
       pll_utree_create_operations (travbuffer, traversal_size, branch_lengths,
                                    matrix_indices, operations, &matrix_count,
                                    &ops_count);
-      params.lk_params.where.unrooted_t.parent_clv_index = tree->clv_index;
-      params.lk_params.where.unrooted_t.parent_scaler_index =
+      hl_opt_params.lk_params.where.unrooted_t.parent_clv_index = tree->clv_index;
+      hl_opt_params.lk_params.where.unrooted_t.parent_scaler_index =
           tree->scaler_index;
-      params.lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
-      params.lk_params.where.unrooted_t.child_scaler_index =
+      hl_opt_params.lk_params.where.unrooted_t.child_clv_index = tree->back->clv_index;
+      hl_opt_params.lk_params.where.unrooted_t.child_scaler_index =
           tree->back->scaler_index;
-      params.lk_params.where.unrooted_t.edge_pmatrix_index =
+      hl_opt_params.lk_params.where.unrooted_t.edge_pmatrix_index =
           tree->pmatrix_index;
 
       /* if the branch lengths are not updated during the optimization,
@@ -388,20 +399,19 @@ int main (int argc, char * argv[])
       lnl_monitor = cur_logl;
     }
 
+    /* 2. Optimize substitution rate parameters */
     if (parameters_to_optimize & PLL_PARAMETER_SUBST_RATES)
     {
-      fill_subst_rates(6,
-                       n_subst_free_params,
-                       partition->subst_params[my_params.params_index],
-                       my_params.symmetries,
-                       x,bt,lb,ub);
+      fill_subst_rates (6, n_subst_free_params,
+                        partition->subst_params[ll_opt_params.params_index],
+                        ll_opt_params.symmetries, x, bt, lb, ub);
 
       /* tree might have change */
-      update_local_parameters(&my_params, tree);
+      update_local_parameters (&ll_opt_params, tree);
 
       cur_logl = -1
           * pll_minimize_lbfgsb (x, lb, ub, bt, n_subst_free_params, factr,
-                                 pgtol, &my_params, target_rates_opt);
+                                 pgtol, &ll_opt_params, target_rates_opt);
 
       printf ("  %5ld s [s_rates]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             %f %f %f %f %f %f\n", partition->subst_params[0][0],
@@ -415,16 +425,17 @@ int main (int argc, char * argv[])
       lnl_monitor = cur_logl;
     }
 
+    /* 3. Optimize Gamma shape (alpha) */
     if (parameters_to_optimize & PLL_PARAMETER_ALPHA)
     {
-      params.which_parameters = PLL_PARAMETER_ALPHA;
+      hl_opt_params.which_parameters = PLL_PARAMETER_ALPHA;
 #if(USE_LBFGSB)
-      cur_logl = -1 * pll_optimize_parameters_lbfgsb (&params);
+      cur_logl = -1 * pll_optimize_parameters_multidim (&hl_opt_params, 0, 0);
 #else
-      cur_logl = -1 * pll_optimize_parameters_brent (&params);
+      cur_logl = -1 * pll_optimize_parameters_onedim (&hl_opt_params, 0, 0);
 #endif
       printf ("  %5ld s [alpha]: %f\n", time (NULL) - start_time, cur_logl);
-      printf ("             %f\n", params.lk_params.alpha_value);
+      printf ("             %f\n", hl_opt_params.lk_params.alpha_value);
 
       if (CHECK_LOCAL_CONVERGENCE && cur_logl - lnl_monitor < OPT_EPSILON)
         parameters_to_optimize &= ~PLL_PARAMETER_ALPHA;
@@ -432,13 +443,14 @@ int main (int argc, char * argv[])
       lnl_monitor = cur_logl;
     }
 
+    /* 4. Optimize proportion of invariant sites */
     if (parameters_to_optimize & PLL_PARAMETER_PINV)
     {
-      params.which_parameters = PLL_PARAMETER_PINV;
+      hl_opt_params.which_parameters = PLL_PARAMETER_PINV;
 #if(USE_LBFGSB)
-      cur_logl = -1 * pll_optimize_parameters_lbfgsb (&params);
+      cur_logl = -1 * pll_optimize_parameters_multidim (&hl_opt_params, 0, 0);
 #else
-      cur_logl = -1 * pll_optimize_parameters_brent (&params);
+      cur_logl = -1 * pll_optimize_parameters_onedim (&hl_opt_params, 0, 0);
 #endif
       printf ("  %5ld s [p-inv]: %f\n", time (NULL) - start_time, cur_logl);
       printf ("             %f\n", partition->prop_invar[0]);
@@ -449,22 +461,21 @@ int main (int argc, char * argv[])
       lnl_monitor = cur_logl;
     }
 
+    /* 5. Optimize state frequencies */
     if (parameters_to_optimize & PLL_PARAMETER_FREQUENCIES)
     {
       unsigned int states = partition->states;
-      double * frequencies = partition->frequencies[my_params.params_index];
+      double * frequencies = partition->frequencies[ll_opt_params.params_index];
 
-      fill_frequencies(states,
-                       frequencies,
-                       &(my_params.highest_freq_state),
-                       x, bt, lb, ub);
+      fill_frequencies (states, frequencies, &(ll_opt_params.highest_freq_state), x,
+                        bt, lb, ub);
 
       /* tree might have change */
-      update_local_parameters(&my_params, tree);
+      update_local_parameters (&ll_opt_params, tree);
 
       cur_logl = -1
           * pll_minimize_lbfgsb (x, lb, ub, bt, n_subst_free_params, factr,
-                                 pgtol, &my_params, target_freqs_opt);
+                                 pgtol, &ll_opt_params, target_freqs_opt);
 
 //      pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths,
 //                                        2 * tip_count - 3);
@@ -493,7 +504,7 @@ int main (int argc, char * argv[])
   printf ("Final Log-L: %f\n", cur_logl);
   printf ("Time:  %ld s.\n", end_time - start_time);
 
-  printf ("Alpha: %f\n", params.lk_params.alpha_value);
+  printf ("Alpha: %f\n", hl_opt_params.lk_params.alpha_value);
   printf ("P-inv: %f\n", partition->prop_invar[0]);
   printf ("Rates: %f %f %f %f %f %f\n", partition->subst_params[0][0],
           partition->subst_params[0][1], partition->subst_params[0][2],
@@ -520,14 +531,10 @@ int main (int argc, char * argv[])
   return (0);
 }
 
-static void fill_subst_rates(unsigned int n_subst_rates,
-                             unsigned int n_subst_free_params,
-                             double *subst_params,
-                             int * symmetries,
-                             double *x,
-                             int *bt,
-                             double *lb,
-                             double *ub)
+static void fill_subst_rates (unsigned int n_subst_rates,
+                              unsigned int n_subst_free_params,
+                              double *subst_params, int * symmetries, double *x,
+                              int *bt, double *lb, double *ub)
 {
   unsigned int i;
   int current_rate = 0;
@@ -552,13 +559,9 @@ static void fill_subst_rates(unsigned int n_subst_rates,
   }
 }
 
-static void fill_frequencies(unsigned int n_frequencies,
-                             double *frequencies,
-                             unsigned int * highest_freq_state,
-                             double *x,
-                             int *bt,
-                             double *lb,
-                             double *ub)
+static void fill_frequencies (unsigned int n_frequencies, double *frequencies,
+                              unsigned int * highest_freq_state, double *x,
+                              int *bt, double *lb, double *ub)
 {
   unsigned int i, cur_index = 0;
 
