@@ -253,14 +253,14 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   partition->attributes = attributes;
   partition->states_padded = states;
 #ifdef HAVE_SSE
-  if (attributes | PLL_ATTRIB_ARCH_SSE)
+  if (attributes & PLL_ATTRIB_ARCH_SSE)
   {
     partition->alignment = PLL_ALIGNMENT_SSE;
     partition->states_padded = (states+1) & 0xFFFFFFFE;
   }
 #endif
 #ifdef HAVE_AVX
-  if (attributes | PLL_ATTRIB_ARCH_AVX)
+  if (attributes & PLL_ATTRIB_ARCH_AVX)
   {
     partition->alignment = PLL_ALIGNMENT_AVX;
     partition->states_padded = (states+3) & 0xFFFFFFFC;
