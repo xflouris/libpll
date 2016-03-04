@@ -638,12 +638,12 @@ static int set_tipclv(pll_partition_t * partition,
     }
 
     /* fill in the entries for the other gamma values */
-    tipclv += partition->states;
+    tipclv += partition->states_padded;
     for (j = 0; j < partition->rate_cats - 1; ++j)
     {
-      memcpy(tipclv, tipclv - partition->states,
+      memcpy(tipclv, tipclv - partition->states_padded,
              partition->states * sizeof(double));
-      tipclv += partition->states;
+      tipclv += partition->states_padded;
     }
   }
   return PLL_SUCCESS;
@@ -676,9 +676,9 @@ PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
     for (j = 0; j < partition->rate_cats; ++j)
     {
       memcpy(tipclv, clv, partition->states*sizeof(double));
-      tipclv += partition->states;
+      tipclv += partition->states_padded;
     }
-    clv += partition->states;
+    clv += partition->states_padded;
   }
 }
 

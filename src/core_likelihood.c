@@ -47,6 +47,7 @@ static void fill_parent_scaler(unsigned int sites,
 
 
 PLL_EXPORT void pll_core_update_partial(unsigned int states,
+                                        unsigned int states_padded,
                                         unsigned int sites,
                                         unsigned int rate_cats,
                                         double * parent_clv,
@@ -66,6 +67,7 @@ PLL_EXPORT void pll_core_update_partial(unsigned int states,
   const double * rmat;
 
   unsigned int span = states * rate_cats;
+  unsigned int span_padded = states_padded * rate_cats;
 
   /* add up the scale vectors of the two children if available */
   if (parent_scaler)
@@ -91,23 +93,23 @@ PLL_EXPORT void pll_core_update_partial(unsigned int states,
           termb += rmat[j] * right_clv[j];
         }
         parent_clv[i] = terma*termb;
-        lmat += states;
-        rmat += states;
+        lmat += states_padded;
+        rmat += states_padded;
 
         scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
       }
-      parent_clv += states;
-      left_clv   += states;
-      right_clv  += states;
+      parent_clv += states_padded;
+      left_clv   += states_padded;
+      right_clv  += states_padded;
     }
     /* if *all* entries of the site CLV were below the threshold then scale
        (all) entries by PLL_SCALE_FACTOR */
     if (scaling)
     {
-      parent_clv -= span;
+      parent_clv -= span_padded;
       for (i = 0; i < span; ++i)
         parent_clv[i] *= PLL_SCALE_FACTOR;
-      parent_clv += span;
+      parent_clv += span_padded;
       parent_scaler[n] += 1;
     }
   }

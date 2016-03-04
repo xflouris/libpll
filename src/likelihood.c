@@ -27,6 +27,7 @@ static void create_tiptip_lookup(pll_partition_t * partition,
   unsigned int i,j,k,n,m;
   unsigned int index = 0;
   unsigned int states = partition->states;
+  unsigned int states_padded = partition->states_padded;
   unsigned int maxstates = partition->maxstates;
   unsigned int rate_cats = partition->rate_cats;
   unsigned int * revmap = partition->revmap;
@@ -85,8 +86,8 @@ static void create_tiptip_lookup(pll_partition_t * partition,
             kstate >>= 1;
           }
 
-          jmat += states;
-          kmat += states;
+          jmat += states_padded;
+          kmat += states_padded;
           lh_statepair[index++] = termj*termk;
         }
       }
@@ -131,7 +132,9 @@ static void update_partials_tipinner(pll_partition_t * partition,
   const double * rmat;
 
   unsigned int states = partition->states;
+  unsigned int states_padded = partition->states_padded;
   unsigned int span = states * partition->rate_cats;
+  unsigned int span_padded = states_padded * partition->rate_cats;
 
   unsigned int * revmap = partition->revmap;
 
@@ -159,22 +162,22 @@ static void update_partials_tipinner(pll_partition_t * partition,
           lstate >>= 1;
         }
         parent_clv[i] = terma*termb;
-        lmat += states;
-        rmat += states;
+        lmat += states_padded;
+        rmat += states_padded;
 
         scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
       }
-      parent_clv += states;
-      right_clv  += states;
+      parent_clv += states_padded;
+      right_clv  += states_padded;
     }
     /* if *all* entries of the site CLV were below the threshold then scale
        (all) entries by PLL_SCALE_FACTOR */
     if (scaling)
     {
-      parent_clv -= span;
+      parent_clv -= span_padded;
       for (i = 0; i < span; ++i)
         parent_clv[i] *= PLL_SCALE_FACTOR;
-      parent_clv += span;
+      parent_clv += span_padded;
       scaler[n] += 1;
     }
   }
@@ -195,7 +198,9 @@ static void update_partials_tiptip(pll_partition_t * partition,
   double * parent_clv = partition->clv[op->parent_clv_index];
 
   unsigned int states = partition->states;
+  unsigned int states_padded = partition->states_padded;
   unsigned int span = states * partition->rate_cats;
+  unsigned int span_padded = states_padded * partition->rate_cats;
 
   for (n = 0; n < partition->sites; ++n)
   {
@@ -207,7 +212,7 @@ static void update_partials_tiptip(pll_partition_t * partition,
 
     memcpy(parent_clv, lh_statepair, span*sizeof(double));
 
-    parent_clv += span;
+    parent_clv += span_padded;
   }
 }
 
@@ -229,7 +234,9 @@ static void update_partials(pll_partition_t * partition,
   const double * rmat;
 
   unsigned int states = partition->states;
+  unsigned int states_padded = partition->states_padded;
   unsigned int span = states * partition->rate_cats;
+  unsigned int span_padded = states_padded * partition->rate_cats;
 
   for (n = 0; n < partition->sites; ++n)
   {
@@ -250,23 +257,24 @@ static void update_partials(pll_partition_t * partition,
           termb += rmat[j] * right_clv[j];
         }
         parent_clv[i] = terma*termb;
-        lmat += states;
-        rmat += states;
+        lmat += states_padded;
+        rmat += states_padded;
 
         scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
       }
-      parent_clv += states;
-      left_clv   += states;
-      right_clv  += states;
+      parent_clv += states_padded;
+      left_clv   += states_padded;
+      right_clv  += states_padded;
     }
+
     /* if *all* entries of the site CLV were below the threshold then scale
        (all) entries by PLL_SCALE_FACTOR */
     if (scaling)
     {
-      parent_clv -= span;
+      parent_clv -= span_padded;
       for (i = 0; i < span; ++i)
         parent_clv[i] *= PLL_SCALE_FACTOR;
-      parent_clv += span;
+      parent_clv += span_padded;
       scaler[n] += 1;
     }
   }
@@ -460,7 +468,7 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
         term_r += clv[k] * freqs[k];
       }
       term += term_r * weights[j];
-      clv += states;
+      clv += states_padded;
       if (partition->mixture > 1)
         freqs += states_padded;
     }
@@ -542,13 +550,13 @@ PLL_EXPORT double pll_compute_edge_persite_loglikelihood(
     for (i = 0; i < partition->rate_cats; ++i)
     {
       terma_r = 0;
-      for (j = 0; j < partition->states; ++j)
+      for (j = 0; j < states; ++j)
       {
         termb = 0;
-        for (k = 0; k < partition->states; ++k)
+        for (k = 0; k < states; ++k)
           termb += pmatrix[k] * clvc[k];
         terma_r += clvp[j] * freqs[j] * termb;
-        pmatrix += states;
+        pmatrix += states_padded;
       }
       sitecat_lk = terma_r * weights[i];
 
@@ -561,8 +569,8 @@ PLL_EXPORT double pll_compute_edge_persite_loglikelihood(
         for (j=0; j<scale_factors; ++j)
           persite_lk[n*partition->rate_cats + i] *= PLL_SCALE_THRESHOLD;
 
-      clvp += states;
-      clvc += states;
+      clvp += states_padded;
+      clvc += states_padded;
       if (partition->mixture > 1)
         freqs += states_padded;
 
@@ -618,21 +626,21 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
     for (i = 0; i < partition->rate_cats; ++i)
     {
       terma_r = 0;
-      for (j = 0; j < partition->states; ++j)
+      for (j = 0; j < states; ++j)
       {
         termb = 0;
         cstate = revmap[(int)(*tipchar)];
-        for (k = 0; k < partition->states; ++k)
+        for (k = 0; k < states; ++k)
         {
           if (cstate & 1)
             termb += pmatrix[k];
           cstate >>= 1;
         }
         terma_r += clvp[j] * freqs[j] * termb;
-        pmatrix += states;
+        pmatrix += states_padded;
       }
       terma += terma_r * weights[i];
-      clvp += states;
+      clvp += states_padded;
       if (partition->mixture > 1)
         freqs += states_padded;
     }
@@ -705,19 +713,23 @@ double edge_loglikelihood(pll_partition_t * partition,
     for (i = 0; i < partition->rate_cats; ++i)
     {
       terma_r = 0;
-      for (j = 0; j < partition->states; ++j)
+      for (j = 0; j < states; ++j)
       {
         termb = 0;
-        for (k = 0; k < partition->states; ++k)
+        for (k = 0; k < states; ++k)
         {
           termb += pmatrix[k] * clvc[k];
         }
         terma_r += clvp[j] * freqs[j] * termb;
-        pmatrix += states;
+        pmatrix += states_padded;
       }
+
+      /* add extra displacement if required*/
+      pmatrix += (states_padded - states) * states_padded;
+
       terma += terma_r * weights[i];
-      clvp += states;
-      clvc += states;
+      clvp += states_padded;
+      clvc += states_padded;
       if (partition->mixture > 1)
         freqs += states_padded;
     }
@@ -784,25 +796,30 @@ static int update_sumtable_tipinner(const char * t_tipchars,
                                     const double * inv_eigenvecs,
                                     const double * freqs,
                                     unsigned int states,
+                                    unsigned int states_padded,
                                     unsigned int n_rates,
                                     unsigned int sites,
                                     unsigned int * revmap,
                                     double *sumtable)
 {
   unsigned int i, j, k, n;
+  unsigned int tipstate;
+  double lefterm  = 0;
+  double righterm = 0;
+
+  double * sum          = sumtable;
+  const double * t_clvc = clv_inner;
 
   /* build sumtable */
-  double * sum = sumtable;
-  const double * t_clvc = clv_inner;
   for (n = 0; n < sites; n++)
   {
     for (i = 0; i < n_rates; ++i)
     {
       for (j = 0; j < states; ++j)
       {
-        unsigned int tipstate = revmap[(int)t_tipchars[n]];
-        double lefterm = 0;
-        double righterm = 0;
+        tipstate = revmap[(int)t_tipchars[n]];
+        lefterm = 0;
+        righterm = 0;
         for (k = 0; k < states; ++k)
         {
           lefterm += (tipstate & 1) * freqs[k] * inv_eigenvecs[k * states + j];
@@ -811,8 +828,8 @@ static int update_sumtable_tipinner(const char * t_tipchars,
         }
         sum[j] = lefterm * righterm;
       }
-      t_clvc += states;
-      sum += states;
+      t_clvc += states_padded;
+      sum += states_padded;
     }
   }
 
@@ -825,24 +842,28 @@ static int update_sumtable(const double * clvp,
                            const double * inv_eigenvecs,
                            const double * freqs,
                            unsigned int states,
+                           unsigned int states_padded,
                            unsigned int n_rates,
                            unsigned int sites,
                            double *sumtable)
 {
   unsigned int i, j, k, n;
+  double lefterm  = 0;
+  double righterm = 0;
 
-  /* build sumtable */
-  double * sum = sumtable;
+  double * sum          = sumtable;
   const double * t_clvp = clvp;
   const double * t_clvc = clvc;
+
+  /* build sumtable */
   for (n = 0; n < sites; n++)
   {
     for (i = 0; i < n_rates; ++i)
     {
       for (j = 0; j < states; ++j)
       {
-        double lefterm = 0;
-        double righterm = 0;
+        lefterm = 0;
+        righterm = 0;
         for (k = 0; k < states; ++k)
         {
           lefterm += t_clvp[k] * freqs[k] * inv_eigenvecs[k * states + j];
@@ -850,9 +871,9 @@ static int update_sumtable(const double * clvp,
         }
         sum[j] = lefterm * righterm;
       }
-      t_clvc += states;
-      t_clvp += states;
-      sum += states;
+      t_clvc += states_padded;
+      t_clvp += states_padded;
+      sum += states_padded;
     }
   }
 
@@ -870,14 +891,15 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
                                       double *sumtable)
 {
   int retval;
-  const double * clvp = partition->clv[parent_clv_index];
-  const double * clvc = partition->clv[child_clv_index];
-  const double * eigenvecs = partition->eigenvecs[params_index];
+  const double * clvp          = partition->clv[parent_clv_index];
+  const double * clvc          = partition->clv[child_clv_index];
+  const double * eigenvecs     = partition->eigenvecs[params_index];
   const double * inv_eigenvecs = partition->inv_eigenvecs[params_index];
-  const double * freqs = partition->frequencies[freqs_index];
-  unsigned int states = partition->states;
-  unsigned int n_rates = partition->rate_cats;
-  unsigned int sites = partition->sites;
+  const double * freqs         = partition->frequencies[freqs_index];
+  unsigned int states          = partition->states;
+  unsigned int states_padded   = partition->states_padded;
+  unsigned int n_rates         = partition->rate_cats;
+  unsigned int sites           = partition->sites;
 
   /* so far not available for mixture models */
   assert(partition->mixture == 1);
@@ -889,17 +911,20 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
     if (parent_clv_index < partition->tips)
       retval = update_sumtable_tipinner(partition->tipchars[parent_clv_index],
                                         clvc, eigenvecs, inv_eigenvecs,
-                                        freqs, states, n_rates, sites,
-                                        partition->revmap, sumtable);
+                                        freqs, states, states_padded,
+                                        n_rates, sites, partition->revmap,
+                                        sumtable);
     else
       retval = update_sumtable_tipinner(partition->tipchars[child_clv_index],
                                         clvp, eigenvecs, inv_eigenvecs,
-                                        freqs, states, n_rates, sites,
-                                        partition->revmap, sumtable);
+                                        freqs, states, states_padded,
+                                        n_rates, sites, partition->revmap,
+                                        sumtable);
   }
   else
     retval = update_sumtable(clvp, clvc, eigenvecs, inv_eigenvecs,
-                             freqs, states, n_rates, sites, sumtable);
+                             freqs, states, states_padded, n_rates, sites,
+                             sumtable);
 
   return retval;
 }
@@ -922,14 +947,15 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
                                                  double * dd_f)
 {
   unsigned int n, i, j;
-  unsigned int sites = partition->sites;
   double site_lk[3];
-  unsigned int states = partition->states;
-  unsigned int n_rates = partition->rate_cats;
-  const double * eigenvals = partition->eigenvals[params_index];
-  const double * rates = partition->rates;
-  const double * freqs = partition->frequencies[freqs_index];
-  double prop_invar = partition->prop_invar[params_index];
+  unsigned int sites         = partition->sites;
+  unsigned int states        = partition->states;
+  unsigned int states_padded = partition->states_padded;
+  unsigned int n_rates       = partition->rate_cats;
+  const double * eigenvals   = partition->eigenvals[params_index];
+  const double * rates       = partition->rates;
+  const double * freqs       = partition->frequencies[freqs_index];
+  double prop_invar          = partition->prop_invar[params_index];
   const double * sum;
   double logLK = 0.0;
 
@@ -997,7 +1023,7 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
         site_lk[2] += sum[j] * diagp[2];
         diagp += 3;
       }
-      sum += states;
+      sum += states_padded;
     }
     site_lk[0] /= n_rates;
     site_lk[1] /= n_rates;

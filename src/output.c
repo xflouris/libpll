@@ -29,15 +29,16 @@ PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition,
 {
   unsigned int i,j,k;
   double * pmatrix;
-  unsigned int states = partition->states; 
+  unsigned int states = partition->states;
+  unsigned int states_padded = partition->states_padded;
 
   for (k = 0; k < partition->rate_cats; ++k)
   {
-    pmatrix = partition->pmatrix[index] + k*states*states;
+    pmatrix = partition->pmatrix[index] + k*states_padded*states_padded;
     for (i = 0; i < partition->states; ++i)
     {
       for (j = 0; j < states; ++j)
-        printf("%+2.*f   ", float_precision, pmatrix[i*states+j]);
+        printf("%+2.*f   ", float_precision, pmatrix[i*states_padded+j]);
       printf("\n");
     }
     printf("\n");
@@ -63,6 +64,7 @@ PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
   unsigned int * scaler = (scaler_index == PLL_SCALE_BUFFER_NONE) ?
                           NULL : partition->scale_buffer[scaler_index];
   unsigned int states = partition->states;
+  unsigned int states_padded = partition->states_padded;
   unsigned int rates = partition->rate_cats;
   double prob;
 
@@ -74,16 +76,16 @@ PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
   for (i = 0; i < partition->sites; ++i)
   {
     printf("{");
-    for (j = 0; j < partition->rate_cats; ++j)
+    for (j = 0; j < rates; ++j)
     {
       printf("(");
-      for (k = 0; k < partition->states-1; ++k)
+      for (k = 0; k < states-1; ++k)
       {
-        prob = clv[i*rates*states + j*states + k];
+        prob = clv[i*rates*states_padded + j*states_padded + k];
         if (scaler) unscale(&prob, scaler[i]);
         printf("%.*f,", float_precision, prob);
       }
-      prob = clv[i*rates*states + j*states + k];
+      prob = clv[i*rates*states_padded + j*states_padded + k];
       if (scaler) unscale(&prob, scaler[i]);
       printf("%.*f)", float_precision, prob);
       if (j < rates - 1) printf(",");
