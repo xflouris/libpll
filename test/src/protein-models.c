@@ -90,7 +90,8 @@ int main(int argc, char * argv[])
                                    N_CAT_GAMMA,       /* rate categories */
                                    1,
                                    pll_map_aa,
-                                   0);
+                                   PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
+                                   );
   
   double branch_lengths[4] = { 0.1, 0.2, 1, 1};
   unsigned int matrix_indices[4] = { 0, 1, 2, 3 };

@@ -59,7 +59,8 @@ static int bigtest()
                                     N_CAT_GAMMA, /* rate categories */
                                     1, 
                                     pll_map_nt,
-                                    0);
+                                    PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
+                                    );
 
   fp = pll_fasta_open ("testdata/worms16s.fas", pll_map_fasta);
   if (!fp)

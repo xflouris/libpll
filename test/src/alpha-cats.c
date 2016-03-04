@@ -81,7 +81,8 @@ int main(int argc, char * argv[])
                                 n_cat_gamma[k], /* gamma categories */
                                 0,           /* scale buffers */
                                 pll_map_nt,
-                                0);          /* attributes */
+                                PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
+                                );          /* attributes */
 
     if (!partition) 
     {

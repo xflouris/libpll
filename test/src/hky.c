@@ -51,7 +51,8 @@ int main(int argc, char * argv[])
                                    n_cat_gamma, /* gamma categories */
                                    0,           /* scale buffers */
                                    pll_map_nt,
-                                   0);          /* attributes */
+                                   PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
+                                   );          /* attributes */
   double branch_lengths[4] = { 0.1, 0.2, 1, 1};
   double frequencies[4] = { 0.3, 0.4, 0.1, 0.2 };
   unsigned int matrix_indices[4] = { 0, 1, 2, 3 };

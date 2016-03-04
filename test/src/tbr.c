@@ -200,7 +200,8 @@ int main (int argc, char * argv[])
                                     RATE_CATS,
                                     inner_nodes_count,
                                     pll_map_nt,
-                                    PLL_ATTRIB_ARCH_CPU);
+                                    PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
+                                    );
 
   /* find sequences in hash table and link them with the corresponding taxa */
   for (i = 0; i < tip_nodes_count; ++i)

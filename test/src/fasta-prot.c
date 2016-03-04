@@ -47,7 +47,8 @@ unsigned int i;
                                     N_CAT_GAMMA, /* rate categories */
                                     1, 
                                     pll_map_aa,
-                                    0);
+                                    PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
+                                    );
 
   fp = pll_fasta_open ("testdata/ribosomal_l5_pf00673.fas", pll_map_fasta);
 

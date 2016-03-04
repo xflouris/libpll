@@ -236,7 +236,8 @@ int main(int argc, char * argv[])
                                    RATE_CATS,
                                    inner_nodes_count,
                                    pll_map_nt,
-                                   PLL_ATTRIB_ARCH_CPU);
+                                   PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
+                                   );
 
   /* initialize the array of base frequencies */
   double frequencies[4] = { 0.17, 0.19, 0.25, 0.39 };

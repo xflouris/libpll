@@ -41,13 +41,13 @@ const unsigned int odd_map[256] =
          0,       0,       0,       0,       0,       0,       0,       0,
          0,       0,       0,       0,       0,       0,       0,    0x3f,
          0,    0x01,    0x02,    0x04,    0x08,    0x0c,    0x10,    0x20,
-		 0,       0,       0,       0,       0,       0,       0,       0,
-		 0,       0,       0,       0,       0,       0,       0,       0,
-		 0,       0,       0,       0,       0,       0,       0,       0,
+	       0,       0,       0,       0,       0,       0,       0,       0,
+		     0,       0,       0,       0,       0,       0,       0,       0,
+		     0,       0,       0,       0,       0,       0,       0,       0,
          0,    0x01,    0x02,    0x04,    0x08,    0x0c,    0x10,    0x20,
-		 0,       0,       0,       0,       0,       0,       0,       0,
-		 0,       0,       0,       0,       0,       0,       0,       0,
-		 0,       0,       0,       0,       0,       0,       0,       0,
+		     0,       0,       0,       0,       0,       0,       0,       0,
+		     0,       0,       0,       0,       0,       0,       0,       0,
+		     0,       0,       0,       0,       0,       0,       0,       0,
          0,       0,       0,       0,       0,       0,       0,       0,
          0,       0,       0,       0,       0,       0,       0,       0,
          0,       0,       0,       0,       0,       0,       0,       0,
@@ -196,12 +196,12 @@ int main(int argc, char * argv[])
         printf ("\n");
       }
 
-//      printf ("[%d] CLV 5: ", i);
-//      pll_show_clv(partition,5,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
-//        printf ("[%d] CLV 6: ", i);
-//        pll_show_clv(partition,6,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
-//        printf ("[%d] CLV 7: ", i);
-//        pll_show_clv(partition,7,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION);
+      printf ("[%d] CLV 5: ", i);
+      pll_show_clv(partition,5,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
+      printf ("[%d] CLV 6: ", i);
+      pll_show_clv(partition,6,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
+      printf ("[%d] CLV 7: ", i);
+      pll_show_clv(partition,7,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION);
 
 			lk_scores[k * N_ALPHAS + i] = pll_compute_edge_loglikelihood(
 					partition, 6,
