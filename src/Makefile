@@ -27,7 +27,7 @@ WARN=-Wall -Wsign-compare
 ifndef CC
 CC = gcc
 endif
-CFLAGS = -D_GNU_SOURCE -fPIC -g -msse3 -O3 $(WARN)
+CFLAGS = -D_GNU_SOURCE -fPIC -std=c99 -g -msse3 -O3 $(WARN)
 AVXFLAGS = -mavx
 LINKFLAGS=$(PROFILING)
 LIBS=-lm
