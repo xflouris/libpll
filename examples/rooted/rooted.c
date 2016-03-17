@@ -112,7 +112,7 @@ int main(int argc, char * argv[])
   pll_update_partials(partition, operations, 4);
 
   /* print out the CLVs at tip and inner nodes*/
-  if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
+  if (!(partition->attributes & PLL_ATTRIB_PATTERN_TIP))
   {
     printf ("Tip 0: ");
     pll_show_clv(partition,0,PLL_SCALE_BUFFER_NONE,7);

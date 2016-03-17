@@ -62,8 +62,12 @@ static void dealloc_partition_data(pll_partition_t * partition)
     free(partition->revmap);
 
   if (partition->clv)
-    for (i = 0; i < partition->clv_buffers + partition->tips; ++i)
+  {
+    int start = (partition->attributes & PLL_ATTRIB_PATTERN_TIP) ?
+                    partition->tips : 0;
+    for (i = start; i < partition->clv_buffers + partition->tips; ++i)
       pll_aligned_free(partition->clv[i]);
+  }
   free(partition->clv);
 
   if (partition->pmatrix)
@@ -371,7 +375,13 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     dealloc_partition_data(partition);
     return PLL_FAILURE;
   }
-  for (i = 0; i < partition->tips + partition->clv_buffers; ++i)
+
+  /* if tip pattern precomputation is enabled, then do not allocate CLV space
+     for the tip nodes */
+  int start = (partition->attributes & PLL_ATTRIB_PATTERN_TIP) ?
+                  partition->tips : 0;
+
+  for (i = start; i < partition->tips + partition->clv_buffers; ++i)
   {
     partition->clv[i] = pll_aligned_alloc(partition->sites * states_padded *
                                              rate_cats * sizeof(double),
