@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <x86intrin.h>
 
 #define LIB_NAME "libpll"
@@ -40,6 +41,12 @@
 #else
 #define PLL_EXPORT
 #endif
+
+/* macros */
+
+#define PLL_MIN(a,b) ((a) < (b) ? (a) : (b))
+#define PLL_MAX(a,b) ((a) > (b) ? (a) : (b))
+#define PLL_SWAP(x,y) do { __typeof__ (x) _t = x; x = y; y = _t; } while(0)
 
 /* constants */
 
@@ -88,6 +95,7 @@
 #define PLL_ERROR_TIP_DATA_ILLEGAL_STATE   9
 #define PLL_ERROR_MULTIPLE_ARCH           10
 #define PLL_ERROR_INIT_CHARMAP            11
+#define PLL_ERROR_PHYLIP_SYNTAX           12
 
 #define PLL_ERROR_ALPHA                  101
 #define PLL_ERROR_PINV                   102
@@ -177,6 +185,16 @@ typedef struct pll_dlist
   void * data;
 } pll_dlist_t;
 
+/* multiple sequence alignment */
+typedef struct pll_msa_s
+{
+  int count;
+  int length;
+
+  char ** sequence;
+  char ** label;
+} pll_msa_t;
+
 /* Simple structure for handling FASTA parsing */
 
 typedef struct pll_fasta
@@ -224,6 +242,7 @@ typedef struct pll_rtree
 
 PLL_EXPORT extern __thread int pll_errno;
 PLL_EXPORT extern __thread char pll_errmsg[200];
+
 PLL_EXPORT extern const unsigned int pll_map_bin[256];
 PLL_EXPORT extern const unsigned int pll_map_nt[256];
 PLL_EXPORT extern const unsigned int pll_map_aa[256];
@@ -471,6 +490,13 @@ PLL_EXPORT int pll_utree_check_integrity(pll_utree_t * root);
 
 PLL_EXPORT pll_utree_t * pll_utree_clone(pll_utree_t * root);
 
+/* functions in pll_phylip.y */
+
+PLL_EXPORT pll_msa_t * pll_phylip_parse_msa(const char * filename,
+                                            unsigned int * msa_count);
+
+PLL_EXPORT void pll_msa_destroy(pll_msa_t * msa);
+
 /* functions in rtree.c */
 
 PLL_EXPORT void pll_rtree_show_ascii(pll_rtree_t * tree, int options);
@@ -516,6 +542,12 @@ PLL_EXPORT void pll_core_update_partial(unsigned int states,
 
 void pll_update_partials_avx(pll_partition_t * partition,
                              const pll_operation_t * op);
+
+/* functions in compress.c */
+
+PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
+                                                     int count,
+                                                     int * length);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

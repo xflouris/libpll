@@ -95,6 +95,8 @@ Below is a list of available functions in the current version.
 * `pll_rtree_t * pll_rtree_parse_newick(const char * filename, unsigned int * tip_count);`
 * `void pll_utree_destroy(pll_utree_t * root);`
 * `void pll_rtree_destroy(pll_rtree_t * root);`
+* `pll_msa_t * pll_phylip_parse_msa(const char * filename, unsigned int * msa_count);`
+* `void pll_msa_destroy(pll_msa_t * msa);`
 
 ### Tree manipulation functions
 
@@ -120,6 +122,7 @@ Below is a list of available functions in the current version.
 * `int pll_compute_gamma_cats(double alpha, unsigned int categories, double * output_rates);`
 * `void * pll_aligned_alloc(size_t size, size_t alignment);`
 * `void pll_aligned_free(void * ptr);`
+* `unsigned int * pll_compress_site_patterns(char ** sequence, int count, int * length);`
 
 ## Usage examples
 
@@ -144,6 +147,7 @@ The code is written in C.
 **lex_rtree.l**       | Lexical analyzer parsing newick rooted trees.
 **lex_utree.l**       | Lexical analyzer parsing newick unrooted trees.
 **likelihood.c**      | Likelihood computation functions.
+**compress.c**        | Functions for compressing alignment into site patterns.
 **core_likelihood.c** | Core likelihood functions that do not require partition instances.
 **list.c**            | (Doubly) Linked-list implementations.
 **Makefile**          | Makefile.
