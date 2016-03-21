@@ -27,7 +27,7 @@ WARN=-Wall -Wsign-compare
 ifndef CC
 CC = gcc
 endif
-CFLAGS = -D_GNU_SOURCE -fPIC -std=c99 -g -msse3 -O3 $(WARN)
+CFLAGS = -DHAVE_AVX -D_GNU_SOURCE -fPIC -std=c99 -g -msse3 -O3 $(WARN)
 AVXFLAGS = -mavx
 LINKFLAGS=$(PROFILING)
 LIBS=-lm
@@ -42,7 +42,7 @@ all: $(PROG)
 OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o \
      parse_utree.o parse_rtree.o lex_utree.o lex_rtree.o utree.o rtree.o \
      core_likelihood.o likelihood_avx.o pll_tree.o compress.o parse_phylip.o \
-     lex_phylip.o
+     lex_phylip.o core_likelihood_avx.o
 
 $(PROG): $(OBJS)
 	$(CC) -shared -Wl,-soname,$@ -o $@ $+

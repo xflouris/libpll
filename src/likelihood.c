@@ -21,7 +21,31 @@
 
 #include "pll.h"
 
-static void create_tiptip_lookup(pll_partition_t * partition,
+static void fill_parent_scaler(unsigned int sites,
+                               unsigned int * parent_scaler,
+                               const unsigned int * left_scaler,
+                               const unsigned int * right_scaler)
+{
+  unsigned int i;
+
+  if (!left_scaler && !right_scaler)
+    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+  else if (left_scaler && right_scaler)
+  {
+    memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * sites);
+    for (i = 0; i < sites; ++i)
+      parent_scaler[i] += right_scaler[i];
+  }
+  else
+  {
+    if (left_scaler)
+      memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * sites);
+    else
+      memcpy(parent_scaler, right_scaler, sizeof(unsigned int) * sites);
+  }
+}
+
+static void create_lookup(pll_partition_t * partition,
                                  const pll_operation_t * op)
 {
   unsigned int i,j,k,n,m;
@@ -294,32 +318,6 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
      element-wise sum of child1 and child2 scalers */
   for (i = 0; i < count; ++i)
   {
-    if (operations[i].parent_scaler_index == PLL_SCALE_BUFFER_NONE)
-    {
-      parent_scaler = NULL;
-    }
-    else
-    {
-      /* get scaler for parent */
-      parent_scaler = partition->scale_buffer[operations[i].parent_scaler_index];
-      memset(parent_scaler, 0, sizeof(unsigned int) * partition->sites);
-
-      /* if child1 has a scaler copy it to the parent */
-      if (operations[i].child1_scaler_index != PLL_SCALE_BUFFER_NONE)
-      {
-        c1_scaler = partition->scale_buffer[operations[i].child1_scaler_index];
-        memcpy(parent_scaler, c1_scaler, sizeof(unsigned int) * partition->sites);
-      }
-
-      /* if child2 has a scaler add its values to the parent scaler */
-      if (operations[i].child2_scaler_index != PLL_SCALE_BUFFER_NONE)
-      {
-        c2_scaler = partition->scale_buffer[operations[i].child2_scaler_index];
-        for (j = 0; j < partition->sites; ++j)
-          parent_scaler[j] += c2_scaler[j];
-      }
-    }
-
     /* select vectorization method */
     #ifdef HAVE_AVX
     if (partition->attributes & PLL_ATTRIB_ARCH_AVX)
@@ -329,17 +327,26 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
         if ((operations[i].child1_clv_index < partition->tips) &&
             (operations[i].child2_clv_index < partition->tips))
         {
-          /* precompute... */
-          create_tiptip_lookup(partition,&(operations[i]));
+          /* precompute the tip-tip lookup table */
+          const pll_operation_t * op = &(operations[i]);
 
-          /* ... and update CLV at inner node */
-          update_partials_tiptip(partition, &(operations[i]));
+          pll_core_create_lookup_avx(partition->states,
+                                     partition->rate_cats,
+                                     partition->lh_statepair,
+                                     partition->pmatrix[op->child1_matrix_index],
+                                     partition->pmatrix[op->child2_matrix_index],
+                                     partition->revmap,
+                                     partition->maxstates);
+
+
+          /* and update CLV at inner node */
+          pll_update_partials_tiptip_avx(partition, &(operations[i]));
         }
         else if ((operations[i].child1_clv_index < partition->tips) ||
                  (operations[i].child2_clv_index < partition->tips))
         {
           /* tip-inner */
-          update_partials_tipinner(partition, &(operations[i]));
+          pll_update_partials_tipinner_avx(partition, &(operations[i]));
         }
         else
           pll_update_partials_avx(partition, &(operations[i]));
@@ -354,80 +361,57 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
       assert(0);
     else
     #endif
-    if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
     {
-      if ((operations[i].child1_clv_index < partition->tips) &&
-          (operations[i].child2_clv_index < partition->tips))
+      if (operations[i].parent_scaler_index == PLL_SCALE_BUFFER_NONE)
       {
-        /* precompute... */
-        create_tiptip_lookup(partition,&(operations[i]));
-
-        /* ... and update CLV at inner node */
-        update_partials_tiptip(partition, &(operations[i]));
+        parent_scaler = NULL;
       }
-      else if ((operations[i].child1_clv_index < partition->tips) ||
-               (operations[i].child2_clv_index < partition->tips))
+      else
       {
-        /* tip-inner */
-        update_partials_tipinner(partition, &(operations[i]));
+        /* get scaler for parent */
+        parent_scaler = partition->scale_buffer[operations[i].parent_scaler_index];
+        memset(parent_scaler, 0, sizeof(unsigned int) * partition->sites);
+
+        /* if child1 has a scaler copy it to the parent */
+        if (operations[i].child1_scaler_index != PLL_SCALE_BUFFER_NONE)
+        {
+          c1_scaler = partition->scale_buffer[operations[i].child1_scaler_index];
+          memcpy(parent_scaler, c1_scaler, sizeof(unsigned int) * partition->sites);
+        }
+
+        /* if child2 has a scaler add its values to the parent scaler */
+        if (operations[i].child2_scaler_index != PLL_SCALE_BUFFER_NONE)
+        {
+          c2_scaler = partition->scale_buffer[operations[i].child2_scaler_index];
+          for (j = 0; j < partition->sites; ++j)
+            parent_scaler[j] += c2_scaler[j];
+        }
+      }
+
+      if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
+      {
+        if ((operations[i].child1_clv_index < partition->tips) &&
+            (operations[i].child2_clv_index < partition->tips))
+        {
+          /* precompute... */
+          create_lookup(partition,&(operations[i]));
+
+          /* ... and update CLV at inner node */
+          update_partials_tiptip(partition, &(operations[i]));
+        }
+        else if ((operations[i].child1_clv_index < partition->tips) ||
+                 (operations[i].child2_clv_index < partition->tips))
+        {
+          /* tip-inner */
+          update_partials_tipinner(partition, &(operations[i]));
+        }
+        else
+          update_partials(partition, &(operations[i]));
       }
       else
         update_partials(partition, &(operations[i]));
     }
-    else
-      update_partials(partition, &(operations[i]));
-
-
-//    if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
-//    {
-//      if ((operations[i].child1_clv_index < partition->tips) &&
-//          (operations[i].child2_clv_index < partition->tips))
-//      {
-//        /* precompute... */
-//        create_tiptip_lookup(partition,&(operations[i]));
-//
-//        /* ... and update CLV at inner node */
-//        update_partials_tiptip(partition, &(operations[i]));
-//      }
-//      else if ((operations[i].child1_clv_index < partition->tips) ||
-//               (operations[i].child2_clv_index < partition->tips))
-//      {
-//        /* tip-inner */
-//        update_partials_tipinner(partition, &(operations[i]));
-//      }
-//      else
-//      {
-//        /* select vectorization method */
-//        #ifdef HAVE_AVX
-//        if (partition->attributes & PLL_ATTRIB_ARCH_AVX)
-//          pll_update_partials_avx(partition, &(operations[i]));
-//        else
-//        #endif
-//        #ifdef HAVE_SSE
-//        if (partition->attributes & PLL_ATTRIB_ARCH_SSE)
-//          assert(0);
-//        else
-//        #endif
-//          update_partials(partition, &(operations[i]));
-//      }
-//    }
-//    else
-//    {
-//    /* select vectorization method */
-//    #ifdef HAVE_AVX
-//    if (partition->attributes & PLL_ATTRIB_ARCH_AVX)
-//      pll_update_partials_avx(partition, &(operations[i]));
-//    else
-//    #endif
-//    #ifdef HAVE_SSE
-//    if (partition->attributes & PLL_ATTRIB_ARCH_SSE)
-//      assert(0);
-//    else
-//    #endif
-//      update_partials(partition, &(operations[i]));
-//    }
   }
-
 }
 
 PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,

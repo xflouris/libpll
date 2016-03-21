@@ -53,7 +53,7 @@ static void dealloc_partition_data(pll_partition_t * partition)
   free(partition->tipchars);
 
   if (partition->lh_statepair)
-    free(partition->lh_statepair);
+    pll_aligned_free(partition->lh_statepair);
 
   if (partition->charmap)
     free(partition->charmap);
@@ -193,13 +193,30 @@ static int create_charmap(pll_partition_t * partition)
                              partition->log2_states +
                              partition->log2_rates;
 
-  partition->lh_statepair = (double *)calloc((1 << addressbits), sizeof(double));
-  if (!partition->lh_statepair)
+  /* dedicated 4x4 function */
+  if (partition->states == 4 && (partition->attributes & PLL_ATTRIB_ARCH_AVX))
   {
-    pll_errno = PLL_ERROR_INIT_CHARMAP;
-    snprintf (pll_errmsg, 200,
-              "Cannot allocate space for storing precomputed tip-tip CLVs.");
-    return PLL_FAILURE;
+    partition->lh_statepair = pll_aligned_alloc(1024 * partition->rate_cats *
+                                                sizeof(double),
+                                                partition->alignment);
+    if (!partition->lh_statepair)
+    {
+      pll_errno = PLL_ERROR_INIT_CHARMAP;
+      snprintf (pll_errmsg, 200,
+                "Cannot allocate space for storing precomputed tip-tip CLVs.");
+      return PLL_FAILURE;
+    }
+  }
+  else
+  {
+    partition->lh_statepair = pll_aligned_alloc((1 << addressbits), sizeof(double));
+    if (!partition->lh_statepair)
+    {
+      pll_errno = PLL_ERROR_INIT_CHARMAP;
+      snprintf (pll_errmsg, 200,
+                "Cannot allocate space for storing precomputed tip-tip CLVs.");
+      return PLL_FAILURE;
+    }
   }
 
   /* allocate tip character arrays */
@@ -596,6 +613,34 @@ PLL_EXPORT void pll_partition_destroy(pll_partition_t * partition)
   dealloc_partition_data(partition);
 }
 
+static int set_tipchars_4x4(pll_partition_t * partition,
+                            unsigned int tip_index,
+                            const unsigned int * map,
+                            const char * sequence)
+{
+  unsigned int c;
+  unsigned int i;
+
+  /* iterate through sites */
+  for (i = 0; i < partition->sites; ++i)
+  {
+    if ((c = map[(int)sequence[i]]) == 0)
+    {
+      pll_errno = PLL_ERROR_TIP_DATA_ILLEGAL_STATE;
+      snprintf(pll_errmsg, 200, "Illegal state code in tip \"%c\"", sequence[i]);
+      return PLL_FAILURE;
+    }
+
+    /* store states as the remapped characters from charmap */
+    partition->tipchars[tip_index][i] = (char)c;
+  }
+
+  /* revmap is never used in the 4x4 case */
+  memcpy(partition->revmap, map, PLL_ASCII_SIZE*sizeof(unsigned int));
+
+  return PLL_SUCCESS;
+}
+
 static int set_tipchars(pll_partition_t * partition,
                         unsigned int tip_index,
                         const unsigned int * map,
@@ -667,7 +712,12 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
   int rc;
 
   if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
-    rc = set_tipchars(partition, tip_index, map, sequence);
+  {
+    if (partition->states == 4)
+      rc = set_tipchars_4x4(partition, tip_index, map, sequence);
+    else
+      rc = set_tipchars(partition, tip_index, map, sequence);
+  }
   else
     rc = set_tipclv(partition, tip_index, map, sequence);
 

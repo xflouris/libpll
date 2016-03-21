@@ -525,7 +525,6 @@ PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
 /* functions in core_likelihood.c */
 
 PLL_EXPORT void pll_core_update_partial(unsigned int states,
-                                        unsigned int states_padded,
                                         unsigned int sites,
                                         unsigned int rate_cats,
                                         double * parent_clv,
@@ -538,10 +537,75 @@ PLL_EXPORT void pll_core_update_partial(unsigned int states,
                                         const unsigned int * right_scaler,
                                         unsigned int attrib);
 
+PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
+                                           unsigned int sites,                                   
+                                           unsigned int rate_cats,
+                                           double * parent_clv,
+                                           unsigned int * parent_scaler,
+                                           const char * left_tipchars,
+                                           const double * right_clv,
+                                           const double * left_matrix,
+                                           const double * right_matrix,
+                                           const unsigned int * right_scaler,
+                                           const unsigned int * revmap,
+                                           const unsigned int attrib);
+
+/* functions in core_likelihood_avx.c */
+
+PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
+                                           unsigned int rate_cats,
+                                           double * lookup,
+                                           const double * left_matrix,
+                                           const double * right_matrix,
+                                           unsigned int * revmap,
+                                           unsigned int revmap_size);
+
+PLL_EXPORT void pll_core_update_partial_avx(unsigned int states,
+                                            unsigned int sites,
+                                            unsigned int rate_cats,
+                                            double * parent_clv,
+                                            unsigned int * parent_scaler,
+                                            const double * left_clv,
+                                            const double * right_clv,
+                                            const double * left_matrix,
+                                            const double * right_matrix,
+                                            const unsigned int * left_scaler,
+                                            const unsigned int * right_scaler,
+                                            unsigned int attrib);
+
+PLL_EXPORT void pll_core_create_lookup_4x4_avx(unsigned int rate_cats,
+                                               double * lookup,
+                                               const double * left_matrix,
+                                               const double * right_matrix);
+
+PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
+                                                   unsigned int rate_cats,
+                                                   double * parent_clv,
+                                                   unsigned int * parent_scaler,
+                                                   const char * left_tipchar,
+                                                   const double * right_clv,
+                                                   const double * left_matrix,
+                                                   const double * right_matrix,
+                                                   const unsigned int * right_scaler);
+
+PLL_EXPORT void pll_core_update_partials_tt_4x4_avx(unsigned int sites,
+                                                    unsigned int rate_cats,
+                                                    double * parent_clv,
+                                                    unsigned int * parent_scaler,
+                                                    const char * left_tipchars,
+                                                    const char * right_tipchars,
+                                                    const double * lookup);
+
 /* functions in likelihood_avx.c */
 
 void pll_update_partials_avx(pll_partition_t * partition,
                              const pll_operation_t * op);
+
+void pll_update_partials_tiptip_avx(pll_partition_t * partition,
+                                    const pll_operation_t * op);
+
+void pll_update_partials_tipinner_avx(pll_partition_t * partition,
+                                      const pll_operation_t * op);
 
 /* functions in compress.c */
 
