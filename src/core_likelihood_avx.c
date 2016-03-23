@@ -47,28 +47,28 @@ static void fill_parent_scaler(unsigned int sites,
 
 PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
                                            unsigned int rate_cats,
-                                           double * lookup,
+                                           double * ttlookup,
                                            const double * left_matrix,
                                            const double * right_matrix,
-                                           unsigned int * revmap,
-                                           unsigned int revmap_size)
+                                           unsigned int * tipmap,
+                                           unsigned int tipmap_size)
 {
   if (states == 4)
   {
     pll_core_create_lookup_4x4_avx(rate_cats,
-                                   lookup,
+                                   ttlookup,
                                    left_matrix,
                                    right_matrix);
     return;
   }
 
   unsigned int i,j,k,n,m;
-  unsigned int index = 0;
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
-  unsigned int maxstates = revmap_size;
+  unsigned int maxstates = tipmap_size;
+  unsigned int index = 0;
 
   unsigned int log2_maxstates = (unsigned int)ceil(log2(maxstates));
-  unsigned int log2_states = (unsigned int)ceil(log2(states));
+  unsigned int log2_states_padded = (unsigned int)ceil(log2(states_padded));
   unsigned int log2_rates = (unsigned int)ceil(log2(rate_cats));
 
   /* precompute first the entries that contain only one 1 */
@@ -77,7 +77,7 @@ PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
 
   const double * jmat;
   const double * kmat;
-  double * lh_statepair;
+  double * lookup;
 
   /* go through all pairs j,k of states for the two tips; i is the inner
      node state */
@@ -87,22 +87,22 @@ PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
     {
       jmat = left_matrix;
       kmat = right_matrix;
-      index = 0;
 
       /* find offset of state-pair in the precomputation table */
-      lh_statepair = lookup;
-      lh_statepair += ((j << log2_maxstates) + k) << (log2_states+log2_rates);
+      lookup = ttlookup;
+      lookup += ((j << log2_maxstates) + k) << (log2_states_padded+log2_rates);
 
       /* precompute the likelihood for each state and each rate */
       for (n = 0; n < rate_cats; ++n)
       {
+        index = 0;
         for (i = 0; i < states; ++i)
         {
           termj = 0;
           termk = 0;
 
-          unsigned int jstate = revmap[j];
-          unsigned int kstate = revmap[k];
+          unsigned int jstate = tipmap[j];
+          unsigned int kstate = tipmap[k];
 
           /* decompose basecall into the encoded residues and set the appropriate
              positions in the tip vector */
@@ -120,8 +120,9 @@ PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
 
           jmat += states_padded;
           kmat += states_padded;
-          lh_statepair[index++] = termj*termk;
+          lookup[index++] = termj*termk;
         }
+        lookup += states_padded;
       }
     }
   }
@@ -357,13 +358,60 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
   }
 }
 
-PLL_EXPORT void pll_core_update_partials_tt_4x4_avx(unsigned int sites,
-                                                    unsigned int rate_cats,
-                                                    double * parent_clv,
-                                                    unsigned int * parent_scaler,
-                                                    const char * left_tipchars,
-                                                    const char * right_tipchars,
-                                                    const double * lookup)
+PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
+                                               unsigned int sites,
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const char * left_tipchars,
+                                               const char * right_tipchars,
+                                               const double * lookup,
+                                               unsigned int tipstates_count)
+{
+  unsigned int j,k,n;
+  unsigned int log2_rates = (unsigned int)ceil(log2(rate_cats));
+  unsigned int log2_maxstates = (unsigned int)ceil(log2(tipstates_count));
+  unsigned int states_padded = (states+3) & 0xFFFFFFFC;
+  unsigned int log2_states_padded = (unsigned int)ceil(log2(states_padded));
+  unsigned int span_padded = states_padded * rate_cats;
+  const double * offset;
+
+  if (states == 4)
+  {
+    pll_core_update_partial_tt_4x4_avx(sites,
+                                       rate_cats,
+                                       parent_clv,
+                                       parent_scaler,
+                                       left_tipchars,
+                                       right_tipchars,
+                                       lookup);
+    return;
+  }
+
+  if (parent_scaler)
+    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+
+  for (n = 0; n < sites; ++n)
+  {
+    j = (unsigned int)(left_tipchars[n]);
+    k = (unsigned int)(right_tipchars[n]);
+
+    offset = lookup;
+    offset += ((j << log2_maxstates) + k) << (log2_states_padded+log2_rates);
+
+    memcpy(parent_clv, offset, span_padded*sizeof(double));
+
+    parent_clv += span_padded;
+  }
+}
+
+PLL_EXPORT void pll_core_update_partial_tt_4x4_avx(unsigned int sites,
+                                                   unsigned int rate_cats,
+                                                   double * parent_clv,
+                                                   unsigned int * parent_scaler,
+                                                   const char * left_tipchars,
+                                                   const char * right_tipchars,
+                                                   const double * lookup)
 {
   unsigned int j,k,n;
   unsigned int log2_rates = (unsigned int)ceil(log2(rate_cats));
@@ -385,6 +433,91 @@ PLL_EXPORT void pll_core_update_partials_tt_4x4_avx(unsigned int sites,
     memcpy(parent_clv, offset, span*sizeof(double));
 
     parent_clv += span;
+  }
+}
+
+/* not vectorized for a general number of states */
+PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
+                                               unsigned int sites,                                   
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const char * left_tipchars,
+                                               const double * right_clv,
+                                               const double * left_matrix,
+                                               const double * right_matrix,
+                                               const unsigned int * right_scaler,
+                                               const unsigned int * tipmap)
+{
+  int scaling;
+  unsigned int i,j,k,n;
+
+  const double * lmat;
+  const double * rmat;
+
+  if (states == 4)
+  {
+    pll_core_update_partial_ti_4x4_avx(sites,
+                                       rate_cats,
+                                       parent_clv,
+                                       parent_scaler,
+                                       left_tipchars,
+                                       right_clv,
+                                       left_matrix,
+                                       right_matrix,
+                                       right_scaler);
+    return;
+  }
+
+  unsigned int states_padded = (states+3) & 0xFFFFFFFC;
+  unsigned int span = states * rate_cats;
+  unsigned int span_padded = states_padded * rate_cats;
+
+  if (parent_scaler)
+    fill_parent_scaler(sites, parent_scaler, NULL, right_scaler);
+
+  for (n = 0; n < sites; ++n)
+  {
+    lmat = left_matrix;
+    rmat = right_matrix;
+
+    scaling = (parent_scaler) ? 1 : 0;
+
+    for (k = 0; k < rate_cats; ++k)
+    {
+      for (i = 0; i < states; ++i)
+      {
+        double terma = 0;
+        double termb = 0;
+        unsigned int lstate = tipmap[(int)left_tipchars[n]];
+        for (j = 0; j < states; ++j)
+        {
+          if (lstate & 1)
+            terma += lmat[j];
+
+          termb += rmat[j] * right_clv[j];
+
+          lstate >>= 1;
+        }
+        parent_clv[i] = terma*termb;
+        lmat += states_padded;
+        rmat += states_padded;
+
+        scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
+      }
+      parent_clv += states_padded;
+      right_clv  += states_padded;
+    }
+    /* if *all* entries of the site CLV were below the threshold then scale
+       (all) entries by PLL_SCALE_FACTOR */
+    if (scaling)
+    {
+      parent_clv -= span_padded;
+      for (i = 0; i < span; ++i)
+        parent_clv[i] *= PLL_SCALE_FACTOR;
+      parent_clv += span_padded;
+      parent_scaler[n] += 1;
+    }
   }
 }
 
@@ -518,18 +651,17 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
 }
 
 
-PLL_EXPORT void pll_core_update_partial_avx(unsigned int states,
-                                            unsigned int sites,
-                                            unsigned int rate_cats,
-                                            double * parent_clv,
-                                            unsigned int * parent_scaler,
-                                            const double * left_clv,
-                                            const double * right_clv,
-                                            const double * left_matrix,
-                                            const double * right_matrix,
-                                            const unsigned int * left_scaler,
-                                            const unsigned int * right_scaler,
-                                            unsigned int attrib)
+PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
+                                               unsigned int sites,
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const double * left_clv,
+                                               const double * right_clv,
+                                               const double * left_matrix,
+                                               const double * right_matrix,
+                                               const unsigned int * left_scaler,
+                                               const unsigned int * right_scaler)
 {
   unsigned int i,j,k,n;
   unsigned int scaling;
@@ -538,7 +670,7 @@ PLL_EXPORT void pll_core_update_partial_avx(unsigned int states,
   const double * rmat;
 
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
-  unsigned int span = states_padded * rate_cats;
+  unsigned int span_padded = states_padded * rate_cats;
 
   /* add up the scale vector of the two children if available */
   if (parent_scaler)
@@ -557,6 +689,7 @@ PLL_EXPORT void pll_core_update_partial_avx(unsigned int states,
                                        right_matrix);
     return;
   }
+  size_t displacement = (states_padded - states) * (states_padded);
 
   /* compute CLV */
   for (n = 0; n < sites; ++n)
@@ -683,6 +816,9 @@ PLL_EXPORT void pll_core_update_partial_avx(unsigned int states,
 
       }
 
+      lmat -= displacement;
+      rmat -= displacement;
+
       for (j = 0; j < states; ++j)
         scaling = scaling && (parent_clv[j] < PLL_SCALE_THRESHOLD);
 
@@ -699,14 +835,14 @@ PLL_EXPORT void pll_core_update_partial_avx(unsigned int states,
                                              PLL_SCALE_FACTOR,
                                              PLL_SCALE_FACTOR);
 
-      parent_clv -= span;
-      for (i = 0; i < span; i += 4)
+      parent_clv -= span_padded;
+      for (i = 0; i < span_padded; i += 4)
       {
         __m256d v_prod = _mm256_load_pd(parent_clv + i);
         v_prod = _mm256_mul_pd(v_prod,v_scale_factor);
         _mm256_store_pd(parent_clv + i, v_prod);
       }
-      parent_clv += span;
+      parent_clv += span_padded;
       parent_scaler[n] += 1;
     }
   }

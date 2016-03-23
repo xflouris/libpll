@@ -155,8 +155,8 @@ typedef struct pll_partition
   unsigned int log2_rates;
   char ** tipchars;
   char * charmap;
-  double * lh_statepair;
-  unsigned int * revmap;
+  double * ttlookup;
+  unsigned int * tipmap;
 
 } pll_partition_t;
 
@@ -524,18 +524,26 @@ PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
 
 /* functions in core_likelihood.c */
 
-PLL_EXPORT void pll_core_update_partial(unsigned int states,
-                                        unsigned int sites,
-                                        unsigned int rate_cats,
-                                        double * parent_clv,
-                                        unsigned int * parent_scaler,
-                                        const double * left_clv,
-                                        const double * right_clv,
-                                        const double * left_matrix,
-                                        const double * right_matrix,
-                                        const unsigned int * left_scaler,
-                                        const unsigned int * right_scaler,
-                                        unsigned int attrib);
+PLL_EXPORT void pll_core_create_lookup(unsigned int states,
+                                       unsigned int rate_cats,
+                                       double * lookup,
+                                       const double * left_matrix,
+                                       const double * right_matrix,
+                                       unsigned int * tipmap,
+                                       unsigned int tipmap_size,
+                                       unsigned int attrib);
+
+PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
+                                           unsigned int sites,                                   
+                                           unsigned int rate_cats,
+                                           double * parent_clv,
+                                           unsigned int * parent_scaler,
+                                           const char * left_tipchars,
+                                           const char * right_tipchars,
+                                           const unsigned int * tipmap,
+                                           unsigned int tipmap_size,
+                                           const double * lookup,
+                                           unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
                                            unsigned int sites,                                   
@@ -547,8 +555,45 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
                                            const double * left_matrix,
                                            const double * right_matrix,
                                            const unsigned int * right_scaler,
-                                           const unsigned int * revmap,
-                                           const unsigned int attrib);
+                                           const unsigned int * tipmap,
+                                           unsigned int attrib);
+
+PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int rate_cats,
+                                           double * parent_clv,
+                                           unsigned int * parent_scaler,
+                                           const double * left_clv,
+                                           const double * right_clv,
+                                           const double * left_matrix,
+                                           const double * right_matrix,
+                                           const unsigned int * left_scaler,
+                                           const unsigned int * right_scaler,
+                                           unsigned int attrib);
+
+PLL_EXPORT void pll_core_create_lookup_4x4(unsigned int rate_cats,
+                                           double * lookup,
+                                           const double * left_matrix,
+                                           const double * right_matrix);
+
+PLL_EXPORT void pll_core_update_partial_tt_4x4(unsigned int sites,
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const char * left_tipchars,
+                                               const char * right_tipchars,
+                                               const double * lookup);
+
+PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,                                   
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const char * left_tipchars,
+                                               const double * right_clv,
+                                               const double * left_matrix,
+                                               const double * right_matrix,
+                                               const unsigned int * right_scaler,
+                                               unsigned int attrib);
 
 /* functions in core_likelihood_avx.c */
 
@@ -557,26 +602,55 @@ PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
                                            double * lookup,
                                            const double * left_matrix,
                                            const double * right_matrix,
-                                           unsigned int * revmap,
-                                           unsigned int revmap_size);
+                                           unsigned int * tipmap,
+                                           unsigned int tipmap_size);
 
-PLL_EXPORT void pll_core_update_partial_avx(unsigned int states,
-                                            unsigned int sites,
-                                            unsigned int rate_cats,
-                                            double * parent_clv,
-                                            unsigned int * parent_scaler,
-                                            const double * left_clv,
-                                            const double * right_clv,
-                                            const double * left_matrix,
-                                            const double * right_matrix,
-                                            const unsigned int * left_scaler,
-                                            const unsigned int * right_scaler,
-                                            unsigned int attrib);
+PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
+                                               unsigned int sites,
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const char * left_tipchars,
+                                               const char * right_tipchars,
+                                               const double * lookup,
+                                               unsigned int tipstates_count);
+
+PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
+                                               unsigned int sites,                                   
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const char * left_tipchars,
+                                               const double * right_clv,
+                                               const double * left_matrix,
+                                               const double * right_matrix,
+                                               const unsigned int * right_scaler,
+                                               const unsigned int * tipmap);
+
+PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
+                                               unsigned int sites,
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const double * left_clv,
+                                               const double * right_clv,
+                                               const double * left_matrix,
+                                               const double * right_matrix,
+                                               const unsigned int * left_scaler,
+                                               const unsigned int * right_scaler);
 
 PLL_EXPORT void pll_core_create_lookup_4x4_avx(unsigned int rate_cats,
                                                double * lookup,
                                                const double * left_matrix,
                                                const double * right_matrix);
+
+PLL_EXPORT void pll_core_update_partial_tt_4x4_avx(unsigned int sites,
+                                                   unsigned int rate_cats,
+                                                   double * parent_clv,
+                                                   unsigned int * parent_scaler,
+                                                   const char * left_tipchars,
+                                                   const char * right_tipchars,
+                                                   const double * lookup);
 
 PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
                                                    unsigned int rate_cats,
@@ -588,24 +662,14 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
                                                    const double * right_matrix,
                                                    const unsigned int * right_scaler);
 
-PLL_EXPORT void pll_core_update_partials_tt_4x4_avx(unsigned int sites,
-                                                    unsigned int rate_cats,
-                                                    double * parent_clv,
-                                                    unsigned int * parent_scaler,
-                                                    const char * left_tipchars,
-                                                    const char * right_tipchars,
-                                                    const double * lookup);
-
-/* functions in likelihood_avx.c */
-
-void pll_update_partials_avx(pll_partition_t * partition,
-                             const pll_operation_t * op);
-
-void pll_update_partials_tiptip_avx(pll_partition_t * partition,
-                                    const pll_operation_t * op);
-
-void pll_update_partials_tipinner_avx(pll_partition_t * partition,
-                                      const pll_operation_t * op);
+PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
+                                                   unsigned int rate_cats,
+                                                   double * parent_clv,
+                                                   unsigned int * parent_scaler,
+                                                   const double * left_clv,
+                                                   const double * right_clv,
+                                                   const double * left_matrix,
+                                                   const double * right_matrix);
 
 /* functions in compress.c */
 

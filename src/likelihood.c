@@ -21,121 +21,73 @@
 
 #include "pll.h"
 
-static void fill_parent_scaler(unsigned int sites,
-                               unsigned int * parent_scaler,
-                               const unsigned int * left_scaler,
-                               const unsigned int * right_scaler)
+static void case_tiptip(pll_partition_t * partition,
+                        const pll_operation_t * op)
 {
-  unsigned int i;
-
-  if (!left_scaler && !right_scaler)
-    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
-  else if (left_scaler && right_scaler)
-  {
-    memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * sites);
-    for (i = 0; i < sites; ++i)
-      parent_scaler[i] += right_scaler[i];
-  }
-  else
-  {
-    if (left_scaler)
-      memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * sites);
-    else
-      memcpy(parent_scaler, right_scaler, sizeof(unsigned int) * sites);
-  }
-}
-
-static void create_lookup(pll_partition_t * partition,
-                                 const pll_operation_t * op)
-{
-  unsigned int i,j,k,n,m;
-  unsigned int index = 0;
-  unsigned int states = partition->states;
-  unsigned int states_padded = partition->states_padded;
-  unsigned int maxstates = partition->maxstates;
-  unsigned int rate_cats = partition->rate_cats;
-  unsigned int * revmap = partition->revmap;
-
-  unsigned int log2_maxstates = partition->log2_maxstates;
-  unsigned int log2_states = partition->log2_states;
-  unsigned int log2_rates = partition->log2_rates;
-
   const double * left_matrix = partition->pmatrix[op->child1_matrix_index];
   const double * right_matrix = partition->pmatrix[op->child2_matrix_index];
+  double * parent_clv = partition->clv[op->parent_clv_index];
+  unsigned int * parent_scaler;
 
-  /* precompute first the entries that contain only one 1 */
-  double termj = 0;
-  double termk = 0;
+  /* get parent scaler */
+  if (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE)
+    parent_scaler = NULL;
+  else
+    parent_scaler = partition->scale_buffer[op->parent_scaler_index];
 
-  const double * jmat;
-  const double * kmat;
-  double * lh_statepair;
+  /* precompute lookup table */
+  pll_core_create_lookup(partition->states,
+                         partition->rate_cats,
+                         partition->ttlookup,
+                         left_matrix,
+                         right_matrix,
+                         partition->tipmap,
+                         partition->maxstates,
+                         partition->attributes);
+                         
 
-  /* go through all pairs j,k of states for the two tips; i is the inner
-     node state */
-  for (j = 0; j < maxstates; ++j)
-  {
-    for (k = 0; k < maxstates; ++k)
-    {
-      jmat = left_matrix;
-      kmat = right_matrix;
-      index = 0;
-
-      /* find offset of state-pair in the precomputation table */
-      lh_statepair = partition->lh_statepair;
-      lh_statepair += ((j << log2_maxstates) + k) << (log2_states+log2_rates);
-
-      /* precompute the likelihood for each state and each rate */
-      for (n = 0; n < rate_cats; ++n)
-      {
-        for (i = 0; i < states; ++i)
-        {
-          termj = 0;
-          termk = 0;
-
-          unsigned int jstate = revmap[j];
-          unsigned int kstate = revmap[k];
-
-          /* decompose basecall into the encoded residues and set the appropriate
-             positions in the tip vector */
-          for (m = 0; m < states; ++m)
-          {
-            if (jstate & 1)
-              termj += jmat[m];
-
-            if (kstate & 1)
-              termk += kmat[m];
-
-            jstate >>= 1;
-            kstate >>= 1;
-          }
-
-          jmat += states_padded;
-          kmat += states_padded;
-          lh_statepair[index++] = termj*termk;
-        }
-      }
-    }
-  }
+  /* and update CLV at inner node */
+  pll_core_update_partial_tt(partition->states,
+                             partition->sites,
+                             partition->rate_cats,
+                             parent_clv,
+                             parent_scaler,
+                             partition->tipchars[op->child1_clv_index],
+                             partition->tipchars[op->child2_clv_index],
+                             partition->tipmap,
+                             partition->maxstates,
+                             partition->ttlookup,
+                             partition->attributes);
 }
 
-static void update_partials_tipinner(pll_partition_t * partition,
-                                     const pll_operation_t * op)
+static void case_tipinner(pll_partition_t * partition,
+                          const pll_operation_t * op)
 {
-  int scaling;
-  unsigned int i,j,k,n;
+  double * parent_clv = partition->clv[op->parent_clv_index];
   unsigned int tip_clv_index;
   unsigned int inner_clv_index;
   unsigned int tip_matrix_index;
   unsigned int inner_matrix_index;
+  unsigned int * right_scaler;
+  unsigned int * parent_scaler;
 
-  /* determine which child is the tip and mark it as the left (first) child */
+  /* get parent scaler */
+  if (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE)
+    parent_scaler = NULL;
+  else
+    parent_scaler = partition->scale_buffer[op->parent_scaler_index];
+
+  /* find which of the two child nodes is the tip */
   if (op->child1_clv_index < partition->tips)
   {
     tip_clv_index = op->child1_clv_index;
     tip_matrix_index = op->child1_matrix_index;
     inner_clv_index = op->child2_clv_index;
     inner_matrix_index = op->child2_matrix_index;
+    if (op->child2_scaler_index == PLL_SCALE_BUFFER_NONE)
+      right_scaler = NULL;
+    else
+      right_scaler = partition->scale_buffer[op->child2_scaler_index];
   }
   else
   {
@@ -143,273 +95,104 @@ static void update_partials_tipinner(pll_partition_t * partition,
     tip_matrix_index = op->child2_matrix_index;
     inner_clv_index = op->child1_clv_index;
     inner_matrix_index = op->child1_matrix_index;
+    if (op->child1_scaler_index == PLL_SCALE_BUFFER_NONE)
+      right_scaler = NULL;
+    else
+      right_scaler = partition->scale_buffer[op->child1_scaler_index];
   }
 
-  const char * left_tipchars = partition->tipchars[tip_clv_index];
-  const double * right_clv = partition->clv[inner_clv_index];
-  const double * tip_matrix = partition->pmatrix[tip_matrix_index];
-  const double * inner_matrix = partition->pmatrix[inner_matrix_index];
-  double * parent_clv = partition->clv[op->parent_clv_index];
-  unsigned int * scaler = (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE) ?
-                        NULL : partition->scale_buffer[op->parent_scaler_index];
-  const double * lmat;
-  const double * rmat;
-
-  unsigned int states = partition->states;
-  unsigned int states_padded = partition->states_padded;
-  unsigned int span = states * partition->rate_cats;
-  unsigned int span_padded = states_padded * partition->rate_cats;
-
-  unsigned int * revmap = partition->revmap;
-
-  for (n = 0; n < partition->sites; ++n)
-  {
-    lmat = tip_matrix;
-    rmat = inner_matrix;
-
-    scaling = (scaler) ? 1 : 0;
-
-    for (k = 0; k < partition->rate_cats; ++k)
-    {
-      for (i = 0; i < states; ++i)
-      {
-        double terma = 0;
-        double termb = 0;
-        unsigned int lstate = revmap[(int)left_tipchars[n]];
-        for (j = 0; j < states; ++j)
-        {
-          if (lstate & 1)
-            terma += lmat[j];
-
-          termb += rmat[j] * right_clv[j];
-
-          lstate >>= 1;
-        }
-        parent_clv[i] = terma*termb;
-        lmat += states_padded;
-        rmat += states_padded;
-
-        scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
-      }
-      parent_clv += states_padded;
-      right_clv  += states_padded;
-    }
-    /* if *all* entries of the site CLV were below the threshold then scale
-       (all) entries by PLL_SCALE_FACTOR */
-    if (scaling)
-    {
-      parent_clv -= span_padded;
-      for (i = 0; i < span; ++i)
-        parent_clv[i] *= PLL_SCALE_FACTOR;
-      parent_clv += span_padded;
-      scaler[n] += 1;
-    }
-  }
+  pll_core_update_partial_ti(partition->states,
+                             partition->sites,
+                             partition->rate_cats,
+                             parent_clv,
+                             parent_scaler,
+                             partition->tipchars[tip_clv_index],
+                             partition->clv[inner_clv_index],
+                             partition->pmatrix[tip_matrix_index],
+                             partition->pmatrix[inner_matrix_index],
+                             right_scaler,
+                             partition->tipmap,
+                             partition->attributes);
 }
 
-static void update_partials_tiptip(pll_partition_t * partition,
-                                   const pll_operation_t * op)
-{
-  unsigned int j,k,n;
-  unsigned int log2_maxstates = partition->log2_maxstates;
-  unsigned int log2_states = partition->log2_states;
-  unsigned int log2_rates = partition->log2_rates;
-
-  const char * left_tipchars = partition->tipchars[op->child1_clv_index];
-  const char * right_tipchars = partition->tipchars[op->child2_clv_index];
-  double * lh_statepair;
-
-  double * parent_clv = partition->clv[op->parent_clv_index];
-
-  unsigned int states = partition->states;
-  unsigned int states_padded = partition->states_padded;
-  unsigned int span = states * partition->rate_cats;
-  unsigned int span_padded = states_padded * partition->rate_cats;
-
-  for (n = 0; n < partition->sites; ++n)
-  {
-    j = (unsigned int)(left_tipchars[n]);
-    k = (unsigned int)(right_tipchars[n]);
-
-    lh_statepair = partition->lh_statepair;
-    lh_statepair += ((j << log2_maxstates) + k) << (log2_states+log2_rates);
-
-    memcpy(parent_clv, lh_statepair, span*sizeof(double));
-
-    parent_clv += span_padded;
-  }
-}
-
-static void update_partials(pll_partition_t * partition,
+static void case_innerinner(pll_partition_t * partition,
                             const pll_operation_t * op)
 {
-  unsigned int i,j,k,n;
-  int scaling;
-
-  const double * left_clv = partition->clv[op->child1_clv_index];
-  const double * right_clv = partition->clv[op->child2_clv_index];
   const double * left_matrix = partition->pmatrix[op->child1_matrix_index];
   const double * right_matrix = partition->pmatrix[op->child2_matrix_index];
   double * parent_clv = partition->clv[op->parent_clv_index];
-  unsigned int * scaler = (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE) ?
-                        NULL : partition->scale_buffer[op->parent_scaler_index];
-  
-  const double * lmat;
-  const double * rmat;
+  double * left_clv = partition->clv[op->child1_clv_index];
+  double * right_clv = partition->clv[op->child2_clv_index];
+  unsigned int * parent_scaler;
+  unsigned int * left_scaler;
+  unsigned int * right_scaler;
 
-  unsigned int states = partition->states;
-  unsigned int states_padded = partition->states_padded;
-  unsigned int span = states * partition->rate_cats;
-  unsigned int span_padded = states_padded * partition->rate_cats;
+  /* get parent scaler */
+  if (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE)
+    parent_scaler = NULL;
+  else
+    parent_scaler = partition->scale_buffer[op->parent_scaler_index];
 
-  for (n = 0; n < partition->sites; ++n)
-  {
-    lmat = left_matrix;
-    rmat = right_matrix;
+  if (op->child1_scaler_index != PLL_SCALE_BUFFER_NONE)
+    left_scaler = partition->scale_buffer[op->child1_scaler_index];
+  else
+    left_scaler = NULL;
 
-    scaling = (scaler) ? 1 : 0;
+  /* if child2 has a scaler add its values to the parent scaler */
+  if (op->child2_scaler_index != PLL_SCALE_BUFFER_NONE)
+    right_scaler = partition->scale_buffer[op->child2_scaler_index];
+  else
+    right_scaler = NULL;
 
-    for (k = 0; k < partition->rate_cats; ++k)
-    {
-      for (i = 0; i < states; ++i)
-      {
-        double terma = 0;
-        double termb = 0;
-        for (j = 0; j < states; ++j)
-        {
-          terma += lmat[j] * left_clv[j];
-          termb += rmat[j] * right_clv[j];
-        }
-        parent_clv[i] = terma*termb;
-        lmat += states_padded;
-        rmat += states_padded;
-
-        scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
-      }
-      parent_clv += states_padded;
-      left_clv   += states_padded;
-      right_clv  += states_padded;
-    }
-
-    /* if *all* entries of the site CLV were below the threshold then scale
-       (all) entries by PLL_SCALE_FACTOR */
-    if (scaling)
-    {
-      parent_clv -= span_padded;
-      for (i = 0; i < span; ++i)
-        parent_clv[i] *= PLL_SCALE_FACTOR;
-      parent_clv += span_padded;
-      scaler[n] += 1;
-    }
-  }
+  pll_core_update_partial_ii(partition->states,
+                             partition->sites,
+                             partition->rate_cats,
+                             parent_clv,
+                             parent_scaler,
+                             left_clv,
+                             right_clv,
+                             left_matrix,
+                             right_matrix,
+                             left_scaler,
+                             right_scaler,
+                             partition->attributes);
 }
 
 PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
                                     const pll_operation_t * operations,
                                     unsigned int count)
 {
-  unsigned int i,j;
+  unsigned int i;
+  const pll_operation_t * op;
 
-  unsigned int * parent_scaler;
-  unsigned int * c1_scaler;
-  unsigned int * c2_scaler;
-
-  /* if the parent is supposed to have a scaler then initialized it as the
-     element-wise sum of child1 and child2 scalers */
   for (i = 0; i < count; ++i)
-  {
-    /* select vectorization method */
-    #ifdef HAVE_AVX
-    if (partition->attributes & PLL_ATTRIB_ARCH_AVX)
+  { 
+    op = &(operations[i]);
+
+    if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
     {
-      if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
+      if ((op->child1_clv_index < partition->tips) &&
+          (op->child2_clv_index < partition->tips))
       {
-        if ((operations[i].child1_clv_index < partition->tips) &&
-            (operations[i].child2_clv_index < partition->tips))
-        {
-          /* precompute the tip-tip lookup table */
-          const pll_operation_t * op = &(operations[i]);
-
-          pll_core_create_lookup_avx(partition->states,
-                                     partition->rate_cats,
-                                     partition->lh_statepair,
-                                     partition->pmatrix[op->child1_matrix_index],
-                                     partition->pmatrix[op->child2_matrix_index],
-                                     partition->revmap,
-                                     partition->maxstates);
-
-
-          /* and update CLV at inner node */
-          pll_update_partials_tiptip_avx(partition, &(operations[i]));
-        }
-        else if ((operations[i].child1_clv_index < partition->tips) ||
-                 (operations[i].child2_clv_index < partition->tips))
-        {
-          /* tip-inner */
-          pll_update_partials_tipinner_avx(partition, &(operations[i]));
-        }
-        else
-          pll_update_partials_avx(partition, &(operations[i]));
+        /* tip-tip case */
+        case_tiptip(partition,op);
+      }
+      else if ((operations[i].child1_clv_index < partition->tips) ||
+               (operations[i].child2_clv_index < partition->tips))
+      {
+        /* tip-inner */
+        case_tipinner(partition,op);
       }
       else
-        pll_update_partials_avx(partition, &(operations[i]));
+      {
+        /* inner-inner */
+        case_innerinner(partition,op);
+      }
     }
     else
-    #endif
-    #ifdef HAVE_SSE
-    if (partition->attributes & PLL_ATTRIB_ARCH_SSE)
-      assert(0);
-    else
-    #endif
     {
-      if (operations[i].parent_scaler_index == PLL_SCALE_BUFFER_NONE)
-      {
-        parent_scaler = NULL;
-      }
-      else
-      {
-        /* get scaler for parent */
-        parent_scaler = partition->scale_buffer[operations[i].parent_scaler_index];
-        memset(parent_scaler, 0, sizeof(unsigned int) * partition->sites);
-
-        /* if child1 has a scaler copy it to the parent */
-        if (operations[i].child1_scaler_index != PLL_SCALE_BUFFER_NONE)
-        {
-          c1_scaler = partition->scale_buffer[operations[i].child1_scaler_index];
-          memcpy(parent_scaler, c1_scaler, sizeof(unsigned int) * partition->sites);
-        }
-
-        /* if child2 has a scaler add its values to the parent scaler */
-        if (operations[i].child2_scaler_index != PLL_SCALE_BUFFER_NONE)
-        {
-          c2_scaler = partition->scale_buffer[operations[i].child2_scaler_index];
-          for (j = 0; j < partition->sites; ++j)
-            parent_scaler[j] += c2_scaler[j];
-        }
-      }
-
-      if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
-      {
-        if ((operations[i].child1_clv_index < partition->tips) &&
-            (operations[i].child2_clv_index < partition->tips))
-        {
-          /* precompute... */
-          create_lookup(partition,&(operations[i]));
-
-          /* ... and update CLV at inner node */
-          update_partials_tiptip(partition, &(operations[i]));
-        }
-        else if ((operations[i].child1_clv_index < partition->tips) ||
-                 (operations[i].child2_clv_index < partition->tips))
-        {
-          /* tip-inner */
-          update_partials_tipinner(partition, &(operations[i]));
-        }
-        else
-          update_partials(partition, &(operations[i]));
-      }
-      else
-        update_partials(partition, &(operations[i]));
+      /* inner-inner */
+      case_innerinner(partition,op);
     }
   }
 }
@@ -594,7 +377,7 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
 
   /* child is the tip sequence, gets its tipchar */
   char * tipchar = partition->tipchars[child_clv_index];
-  unsigned int * revmap = partition->revmap;
+  unsigned int * tipmap= partition->tipmap;
   unsigned int cstate;
 
   if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
@@ -613,7 +396,7 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
       for (j = 0; j < states; ++j)
       {
         termb = 0;
-        cstate = revmap[(int)(*tipchar)];
+        cstate = tipmap[(int)(*tipchar)];
         for (k = 0; k < states; ++k)
         {
           if (cstate & 1)
@@ -708,8 +491,8 @@ double edge_loglikelihood(pll_partition_t * partition,
         pmatrix += states_padded;
       }
 
-      /* add extra displacement if required*/
-      pmatrix += (states_padded - states) * states_padded;
+      ///* add extra displacement if required*/
+      //pmatrix += (states_padded - states) * states_padded;
 
       terma += terma_r * weights[i];
       clvp += states_padded;
@@ -783,7 +566,7 @@ static int update_sumtable_tipinner(const char * t_tipchars,
                                     unsigned int states_padded,
                                     unsigned int n_rates,
                                     unsigned int sites,
-                                    unsigned int * revmap,
+                                    unsigned int * tipmap,
                                     double *sumtable)
 {
   unsigned int i, j, k, n;
@@ -801,7 +584,7 @@ static int update_sumtable_tipinner(const char * t_tipchars,
     {
       for (j = 0; j < states; ++j)
       {
-        tipstate = revmap[(int)t_tipchars[n]];
+        tipstate = tipmap[(int)t_tipchars[n]];
         lefterm = 0;
         righterm = 0;
         for (k = 0; k < states; ++k)
@@ -896,13 +679,13 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
       retval = update_sumtable_tipinner(partition->tipchars[parent_clv_index],
                                         clvc, eigenvecs, inv_eigenvecs,
                                         freqs, states, states_padded,
-                                        n_rates, sites, partition->revmap,
+                                        n_rates, sites, partition->tipmap,
                                         sumtable);
     else
       retval = update_sumtable_tipinner(partition->tipchars[child_clv_index],
                                         clvp, eigenvecs, inv_eigenvecs,
                                         freqs, states, states_padded,
-                                        n_rates, sites, partition->revmap,
+                                        n_rates, sites, partition->tipmap,
                                         sumtable);
   }
   else

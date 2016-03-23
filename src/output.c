@@ -34,7 +34,7 @@ PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition,
 
   for (k = 0; k < partition->rate_cats; ++k)
   {
-    pmatrix = partition->pmatrix[index] + k*states_padded*states_padded;
+    pmatrix = partition->pmatrix[index] + k*states*states_padded;
     for (i = 0; i < partition->states; ++i)
     {
       for (j = 0; j < states; ++j)

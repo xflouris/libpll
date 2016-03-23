@@ -52,14 +52,14 @@ static void dealloc_partition_data(pll_partition_t * partition)
       pll_aligned_free(partition->tipchars[i]);
   free(partition->tipchars);
 
-  if (partition->lh_statepair)
-    pll_aligned_free(partition->lh_statepair);
+  if (partition->ttlookup)
+    pll_aligned_free(partition->ttlookup);
 
   if (partition->charmap)
     free(partition->charmap);
 
-  if (partition->revmap)
-    free(partition->revmap);
+  if (partition->tipmap)
+    free(partition->tipmap);
 
   if (partition->clv)
   {
@@ -138,7 +138,7 @@ PLL_EXPORT void pll_aligned_free(void * ptr)
    (i << ceil(log(maxstate)) + j) << log(states) << log(rates) */
 static int create_charmap(pll_partition_t * partition)
 {
-  unsigned int i,j;
+  unsigned int i,j,m = 0;
   char k = 0;
   unsigned int map[PLL_ASCII_SIZE];
   
@@ -152,12 +152,12 @@ static int create_charmap(pll_partition_t * partition)
     return PLL_FAILURE;
   }
 
-  if (!(partition->revmap = (unsigned int *)calloc(PLL_ASCII_SIZE,
+  if (!(partition->tipmap= (unsigned int *)calloc(PLL_ASCII_SIZE,
                                                    sizeof(unsigned int))))
   {
     pll_errno = PLL_ERROR_INIT_CHARMAP;
     snprintf (pll_errmsg, 200,
-              "Cannot allocate revmap for tip-tip precomputation.");
+              "Cannot allocate tipmap for tip-tip precomputation.");
     return PLL_FAILURE;
   }
 
@@ -166,8 +166,10 @@ static int create_charmap(pll_partition_t * partition)
   {
     if (map[i])
     {
+      if (map[i] > m) m = map[i];
+
       partition->charmap[i] = k;
-      partition->revmap[(int)k] = map[i];
+      partition->tipmap[(int)k] = map[i];
       for (j = i+1; j < PLL_ASCII_SIZE; ++j)
       {
         if (map[i] == map[j])
@@ -179,6 +181,8 @@ static int create_charmap(pll_partition_t * partition)
       ++k;
     }
   }
+
+  if (partition->states == 4) k = m+1;
 
   /* set maximum number of states (including ambiguities), its logarithm,
      and the logarithm of states */
@@ -196,10 +200,10 @@ static int create_charmap(pll_partition_t * partition)
   /* dedicated 4x4 function */
   if (partition->states == 4 && (partition->attributes & PLL_ATTRIB_ARCH_AVX))
   {
-    partition->lh_statepair = pll_aligned_alloc(1024 * partition->rate_cats *
-                                                sizeof(double),
-                                                partition->alignment);
-    if (!partition->lh_statepair)
+    partition->ttlookup = pll_aligned_alloc(1024 * partition->rate_cats *
+                                            sizeof(double),
+                                            partition->alignment);
+    if (!partition->ttlookup)
     {
       pll_errno = PLL_ERROR_INIT_CHARMAP;
       snprintf (pll_errmsg, 200,
@@ -209,8 +213,10 @@ static int create_charmap(pll_partition_t * partition)
   }
   else
   {
-    partition->lh_statepair = pll_aligned_alloc((1 << addressbits), sizeof(double));
-    if (!partition->lh_statepair)
+    partition->ttlookup = pll_aligned_alloc((1 << addressbits) * 
+                                            sizeof(double),
+                                            partition->alignment);
+    if (!partition->ttlookup)
     {
       pll_errno = PLL_ERROR_INIT_CHARMAP;
       snprintf (pll_errmsg, 200,
@@ -317,10 +323,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   partition->frequencies = NULL;
   partition->eigen_decomp_valid = 0;
 
-  partition->lh_statepair = NULL;
+  partition->ttlookup = NULL;
   partition->tipchars = NULL;
   partition->charmap = NULL;
-  partition->revmap = NULL;
+  partition->tipmap = NULL;
 
   partition->map = map;
 
@@ -418,10 +424,13 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     dealloc_partition_data(partition);
     return PLL_FAILURE;
   }
+
+  size_t displacement = (states_padded - states) * (states_padded) * sizeof(double);
   for (i = 0; i < partition->prob_matrices; ++i)
   {
-    partition->pmatrix[i] = pll_aligned_alloc(states_padded * states_padded *
-                                              rate_cats * sizeof(double),
+    partition->pmatrix[i] = pll_aligned_alloc(states * states_padded *
+                                              rate_cats * sizeof(double) +
+                                              displacement,
                                               partition->alignment);
     if (!partition->pmatrix[i])
     {
@@ -431,7 +440,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     /* TODO: don't forget to add code for SSE/AVX */
     memset(partition->pmatrix[i],
            0,
-           states_padded*states_padded*rate_cats*sizeof(double));
+           states*states_padded*rate_cats*sizeof(double));
   }
 
   /* eigenvecs */
@@ -445,7 +454,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   for (i = 0; i < partition->rate_matrices; ++i)
   {
     partition->eigenvecs[i] = pll_aligned_alloc(partition->mixture *
-                                                 states_padded * states_padded *
+                                                 states * states_padded *
                                                  sizeof(double),
                                                 partition->alignment);
     if (!partition->eigenvecs[i])
@@ -467,7 +476,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   for (i = 0; i < partition->rate_matrices; ++i)
   {
     partition->inv_eigenvecs[i] = pll_aligned_alloc(partition->mixture *
-                                                    states_padded*states_padded*
+                                                    states*states_padded*
                                                     sizeof(double),
                                                     partition->alignment);
     if (!partition->inv_eigenvecs[i])
@@ -635,8 +644,8 @@ static int set_tipchars_4x4(pll_partition_t * partition,
     partition->tipchars[tip_index][i] = (char)c;
   }
 
-  /* revmap is never used in the 4x4 case */
-  memcpy(partition->revmap, map, PLL_ASCII_SIZE*sizeof(unsigned int));
+  /* tipmap is never used in the 4x4 case */
+  memcpy(partition->tipmap, map, PLL_ASCII_SIZE*sizeof(unsigned int));
 
   return PLL_SUCCESS;
 }

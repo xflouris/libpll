@@ -45,27 +45,121 @@ static void fill_parent_scaler(unsigned int sites,
   }
 }
 
-PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
+PLL_EXPORT void pll_core_update_partial_tt_4x4(unsigned int sites,
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const char * left_tipchars,
+                                               const char * right_tipchars,
+                                               const double * lookup)
+{
+  unsigned int j,k,n;
+  unsigned int log2_rates = (unsigned int)ceil(log2(rate_cats));
+  unsigned int states = 4;
+  unsigned int span = states * rate_cats;
+  const double * offset;
+
+  if (parent_scaler)
+    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+
+  for (n = 0; n < sites; ++n)
+  {
+    j = (unsigned int)(left_tipchars[n]);
+    k = (unsigned int)(right_tipchars[n]);
+
+    offset = lookup;
+    offset += (( j << 4) + k) << (2+log2_rates);
+
+    memcpy(parent_clv, offset, span*sizeof(double));
+
+    parent_clv += span;
+  }
+}
+
+PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
                                            unsigned int sites,                                   
                                            unsigned int rate_cats,
                                            double * parent_clv,
                                            unsigned int * parent_scaler,
                                            const char * left_tipchars,
-                                           const double * right_clv,
-                                           const double * left_matrix,
-                                           const double * right_matrix,
-                                           const unsigned int * right_scaler,
-                                           const unsigned int * revmap,
+                                           const char * right_tipchars,
+                                           const unsigned int * tipmap,
+                                           unsigned int tipmap_size,
+                                           const double * lookup,
                                            unsigned int attrib)
 {
-  int scaling;
+  unsigned int j,k,n;
+  const double * offset;
+
+  #ifdef HAVE_AVX
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    if (states == 4)
+      pll_core_update_partial_tt_4x4_avx(sites,
+                                         rate_cats,
+                                         parent_clv,
+                                         parent_scaler,
+                                         left_tipchars,
+                                         right_tipchars,
+                                         lookup);
+    else
+      pll_core_update_partial_tt_avx(states,
+                                     sites,
+                                     rate_cats,
+                                     parent_clv,
+                                     parent_scaler,
+                                     left_tipchars,
+                                     right_tipchars,
+                                     lookup,
+                                     tipmap_size);
+
+    return;
+  }
+  #endif
+
+  unsigned int span = states * rate_cats;
+  unsigned int log2_rates = (unsigned int)ceil(log2(rate_cats));
+  unsigned int log2_maxstates = (unsigned int)ceil(log2(tipmap_size));
+  unsigned int log2_states = (unsigned int)ceil(log2(states));
+
+  if (parent_scaler)
+    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+
+  for (n = 0; n < sites; ++n)
+  {
+    j = (unsigned int)(left_tipchars[n]);
+    k = (unsigned int)(right_tipchars[n]);
+
+    offset = lookup;
+    offset += ((j << log2_maxstates) + k) << (log2_states+log2_rates);
+
+    memcpy(parent_clv, offset, span*sizeof(double));
+
+    parent_clv += span;
+  }
+}
+
+PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,                                   
+                                               unsigned int rate_cats,
+                                               double * parent_clv,
+                                               unsigned int * parent_scaler,
+                                               const char * left_tipchars,
+                                               const double * right_clv,
+                                               const double * left_matrix,
+                                               const double * right_matrix,
+                                               const unsigned int * right_scaler,
+                                               unsigned int attrib)
+{
+  unsigned int states = 4;
+  unsigned int scaling;
   unsigned int i,j,k,n;
+  unsigned int span = states * rate_cats;
 
   const double * lmat;
   const double * rmat;
 
   #ifdef HAVE_AVX
-  if ((attrib & PLL_ATTRIB_ARCH_AVX) && states == 4)
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
     pll_core_update_partial_ti_4x4_avx(sites,
                                        rate_cats,
@@ -80,7 +174,8 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
   }
   #endif
 
-  unsigned int span = states * rate_cats;
+  if (parent_scaler)
+    fill_parent_scaler(sites, parent_scaler, NULL, right_scaler);
 
   for (n = 0; n < sites; ++n)
   {
@@ -95,7 +190,7 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
       {
         double terma = 0;
         double termb = 0;
-        unsigned int lstate = revmap[(int)left_tipchars[n]];
+        unsigned int lstate = left_tipchars[n];
         for (j = 0; j < states; ++j)
         {
           if (lstate & 1)
@@ -127,18 +222,129 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
   }
 }
 
-PLL_EXPORT void pll_core_update_partial(unsigned int states,
-                                        unsigned int sites,
-                                        unsigned int rate_cats,
-                                        double * parent_clv,
-                                        unsigned int * parent_scaler,
-                                        const double * left_clv,
-                                        const double * right_clv,
-                                        const double * left_matrix,
-                                        const double * right_matrix,
-                                        const unsigned int * left_scaler,
-                                        const unsigned int * right_scaler,
-                                        unsigned int attrib)
+PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
+                                           unsigned int sites,                                   
+                                           unsigned int rate_cats,
+                                           double * parent_clv,
+                                           unsigned int * parent_scaler,
+                                           const char * left_tipchars,
+                                           const double * right_clv,
+                                           const double * left_matrix,
+                                           const double * right_matrix,
+                                           const unsigned int * right_scaler,
+                                           const unsigned int * tipmap,
+                                           unsigned int attrib)
+{
+  int scaling;
+  unsigned int i,j,k,n;
+  unsigned int span = states * rate_cats;
+
+  const double * lmat;
+  const double * rmat;
+
+#ifdef HAVE_AVX
+    if ((attrib & PLL_ATTRIB_ARCH_AVX))
+    {
+      if (states == 4)
+        pll_core_update_partial_ti_4x4_avx(sites,
+                                           rate_cats,
+                                           parent_clv,
+                                           parent_scaler,
+                                           left_tipchars,
+                                           right_clv,
+                                           left_matrix,
+                                           right_matrix,
+                                           right_scaler);
+      else
+        pll_core_update_partial_ti_avx(states,
+                                       sites,
+                                       rate_cats,
+                                       parent_clv,
+                                       parent_scaler,
+                                       left_tipchars,
+                                       right_clv,
+                                       left_matrix,
+                                       right_matrix,
+                                       right_scaler,
+                                       tipmap);
+      return;
+    }
+#endif
+    if (states == 4)
+    {
+      pll_core_update_partial_ti_4x4(sites,
+                                     rate_cats,
+                                     parent_clv,
+                                     parent_scaler,
+                                     left_tipchars,
+                                     right_clv,
+                                     left_matrix,
+                                     right_matrix,
+                                     right_scaler,
+                                     attrib);
+      return;
+    }
+
+  if (parent_scaler)
+    fill_parent_scaler(sites, parent_scaler, NULL, right_scaler);
+
+  for (n = 0; n < sites; ++n)
+  {
+    lmat = left_matrix;
+    rmat = right_matrix;
+
+    scaling = (parent_scaler) ? 1 : 0;
+
+    for (k = 0; k < rate_cats; ++k)
+    {
+      for (i = 0; i < states; ++i)
+      {
+        double terma = 0;
+        double termb = 0;
+        unsigned int lstate = tipmap[(int)left_tipchars[n]];
+        for (j = 0; j < states; ++j)
+        {
+          if (lstate & 1)
+            terma += lmat[j];
+
+          termb += rmat[j] * right_clv[j];
+
+          lstate >>= 1;
+        }
+        parent_clv[i] = terma*termb;
+        lmat += states;
+        rmat += states;
+
+        scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
+      }
+      parent_clv += states;
+      right_clv  += states;
+    }
+    /* if *all* entries of the site CLV were below the threshold then scale
+       (all) entries by PLL_SCALE_FACTOR */
+    if (scaling)
+    {
+      parent_clv -= span;
+      for (i = 0; i < span; ++i)
+        parent_clv[i] *= PLL_SCALE_FACTOR;
+      parent_clv += span;
+      parent_scaler[n] += 1;
+    }
+  }
+}
+
+PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int rate_cats,
+                                           double * parent_clv,
+                                           unsigned int * parent_scaler,
+                                           const double * left_clv,
+                                           const double * right_clv,
+                                           const double * left_matrix,
+                                           const double * right_matrix,
+                                           const unsigned int * left_scaler,
+                                           const unsigned int * right_scaler,
+                                           unsigned int attrib)
 {
   unsigned int i,j,k,n;
   unsigned int scaling;
@@ -151,18 +357,17 @@ PLL_EXPORT void pll_core_update_partial(unsigned int states,
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
-    pll_core_update_partial_avx(states,
-                                sites,
-                                rate_cats,
-                                parent_clv,
-                                parent_scaler,
-                                left_clv,
-                                right_clv,
-                                left_matrix,
-                                right_matrix,
-                                left_scaler,
-                                right_scaler,
-                                attrib);
+    pll_core_update_partial_ii_avx(states,
+                                   sites,
+                                   rate_cats,
+                                   parent_clv,
+                                   parent_scaler,
+                                   left_clv,
+                                   right_clv,
+                                   left_matrix,
+                                   right_matrix,
+                                   left_scaler,
+                                   right_scaler);
     return;
   }
 #endif
@@ -212,6 +417,168 @@ PLL_EXPORT void pll_core_update_partial(unsigned int states,
         parent_clv[i] *= PLL_SCALE_FACTOR;
       parent_clv += span;
       parent_scaler[n] += 1;
+    }
+  }
+}
+
+PLL_EXPORT void pll_core_create_lookup_4x4(unsigned int rate_cats,
+                                           double * lookup,
+                                           const double * left_matrix,
+                                           const double * right_matrix)
+{
+  unsigned int i,j,k,n,m;
+  unsigned int maxstates = 16;
+  unsigned int states = 4;
+  unsigned int index = 0;
+
+  /* precompute first the entries that contain only one 1 */
+  double termj = 0;
+  double termk = 0;
+
+  const double * jmat;
+  const double * kmat;
+
+  /* go through all pairs j,k of states for the two tips; i is the inner
+     node state */
+  for (j = 0; j < maxstates; ++j)
+  {
+    for (k = 0; k < maxstates; ++k)
+    {
+      jmat = left_matrix;
+      kmat = right_matrix;
+
+      /* precompute the likelihood for each state and each rate */
+      for (n = 0; n < rate_cats; ++n)
+      {
+        for (i = 0; i < states; ++i)
+        {
+          termj = 0;
+          termk = 0;
+
+          unsigned int jstate = j;
+          unsigned int kstate = k;
+
+          /* decompose basecall into the encoded residues and set the appropriate
+             positions in the tip vector */
+          for (m = 0; m < states; ++m)
+          {
+            if (jstate & 1)
+              termj += jmat[m];
+
+            if (kstate & 1)
+              termk += kmat[m];
+
+            jstate >>= 1;
+            kstate >>= 1;
+          }
+
+          jmat += states;
+          kmat += states;
+          lookup[index++] = termj*termk;
+        }
+      }
+    }
+  }
+}
+
+PLL_EXPORT void pll_core_create_lookup(unsigned int states,
+                                       unsigned int rate_cats,
+                                       double * lookup,
+                                       const double * left_matrix,
+                                       const double * right_matrix,
+                                       unsigned int * tipmap,
+                                       unsigned int tipmap_size,
+                                       unsigned int attrib)
+{
+
+  #ifdef HAVE_AVX
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    if (states == 4)
+      pll_core_create_lookup_4x4_avx(rate_cats,
+                                     lookup,
+                                     left_matrix,
+                                     right_matrix);
+    else
+      pll_core_create_lookup_avx(states,
+                                 rate_cats,
+                                 lookup,
+                                 left_matrix,
+                                 right_matrix,
+                                 tipmap,
+                                 tipmap_size);
+    return;
+  }
+  #endif
+  if (states == 4)
+  {
+    pll_core_create_lookup_4x4(rate_cats,
+                               lookup,
+                               left_matrix,
+                               right_matrix);
+    return;
+  }
+
+  unsigned int i,j,k,n,m;
+  unsigned int index = 0;
+  unsigned int maxstates = tipmap_size;
+
+  unsigned int log2_maxstates = (unsigned int)ceil(log2(maxstates));
+  unsigned int log2_states = (unsigned int)ceil(log2(states));
+  unsigned int log2_rates = (unsigned int)ceil(log2(rate_cats));
+
+  /* precompute first the entries that contain only one 1 */
+  double termj = 0;
+  double termk = 0;
+
+  const double * jmat;
+  const double * kmat;
+  double * lh_statepair;
+
+  /* go through all pairs j,k of states for the two tips; i is the inner
+     node state */
+  for (j = 0; j < maxstates; ++j)
+  {
+    for (k = 0; k < maxstates; ++k)
+    {
+      jmat = left_matrix;
+      kmat = right_matrix;
+      index = 0;
+
+      /* find offset of state-pair in the precomputation table */
+      lh_statepair = lookup;
+      lh_statepair += ((j << log2_maxstates) + k) << (log2_states+log2_rates);
+
+      /* precompute the likelihood for each state and each rate */
+      for (n = 0; n < rate_cats; ++n)
+      {
+        for (i = 0; i < states; ++i)
+        {
+          termj = 0;
+          termk = 0;
+
+          unsigned int jstate = tipmap[j];
+          unsigned int kstate = tipmap[k];
+
+          /* decompose basecall into the encoded residues and set the appropriate
+             positions in the tip vector */
+          for (m = 0; m < states; ++m)
+          {
+            if (jstate & 1)
+              termj += jmat[m];
+
+            if (kstate & 1)
+              termk += kmat[m];
+
+            jstate >>= 1;
+            kstate >>= 1;
+          }
+
+          jmat += states;
+          kmat += states;
+          lh_statepair[index++] = termj*termk;
+        }
+      }
     }
   }
 }

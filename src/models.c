@@ -279,25 +279,25 @@ PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
 
         /* store eigen vectors */
         for (i = 0; i < states; ++i)
-          memcpy(eigenvecs + i*states_padded, a[i], states*sizeof(double));
+          memcpy(eigenvecs + i*states, a[i], states*sizeof(double));
 
         /* store eigen values */
         memcpy(eigenvals, d, states*sizeof(double));
 
         /* store inverse eigen vectors */
         for (k = 0, i = 0; i < states; ++i)
-          for (j = i; j < states_padded*states_padded; j += states_padded)
+          for (j = i; j < states*states; j += states)
             inv_eigenvecs[k++] = eigenvecs[j];
 
         /* multiply the inverse eigen vectors from the left with sqrt(pi)^-1 */
         for (i = 0; i < states; ++i)
           for (j = 0; j < states; ++j)
-            inv_eigenvecs[i*states_padded + j] /= sqrt(freqs[i]);
+            inv_eigenvecs[i*states+ j] /= sqrt(freqs[i]);
 
         /* multiply the eigen vectors from the right with sqrt(pi) */
         for (i = 0; i < states; ++i)
           for (j = 0; j < states; ++j)
-            eigenvecs[i*states_padded + j] *= sqrt(freqs[j]);
+            eigenvecs[i*states+j] *= sqrt(freqs[j]);
 
         partition->eigen_decomp_valid[params_index] = 1;
 
@@ -308,9 +308,9 @@ PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
         free(a);
 
         /* switch to Q matrix and freqs corresponding to current rate */
-        eigenvecs     += states_padded*states_padded;
-        inv_eigenvecs += states_padded*states_padded;
-        eigenvals     += states_padded;
+        eigenvecs     += states*states;
+        inv_eigenvecs += states*states;
+        eigenvals     += states;
         freqs         += states_padded;
         subst_params  += (states*states - states)/2;
       }
@@ -358,7 +358,7 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
   }
 
   expd = (double *)malloc(states * sizeof(double));
-  temp = (double *)malloc(states_padded*states_padded * sizeof(double));
+  temp = (double *)malloc(states*states* sizeof(double));
 
   for (i = 0; i < count; ++i)
   {
@@ -367,7 +367,7 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
     /* compute effective pmatrix location */
     for (n = 0; n < partition->rate_cats; ++n)
     {
-      pmatrix = partition->pmatrix[matrix_indices[i]] + n*states_padded*states_padded;
+      pmatrix = partition->pmatrix[matrix_indices[i]] + n*states*states_padded;
 
       /* if branch length is zero then set the p-matrix to identity matrix */
       if (!branch_lengths[i])
@@ -385,7 +385,7 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
 
         for (j = 0; j < states; ++j)
           for (k = 0; k < states; ++k)
-            temp[j*states_padded+k] = inv_eigenvecs[j*states_padded+k] * expd[k];
+            temp[j*states+k] = inv_eigenvecs[j*states+k] * expd[k];
 
         for (j = 0; j < states; ++j)
           for (k = 0; k < states; ++k)
@@ -394,44 +394,16 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
             for (m = 0; m < states; ++m)
             {
               pmatrix[j*states_padded+k] +=
-                  temp[j*states_padded+m] * eigenvecs[m*states_padded+k];
+                  temp[j*states+m] * eigenvecs[m*states+k];
             }
           }
       }
 
-//      printf("EXPD: ");
-//        for (k = 0; k < states; ++k)
-//                printf("%7.4f ", expd[k]);
-//      printf("\nTEMP: ");
-//      for (j = 0; j < states; ++j)
-//           {
-//              for (k = 0; k < states; ++k)
-//                {
-//                  printf("%7.4f ", temp[j*states_padded+k]);
-//                }
-//                printf("\n      ");
-//              }
-//              printf("\n\n");
-
-      //  printf("EIGENVAL: ");
-      //  for (k = 0; k < states; ++k)
-      //    printf("%7.4f ", eigenvals[k]);
-      //  printf("\nEIGENVEC: ");
-      //  for (j = 0; j < states; ++j)
-      //  {
-      //    for (k = 0; k < states; ++k)
-      //    {
-      //      printf("%7.4f ", eigenvecs[j*states_padded+k]);
-      //    }
-      //    printf("\n          ");
-      //  }
-      //  printf("\n\n");
-
       if (mixture > 1)
       {
         /* switch to Q matrix and freqs corresponding to current rate */
-        eigenvecs     += states_padded * states_padded;
-        inv_eigenvecs += states_padded * states_padded;
+        eigenvecs     += states * states_padded;
+        inv_eigenvecs += states * states_padded;
         eigenvals     += states_padded;
         freqs         += states_padded;
         subst_params  += (states * states - states) / 2;
@@ -561,7 +533,7 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
     for (i = 0; i < tips; ++i)
       for (j = 0; j < sites; ++j)
       {
-        state =  partition->revmap[(int)(partition->tipchars[i][j])];
+        state =  partition->tipmap[(int)(partition->tipchars[i][j])];
         if (state < gap_state)
           invariant[j] |= state;
       }
