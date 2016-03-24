@@ -235,7 +235,9 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
                                                    const double * left_clv,
                                                    const double * right_clv,
                                                    const double * left_matrix,
-                                                   const double * right_matrix)
+                                                   const double * right_matrix,
+                                                   const unsigned int * left_scaler,
+                                                   const unsigned int * right_scaler)
 {
   unsigned int states = 4;
   unsigned int n,k,i;
@@ -248,6 +250,10 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
   __m256d xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7;
 
   unsigned int span = states * rate_cats;
+
+  /* add up the scale vector of the two children if available */
+  if (parent_scaler)
+    fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
 
   for (n = 0; n < sites; ++n)
   {
@@ -672,10 +678,6 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
   unsigned int span_padded = states_padded * rate_cats;
 
-  /* add up the scale vector of the two children if available */
-  if (parent_scaler)
-    fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
-
   /* dedicated functions for 4x4 matrices */
   if (states == 4)
   {
@@ -686,9 +688,16 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
                                        left_clv,
                                        right_clv,
                                        left_matrix,
-                                       right_matrix);
+                                       right_matrix,
+                                       left_scaler,
+                                       right_scaler);
     return;
   }
+
+  /* add up the scale vector of the two children if available */
+  if (parent_scaler)
+    fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
+
   size_t displacement = (states_padded - states) * (states_padded);
 
   /* compute CLV */

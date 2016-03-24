@@ -669,7 +669,9 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
                                                    const double * left_clv,
                                                    const double * right_clv,
                                                    const double * left_matrix,
-                                                   const double * right_matrix);
+                                                   const double * right_matrix,
+                                                   const unsigned int * left_scaler,
+                                                   const unsigned int * right_scaler);
 
 /* functions in compress.c */
 
