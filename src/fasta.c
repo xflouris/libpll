@@ -158,7 +158,12 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
         return PLL_FAILURE;
       }
 
-      long headerlen = xstrchrnul(fd->line+1, '\n') - (fd->line+1);
+      long headerlen;
+      if (strchr(fd->line+1,'\r'))
+        headerlen = xstrchrnul(fd->line+1, '\r') - (fd->line+1);
+      else
+        headerlen = xstrchrnul(fd->line+1, '\n') - (fd->line+1);
+
       *head_len = headerlen;
 
       if (headerlen + 1 > head_alloc)
