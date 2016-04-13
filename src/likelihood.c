@@ -385,52 +385,106 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
   else
     parent_scaler = partition->scale_buffer[parent_scaler_index];
 
-  for (n = 0; n < partition->sites; ++n)
+  if (states == 4)
   {
-    pmatrix = partition->pmatrix[matrix_index];
-    freqs = partition->frequencies[freqs_index];
-    terma = 0;
-    for (i = 0; i < partition->rate_cats; ++i)
+    /* 4x4 case */
+    for (n = 0; n < partition->sites; ++n)
     {
-      terma_r = 0;
-      for (j = 0; j < states; ++j)
+      pmatrix = partition->pmatrix[matrix_index];
+      freqs = partition->frequencies[freqs_index];
+      terma = 0;
+      for (i = 0; i < partition->rate_cats; ++i)
       {
-        termb = 0;
-        cstate = tipmap[(int)(*tipchar)];
-        for (k = 0; k < states; ++k)
+        terma_r = 0;
+        for (j = 0; j < states; ++j)
         {
-          if (cstate & 1)
-            termb += pmatrix[k];
-          cstate >>= 1;
+          termb = 0;
+          cstate = (unsigned int) (*tipchar);
+          for (k = 0; k < states; ++k)
+          {
+            if (cstate & 1)
+              termb += pmatrix[k];
+            cstate >>= 1;
+          }
+          terma_r += clvp[j] * freqs[j] * termb;
+          pmatrix += states_padded;
         }
-        terma_r += clvp[j] * freqs[j] * termb;
-        pmatrix += states_padded;
+        terma += terma_r * weights[i];
+        clvp += states_padded;
+        if (partition->mixture > 1)
+          freqs += states_padded;
       }
-      terma += terma_r * weights[i];
-      clvp += states_padded;
-      if (partition->mixture > 1)
-        freqs += states_padded;
+    
+      site_lk = terma;
+
+      /* account for invariant sites */
+      if (prop_invar > 0)
+      {
+        inv_site_lk = (partition->invariant[n] == -1) ? 
+                          0 : freqs[partition->invariant[n]];
+
+        site_lk = site_lk * (1. - prop_invar) +
+                  inv_site_lk * prop_invar;
+      }
+
+      scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
+
+      logl += log(site_lk) * partition->pattern_weights[n];
+      if (scale_factors)
+        logl += scale_factors * log(PLL_SCALE_THRESHOLD);
+
+      tipchar++;
     }
-
-    site_lk = terma;
-
-    /* account for invariant sites */
-    if (prop_invar > 0)
+  }
+  else
+  {
+    for (n = 0; n < partition->sites; ++n)
     {
-      inv_site_lk = (partition->invariant[n] == -1) ? 
-                        0 : freqs[partition->invariant[n]];
+      pmatrix = partition->pmatrix[matrix_index];
+      freqs = partition->frequencies[freqs_index];
+      terma = 0;
+      for (i = 0; i < partition->rate_cats; ++i)
+      {
+        terma_r = 0;
+        for (j = 0; j < states; ++j)
+        {
+          termb = 0;
+          cstate = tipmap[(int)(*tipchar)];
+          for (k = 0; k < states; ++k)
+          {
+            if (cstate & 1)
+              termb += pmatrix[k];
+            cstate >>= 1;
+          }
+          terma_r += clvp[j] * freqs[j] * termb;
+          pmatrix += states_padded;
+        }
+        terma += terma_r * weights[i];
+        clvp += states_padded;
+        if (partition->mixture > 1)
+          freqs += states_padded;
+      }
+    
+      site_lk = terma;
 
-      site_lk = site_lk * (1. - prop_invar) +
-                inv_site_lk * prop_invar;
+      /* account for invariant sites */
+      if (prop_invar > 0)
+      {
+        inv_site_lk = (partition->invariant[n] == -1) ? 
+                          0 : freqs[partition->invariant[n]];
+
+        site_lk = site_lk * (1. - prop_invar) +
+                  inv_site_lk * prop_invar;
+      }
+
+      scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
+
+      logl += log(site_lk) * partition->pattern_weights[n];
+      if (scale_factors)
+        logl += scale_factors * log(PLL_SCALE_THRESHOLD);
+
+      tipchar++;
     }
-
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-
-    logl += log(site_lk) * partition->pattern_weights[n];
-    if (scale_factors)
-      logl += scale_factors * log(PLL_SCALE_THRESHOLD);
-
-    tipchar++;
   }
 
   return logl;
