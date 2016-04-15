@@ -18,12 +18,20 @@
 #    Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 
 CC = gcc
-CFLAGS = -g -O3 -Wall 
-CLIBS = -lpll -lm
+CFLAGS = -O3 -Wall 
+CLIBS = -lpll -lpll_optimize -lm
 
-CFILES = $(wildcard **/*.c)
-CFILES = $(shell find src/ -type f -name '*.c')
+CFILES = src/alpha-cats.c \
+         src/blopt-minimal.c \
+         src/fasta-dna.c \
+         src/fasta-prot.c \
+         src/hky.c \
+         src/odd-states.c \
+         src/partial-traversal.c \
+         src/protein-models.c
 OBJFILES = $(patsubst src/%.c, obj/%, $(CFILES))
+
+OBJCOMMON = src/common.o
 
 DATADIR = testdata
 RESULTDIR = result
@@ -36,7 +44,7 @@ DEPFILES = worms16s.fas \
 REQFILES = $(patsubst %, $(DATADIR)/%, $(DEPFILES))
 ASSETS = https://raw.githubusercontent.com/xflouris/assets/master/libpll
 
-all: $(OBJFILES) $(REQFILES)
+all: $(OBJCOMMON) $(OBJFILES) $(REQFILES)
 	@mkdir -p $(RESULTDIR)
 
 $(DATADIR)/%:
@@ -45,7 +53,10 @@ $(DATADIR)/%:
 
 obj/%: src/%.c $(DEPS)
 	@mkdir -p "$(@D)"
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $< $(CLIBS) $(LDFLAGS) -DDATADIR=\"$(DATADIR)\"
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $< $(OBJCOMMON) $(CLIBS) $(LDFLAGS) -DDATADIR=\"$(DATADIR)\"
 
+%.o: %.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $< $(CLIBS) $(LDFLAGS) -DDATADIR=\"$(DATADIR)\"
+	
 clean:
-	rm -rf obj
+	rm -rf obj result/* $(OBJCOMMON)

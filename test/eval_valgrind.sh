@@ -22,10 +22,13 @@
 
 file=$1
 timestamp=$2
+shift
+shift
+args=$@
 
 outfile=tmpvalgrind
 
-valgrind --tool=memcheck --leak-check=full ${file} > /dev/null 2> ${outfile}
+valgrind --tool=memcheck --leak-check=full ${file} ${args} > /dev/null 2> ${outfile}
 
 deflost=`fgrep "definitely lost:" ${outfile} | xargs | cut -d' ' -f4 | sed "s/,//g"`
 indlost=`fgrep "indirectly lost:" ${outfile} | xargs | cut -d' ' -f4 | sed "s/,//g"`
