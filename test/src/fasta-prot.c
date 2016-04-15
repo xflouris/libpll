@@ -18,7 +18,7 @@
  Exelixis Lab, Heidelberg Instutute for Theoretical Studies
  Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
  */
-#include "pll.h"
+#include "common.h"
 #include <string.h>
 #include <assert.h>
 
@@ -29,7 +29,7 @@
 #define N_TAXA 21
 #define N_SITES 112
 
-static int failtest()
+static int failtest(unsigned int attributes)
 {
 unsigned int i;
   char * seq, *header;
@@ -47,7 +47,7 @@ unsigned int i;
                                     N_CAT_GAMMA, /* rate categories */
                                     1, 
                                     pll_map_aa,
-                                    PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
+                                    attributes
                                     );
 
   fp = pll_fasta_open ("testdata/ribosomal_l5_pf00673.fas", pll_map_fasta);
@@ -71,7 +71,7 @@ unsigned int i;
   return PLL_FAILURE;
 }
 
-static int proteintest()
+static int proteintest(unsigned int attributes)
 {
   unsigned int i;
   char * seq, *header;
@@ -91,7 +91,7 @@ static int proteintest()
                                     N_CAT_GAMMA, /* rate categories */
                                     1,
                                     pll_map_aa,
-                                    0);
+                                    attributes);
 
   fp = pll_fasta_open ("testdata/ribosomal_l5_pf00673.fas", pll_map_fasta);
   if (!fp)
@@ -143,10 +143,12 @@ static int proteintest()
 
 int main (int argc, char * argv[])
 {
-  if (proteintest ())
+  unsigned int attributes = get_attributes(argc, argv);
+
+  if (proteintest (attributes))
     printf ("Test OK\n\n");
 
-  int fail_retval = failtest ();
+  int fail_retval = failtest (attributes);
   if (fail_retval)
     printf ("Fail test OK (sequence %d)\n", fail_retval);
 

@@ -18,7 +18,7 @@
     Exelixis Lab, Heidelberg Instutute for Theoretical Studies
     Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 */
-#include "pll.h"
+#include "common.h"
 
 #define NUM_ALPHAS 9
 #define NUM_CATS   5
@@ -68,6 +68,9 @@ int main(int argc, char * argv[])
   operations[2].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
   operations[2].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
+  /* check attributes */
+  unsigned int attributes = get_attributes(argc, argv);
+
   for (k = 0; k < NUM_CATS; ++k) {
     pll_partition_t * partition;
     partition = pll_partition_create(
@@ -81,7 +84,7 @@ int main(int argc, char * argv[])
                                 n_cat_gamma[k], /* gamma categories */
                                 0,           /* scale buffers */
                                 pll_map_nt,
-                                PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
+                                attributes
                                 );          /* attributes */
 
     if (!partition) 
@@ -133,16 +136,7 @@ int main(int argc, char * argv[])
         printf ("\n");
       }
 
-      printf ("[%d] Tip 0: ", i);
-      pll_show_clv(partition,0,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
-      printf ("[%d] Tip 1: ", i);
-      pll_show_clv(partition,1,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
-      printf ("[%d] Tip 2: ", i);
-      pll_show_clv(partition,2,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
-      printf ("[%d] Tip 3: ", i);
-      pll_show_clv(partition,3,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
-      printf ("[%d] Tip 4: ", i);
-      pll_show_clv(partition,4,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
+      /* show CLVs */
       printf ("[%d] CLV 5: ", i);
       pll_show_clv(partition,5,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
       printf ("[%d] CLV 6: ", i);

@@ -14,18 +14,29 @@ How to create a new test:
   Use a descriptive but short name. 
   You could also write a long description into this file
 
-2. Compile with the provided Makefile
+2. Add the filename to CFILES variable in the Makefile
+
+  e.g.,
+  
+  ```
+  CFILES = src/alpha-cats.c \
+           src/blopt-minimal.c \
+           ...
+           src/newtest.c
+  ```
+  
+3. Compile with the provided Makefile
 
   A binary with the same name (%) should be created in obj/
 
-3. Validate it propertly!
+4. Validate it propertly!
 
   Every time you place a buggy test case, god kills a kitten
   (and we do not want that)
 
-4. Pipe the output into out/%.out
+5. Pipe the output into out/%.out
 
-5. Proceed to section B and verify it matches the output and there are no leaks
+6. Proceed to next section and verify it matches the output and there are no leaks
 
 ## Run the test framework
 
@@ -59,3 +70,24 @@ e.g., ./runtest.py speed hky alpha-cats
 
 4. If some dll missing files are reported, locate them and copy them
    in current or obj/ directory.
+   
+## Check errors
+
+If a test fails, it will produce an error output in results directory. 
+The generated files have the following format:
+
+`testfail_ATTR_TESTNAME_DATETIME` and `testfail_ATTR_TESTNAME_DATETIME.err`
+
+Where:
+  * `ATTR` is the set of attributes used: `A` for AVX, `C` for CPU (non-vectorized version), `T` for tip vectors.
+  * `TESTNAME` is the name of the test (e.g., alpha-cats)
+  * `DATETIME` is the date and time when the error failed with format YYYYMMDDhhmmss
+  * `.err` file is the error stream output. Most times it will be a blank file.
+
+Tests output may be very complex if they print out, for example, the CLVs. The
+best way to check what failed in the test is usually to compare the output with
+the expected one:
+
+e.g., `diff testfail_ATTR_TESTNAME_DATETIME out/TESTNAME.out`
+      `vimdiff testfail_ATTR_TESTNAME_DATETIME out/TESTNAME.out`
+
