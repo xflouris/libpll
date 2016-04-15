@@ -18,7 +18,7 @@
  Exelixis Lab, Heidelberg Instutute for Theoretical Studies
  Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
  */
-#include "pll.h"
+#include "common.h"
 #include <string.h>
 #include <assert.h>
 
@@ -30,7 +30,7 @@
 #define N_TAXA_SMALL 5
 #define N_SITES 491
 
-static int failtest()
+static int failtest(unsigned int attributes)
 {
   pll_fasta_t * fp;
   fp = pll_fasta_open ("unexistent-file", pll_map_fasta);
@@ -39,7 +39,7 @@ static int failtest()
   return PLL_SUCCESS;
 }
 
-static int bigtest()
+static int bigtest(unsigned int attributes)
 {
   unsigned int i;
   char * seq, *header;
@@ -59,7 +59,7 @@ static int bigtest()
                                     N_CAT_GAMMA, /* rate categories */
                                     1, 
                                     pll_map_nt,
-                                    PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
+                                    attributes
                                     );
 
   fp = pll_fasta_open ("testdata/worms16s.fas", pll_map_fasta);
@@ -105,7 +105,7 @@ static int bigtest()
   return PLL_SUCCESS;
 }
 
-static int smalltest ()
+static int smalltest (unsigned int attributes)
 {
   unsigned int i;
   char * seq, *header;
@@ -130,7 +130,7 @@ static int smalltest ()
                                    N_CAT_GAMMA,
                                    1, 
                                    pll_map_nt,
-                                   2);
+                                   attributes);
 
   fp = pll_fasta_open ("testdata/small.fas", pll_map_fasta);
   i = 0;
@@ -198,13 +198,15 @@ static int smalltest ()
 
 int main (int argc, char * argv[])
 {
-  if (bigtest ())
+  unsigned int attributes = get_attributes(argc, argv);
+
+  if (bigtest (attributes))
     printf ("Big test OK\n\n");
 
-  if (smalltest ())
+  if (smalltest (attributes))
     printf ("Small test OK\n\n");
 
-  if (failtest ())
+  if (failtest (attributes))
     printf ("Fail test OK\n");
 
   return PLL_SUCCESS;

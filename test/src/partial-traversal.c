@@ -1,4 +1,4 @@
-#include "pll.h"
+#include "common.h"
 #include "rng.h"
 
 #include <stdarg.h>
@@ -119,6 +119,8 @@ int main(int argc, char * argv[])
      of tip nodes in tip_nodes_count */
   pll_utree_t * tree = pll_utree_parse_newick(TREEFILE, &tip_nodes_count);
   
+  unsigned int attributes = get_attributes(argc, argv);
+
   /* fix all missing branch lengths (i.e. those that did not appear in the 
      newick) to 0.000001 */
   set_missing_branch_length(tree, 0.000001);
@@ -236,7 +238,7 @@ int main(int argc, char * argv[])
                                    RATE_CATS,
                                    inner_nodes_count,
                                    pll_map_nt,
-                                   PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
+                                   attributes
                                    );
 
   /* initialize the array of base frequencies */

@@ -18,7 +18,7 @@
     Exelixis Lab, Heidelberg Instutute for Theoretical Studies
     Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 */
-#include "pll.h"
+#include "common.h"
 
 #define N_CAT_GAMMA 4
 #define ALPHA 1
@@ -78,6 +78,8 @@ int main(int argc, char * argv[])
   pll_partition_t * partition;
   pll_operation_t * operations;
 
+  unsigned int attributes = get_attributes(argc, argv);
+
   printf ("Creating PLL partition\n");
 
   partition = pll_partition_create(5,                            /* tips */
@@ -90,7 +92,7 @@ int main(int argc, char * argv[])
                                    N_CAT_GAMMA,       /* rate categories */
                                    1,
                                    pll_map_aa,
-                                   PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
+                                   attributes
                                    );
   
   double branch_lengths[4] = { 0.1, 0.2, 1, 1};
@@ -181,16 +183,6 @@ int main(int argc, char * argv[])
 
     pll_update_partials(partition, operations, 3);
     
-    printf ("Tip 0: ");
-    pll_show_clv(partition,0,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
-    printf ("Tip 1: ");
-    pll_show_clv(partition,1,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
-    printf ("Tip 2: ");
-    pll_show_clv(partition,2,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
-    printf ("Tip 3: ");
-    pll_show_clv(partition,3,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
-    printf ("Tip 4: ");
-    pll_show_clv(partition,4,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
     printf ("CLV 5: ");
     pll_show_clv(partition,5,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
     printf ("CLV 6: ");

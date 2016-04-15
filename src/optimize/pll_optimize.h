@@ -147,11 +147,6 @@ typedef struct
   double * sumtable;
 } pll_newton_tree_params_t;
 
-/* functions in opt_utils.c */
-PLL_EXPORT double * pll_compute_empirical_frequencies(pll_partition_t * partition);
-PLL_EXPORT double * pll_compute_empirical_subst_rates(pll_partition_t * partition);
-PLL_EXPORT double pll_compute_empirical_invariant_sites(pll_partition_t *partition);
-
 /******************************************************************************/
 
 /* functions in opt_algorithms.c */
