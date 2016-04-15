@@ -250,11 +250,8 @@ PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
                                  unsigned int params_index)
 {
   unsigned int i,j,k;
-  unsigned int i_m;
   double *e, *d;
   double ** a;
-
-  unsigned int mixture = partition->mixture;
 
   double * eigenvecs = partition->eigenvecs[params_index];
   double * inv_eigenvecs = partition->inv_eigenvecs[params_index];
@@ -263,98 +260,78 @@ PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
   double * subst_params = partition->subst_params[params_index];
 
   unsigned int states = partition->states;
-  unsigned int states_padded = partition->states_padded;
 
-  for (i_m = 0; i_m < mixture; ++i_m)
-      {
-        a = create_ratematrix(subst_params,
-                              freqs,
-                              states);
+  a = create_ratematrix(subst_params,
+                        freqs,
+                        states);
 
-        d = (double *)malloc(states*sizeof(double));
-        e = (double *)malloc(states*sizeof(double));
+  d = (double *)malloc(states*sizeof(double));
+  e = (double *)malloc(states*sizeof(double));
 
-        mytred2(a, states, d, e);
-        mytqli(d, e, states, a);
+  mytred2(a, states, d, e);
+  mytqli(d, e, states, a);
 
-        /* store eigen vectors */
-        for (i = 0; i < states; ++i)
-          memcpy(eigenvecs + i*states, a[i], states*sizeof(double));
+  /* store eigen vectors */
+  for (i = 0; i < states; ++i)
+    memcpy(eigenvecs + i*states, a[i], states*sizeof(double));
 
-        /* store eigen values */
-        memcpy(eigenvals, d, states*sizeof(double));
+  /* store eigen values */
+  memcpy(eigenvals, d, states*sizeof(double));
 
-        /* store inverse eigen vectors */
-        for (k = 0, i = 0; i < states; ++i)
-          for (j = i; j < states*states; j += states)
-            inv_eigenvecs[k++] = eigenvecs[j];
+  /* store inverse eigen vectors */
+  for (k = 0, i = 0; i < states; ++i)
+    for (j = i; j < states*states; j += states)
+      inv_eigenvecs[k++] = eigenvecs[j];
 
-        /* multiply the inverse eigen vectors from the left with sqrt(pi)^-1 */
-        for (i = 0; i < states; ++i)
-          for (j = 0; j < states; ++j)
-            inv_eigenvecs[i*states+ j] /= sqrt(freqs[i]);
+  /* multiply the inverse eigen vectors from the left with sqrt(pi)^-1 */
+  for (i = 0; i < states; ++i)
+    for (j = 0; j < states; ++j)
+      inv_eigenvecs[i*states+ j] /= sqrt(freqs[i]);
 
-        /* multiply the eigen vectors from the right with sqrt(pi) */
-        for (i = 0; i < states; ++i)
-          for (j = 0; j < states; ++j)
-            eigenvecs[i*states+j] *= sqrt(freqs[j]);
+  /* multiply the eigen vectors from the right with sqrt(pi) */
+  for (i = 0; i < states; ++i)
+    for (j = 0; j < states; ++j)
+      eigenvecs[i*states+j] *= sqrt(freqs[j]);
 
-        partition->eigen_decomp_valid[params_index] = 1;
+  partition->eigen_decomp_valid[params_index] = 1;
 
-        free(d);
-        free(e);
-        for (i = 0; i < states; ++i)
-          free(a[i]);
-        free(a);
-
-        /* switch to Q matrix and freqs corresponding to current rate */
-        eigenvecs     += states*states;
-        inv_eigenvecs += states*states;
-        eigenvals     += states;
-        freqs         += states_padded;
-        subst_params  += (states*states - states)/2;
-      }
-
-      /* reset pointers */
-      eigenvecs     = partition->eigenvecs[params_index];
-      inv_eigenvecs = partition->inv_eigenvecs[params_index];
-      eigenvals     = partition->eigenvals[params_index];
-      freqs         = partition->frequencies[params_index];
-      subst_params  = partition->subst_params[params_index];
+  free(d);
+  free(e);
+  for (i = 0; i < states; ++i)
+    free(a[i]);
+  free(a);
 }
 
-PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
-                                         unsigned int params_index,
-                                         unsigned int * matrix_indices, 
-                                         double * branch_lengths, 
-                                         unsigned int count)
+PLL_EXPORT void pll_update_prob_matrices_generic(pll_partition_t * partition, 
+                                                 unsigned int * params_indices,
+                                                 unsigned int * matrix_indices, 
+                                                 double * branch_lengths, 
+                                                 unsigned int count)
 {
-  unsigned int i,j,k,m,n;
+  unsigned int i,n;
   double * expd;
   double * temp;
 
-  unsigned int mixture = partition->mixture;
+  double prop_invar;
 
-  double * eigenvecs = partition->eigenvecs[params_index];
-  double * inv_eigenvecs = partition->inv_eigenvecs[params_index];
-  double * eigenvals = partition->eigenvals[params_index];
-  double * freqs = partition->frequencies[params_index];
-  double * subst_params = partition->subst_params[params_index];
+  double * eigenvecs;
+  double * inv_eigenvecs;
+  double * eigenvals;
   double * rates = partition->rates;
 
   double * pmatrix;
 
-  double prop_invar = partition->prop_invar[params_index];
 
   unsigned int states = partition->states;
   unsigned int states_padded = partition->states_padded;
 
-  assert(mixture > 0);
-
   /* check whether we have cached an eigen decomposition. If not, compute it */
-  if (!partition->eigen_decomp_valid[params_index])
+  for (n = 0; n < partition->rate_cats; ++n)
   {
-    pll_update_eigen(partition, params_index);
+    if (!partition->eigen_decomp_valid[params_indices[n]])
+    {
+      pll_update_eigen(partition, params_indices[n]);
+    }
   }
 
   expd = (double *)malloc(states * sizeof(double));
@@ -369,6 +346,72 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
     {
       pmatrix = partition->pmatrix[matrix_indices[i]] + n*states*states_padded;
 
+      prop_invar    = partition->prop_invar[params_indices[n]];
+      eigenvecs     = partition->eigenvecs[params_indices[n]];
+      inv_eigenvecs = partition->inv_eigenvecs[params_indices[n]];
+      eigenvals     = partition->eigenvals[params_indices[n]];
+
+      pll_core_update_pmatrix(pmatrix,
+                              states,
+                              rates[n],
+                              prop_invar,
+                              branch_lengths[i],
+                              eigenvals,
+                              eigenvecs,
+                              inv_eigenvecs,
+                              partition->attributes);
+    }
+  }
+  free(expd);
+  free(temp);
+}
+
+PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
+                                         unsigned int params_index,
+                                         unsigned int * matrix_indices, 
+                                         double * branch_lengths, 
+                                         unsigned int count)
+{
+  unsigned int i,n;
+  #ifndef DEBUG_CHECK_CORE
+  unsigned int j,k,m;
+  double * expd;
+  double * temp;
+  #endif
+
+  double * eigenvecs = partition->eigenvecs[params_index];
+  double * inv_eigenvecs = partition->inv_eigenvecs[params_index];
+  double * eigenvals = partition->eigenvals[params_index];
+  double * rates = partition->rates;
+
+  double * pmatrix;
+
+  double prop_invar = partition->prop_invar[params_index];
+
+  unsigned int states = partition->states;
+  unsigned int states_padded = partition->states_padded;
+
+  /* check whether we have cached an eigen decomposition. If not, compute it */
+  if (!partition->eigen_decomp_valid[params_index])
+  {
+    pll_update_eigen(partition, params_index);
+  }
+
+  #ifndef DEBUG_CHECK_CORE
+  expd = (double *)malloc(states * sizeof(double));
+  temp = (double *)malloc(states*states* sizeof(double));
+  #endif
+
+  for (i = 0; i < count; ++i)
+  {
+    assert(branch_lengths[i] >= 0);
+
+    /* compute effective pmatrix location */
+    for (n = 0; n < partition->rate_cats; ++n)
+    {
+      pmatrix = partition->pmatrix[matrix_indices[i]] + n*states*states_padded;
+
+#ifndef DEBUG_CHECK_CORE
       /* if branch length is zero then set the p-matrix to identity matrix */
       if (!branch_lengths[i])
       {
@@ -398,38 +441,30 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
             }
           }
       }
-
-      if (mixture > 1)
-      {
-        /* switch to Q matrix and freqs corresponding to current rate */
-        eigenvecs     += states * states_padded;
-        inv_eigenvecs += states * states_padded;
-        eigenvals     += states_padded;
-        freqs         += states_padded;
-        subst_params  += (states * states - states) / 2;
-      }
-    }
-    if (mixture > 1)
-    {
-      /* reset pointers */
-      eigenvecs     = partition->eigenvecs[params_index];
-      inv_eigenvecs = partition->inv_eigenvecs[params_index];
-      eigenvals     = partition->eigenvals[params_index];
-      freqs         = partition->frequencies[params_index];
-      subst_params  = partition->subst_params[params_index];
+#else
+      pll_core_update_pmatrix(pmatrix,
+                              states,
+                              rates[n],
+                              prop_invar,
+                              branch_lengths[i],
+                              eigenvals,
+                              eigenvecs,
+                              inv_eigenvecs,
+                              partition->attributes);
+#endif
     }
   }
+#ifndef DEBUG_CHECK_CORE
   free(expd);
   free(temp);
+#endif
 }
 
 PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
                                     unsigned int freqs_index,
-                                    unsigned int mixture_index,
                                     const double * frequencies)
 {
-  memcpy(partition->frequencies[freqs_index]
-         + mixture_index * partition->states_padded,
+  memcpy(partition->frequencies[freqs_index],
          frequencies, 
          partition->states*sizeof(double));
   partition->eigen_decomp_valid[freqs_index] = 0;
@@ -450,13 +485,11 @@ PLL_EXPORT void pll_set_category_weights(pll_partition_t * partition,
 
 PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition,
                                      unsigned int params_index,
-                                     unsigned int mixture_index,
                                      const double * params)
 {
   unsigned int count = partition->states * (partition->states-1) / 2;
 
-  memcpy(partition->subst_params[params_index]
-         + mixture_index * count,
+  memcpy(partition->subst_params[params_index],
          params, count*sizeof(double));
   partition->eigen_decomp_valid[params_index] = 0;
 
@@ -467,13 +500,6 @@ PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition
                                                      unsigned int params_index,
                                                      double prop_invar) 
 {
-  if (partition->mixture > 1)
-  {
-    pll_errno = PLL_ERROR_PINV;
-    snprintf (pll_errmsg, 200, "Unimplemented p-inv with mixture models");
-    return PLL_FAILURE;
-  }
-
   if (prop_invar < 0 || prop_invar >= 1) 
   {
     pll_errno = PLL_ERROR_PINV;
@@ -511,13 +537,6 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
   {
     gap_state <<= 1;
     gap_state |= 1;
-  }
-
-  if (partition->mixture > 1)
-  {
-    pll_errno = PLL_ERROR_PINV;
-    snprintf (pll_errmsg, 200, "Unimplemented p-inv with mixture models");
-    return PLL_FAILURE;
   }
 
   if (!partition->invariant) 

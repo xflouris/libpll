@@ -254,7 +254,6 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                                                   unsigned int clv_buffers,
                                                   unsigned int states,
                                                   unsigned int sites,
-                                                  unsigned int mixture,
                                                   unsigned int rate_matrices,
                                                   unsigned int prob_matrices,
                                                   unsigned int rate_cats,
@@ -302,7 +301,6 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   partition->states = states;
   partition->sites = sites;
 
-  partition->mixture = mixture;
   partition->rate_matrices = rate_matrices;
   partition->prob_matrices = prob_matrices;
   partition->rate_cats = rate_cats;
@@ -340,46 +338,6 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     }
   }
 
-  if (partition->mixture <= 1)
-  {
-    /* not a mixture model */
-    partition->mixture = 1;
-    /* ignore mixture attributes */
-    partition->attributes &= ~(PLL_ATTRIB_MIXT_MASK);
-  }
-  else
-  {
-    if ((attributes & PLL_ATTRIB_MIXT_LINKED)
-        && (attributes & PLL_ATTRIB_MIXT_UNLINKED))
-    {
-      pll_errno = PLL_ERROR_MIXTURE;
-      snprintf (pll_errmsg, 200,
-                "PLL_ATTRIB_MIXT_LINKED and PLL_ATTRIB_MIXT_UNLINKED flags are incompatible.");
-      return PLL_FAILURE;
-    }
-    else if (!((attributes & PLL_ATTRIB_MIXT_LINKED)
-        || (attributes & PLL_ATTRIB_MIXT_UNLINKED)))
-    {
-      /* set default rates model */
-      attributes |= PLL_ATTRIB_MIXT_LINKED;
-    }
-
-    /* unimplemented yet */
-    assert(!(attributes & (PLL_ATTRIB_MIXT_UNLINKED)));
-
-    if (attributes & PLL_ATTRIB_MIXT_LINKED)
-    {
-      if (partition->mixture != partition->rate_cats)
-      {
-        pll_errno = PLL_ERROR_MIXTURE;
-        snprintf (
-            pll_errmsg,
-            200,
-            "For mixture models linked to rate categories, rate_cats and mixture must be equal.");
-        return PLL_FAILURE;
-      }
-    }
-  }
   /* allocate structures */
 
   /* eigen_decomp_valid */
@@ -453,9 +411,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->rate_matrices; ++i)
   {
-    partition->eigenvecs[i] = pll_aligned_alloc(partition->mixture *
-                                                 states * states_padded *
-                                                 sizeof(double),
+    partition->eigenvecs[i] = pll_aligned_alloc(states * states_padded *
+                                                sizeof(double),
                                                 partition->alignment);
     if (!partition->eigenvecs[i])
     {
@@ -475,8 +432,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->rate_matrices; ++i)
   {
-    partition->inv_eigenvecs[i] = pll_aligned_alloc(partition->mixture *
-                                                    states*states_padded*
+    partition->inv_eigenvecs[i] = pll_aligned_alloc(states*states_padded*
                                                     sizeof(double),
                                                     partition->alignment);
     if (!partition->inv_eigenvecs[i])
@@ -497,8 +453,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->rate_matrices; ++i)
   {
-    partition->eigenvals[i] = pll_aligned_alloc(partition->mixture *
-                                                  states_padded*sizeof(double),
+    partition->eigenvals[i] = pll_aligned_alloc(states_padded*sizeof(double),
                                                 partition->alignment);
     if (!partition->eigenvals[i])
     {
@@ -518,8 +473,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->rate_matrices; ++i)
   {
-    partition->subst_params[i] = pll_aligned_alloc(partition->mixture *
-                                                    ((states*states-states)/2) *
+    partition->subst_params[i] = pll_aligned_alloc(((states*states-states)/2) *
                                                     sizeof(double),
                                                    partition->alignment);
     if (!partition->subst_params[i])
@@ -540,8 +494,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->rate_matrices; ++i)
   {
-    partition->frequencies[i] = pll_aligned_alloc(partition->mixture *
-                                                   states_padded*sizeof(double),
+    partition->frequencies[i] = pll_aligned_alloc(states_padded*sizeof(double),
                                                   partition->alignment);
     if (!partition->frequencies[i])
     {
@@ -551,7 +504,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     /* TODO: don't forget to add code for SSE/AVX */
     memset(partition->frequencies[i],
            0,
-           partition->mixture*states_padded*sizeof(double));
+           states_padded*sizeof(double));
   }
 
   /* rates */

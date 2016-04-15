@@ -76,11 +76,7 @@
 #define PLL_ATTRIB_ARCH_AVX512    1 << 3
 #define PLL_ATTRIB_ARCH_MASK         0xF
 
-#define PLL_ATTRIB_MIXT_LINKED    1 << 4  /** Q matrices linked to rate categories */
-#define PLL_ATTRIB_MIXT_UNLINKED  1 << 5  /** Q matrices unlinked */
-#define PLL_ATTRIB_MIXT_MASK        0x30
-
-#define PLL_ATTRIB_PATTERN_TIP    1 << 6
+#define PLL_ATTRIB_PATTERN_TIP    1 << 4
 
 /* error codes */
 
@@ -109,8 +105,6 @@
 #define PLL_UTREE_SHOW_SCALER_INDEX      1 << 3
 #define PLL_UTREE_SHOW_PMATRIX_INDEX     1 << 4
 
-
-
 /* structures and data types */
 
 typedef struct pll_partition
@@ -131,7 +125,6 @@ typedef struct pll_partition
   size_t alignment;
   unsigned int states_padded;
 
-  unsigned int mixture;
   double ** clv;
   double ** pmatrix;
   double * rates;
@@ -302,7 +295,6 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                                                   unsigned int clv_buffers,
                                                   unsigned int states,
                                                   unsigned int sites,
-                                                  unsigned int mixture,
                                                   unsigned int rate_matrices,
                                                   unsigned int prob_matrices,
                                                   unsigned int rate_cats,
@@ -334,12 +326,10 @@ PLL_EXPORT int pll_dlist_prepend(pll_dlist_t ** dlist, void * data);
 
 PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition, 
                                      unsigned int params_index,
-                                     unsigned int mixture_index,
                                      const double * params);
 
 PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
                                     unsigned int params_index,
-                                    unsigned int mixture_index,
                                     const double * frequencies);
 
 PLL_EXPORT void pll_set_category_rates(pll_partition_t * partition,
@@ -376,7 +366,7 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
 PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
                                                  unsigned int clv_index,
                                                  int scaler_index,
-                                                 unsigned int freqs_index);
+                                                 unsigned int * freqs_index);
 
 PLL_EXPORT double pll_compute_edge_persite_loglikelihood(
                                                  pll_partition_t * partition,
@@ -385,7 +375,7 @@ PLL_EXPORT double pll_compute_edge_persite_loglikelihood(
                                                  unsigned int child_clv_index,
                                                  int child_scaler_index,
                                                  unsigned int matrix_index,
-                                                 unsigned int freqs_index,
+                                                 unsigned int * freqs_index,
                                                  double * persite_lnl);
 
 PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
@@ -394,7 +384,7 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  unsigned int child_clv_index,
                                                  int child_scaler_index,
                                                  unsigned int matrix_index,
-                                                 unsigned int freqs_index);
+                                                 unsigned int * freqs_index);
 
 PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
                                       unsigned int parent_clv_index,
@@ -672,6 +662,18 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
                                                    const double * right_matrix,
                                                    const unsigned int * left_scaler,
                                                    const unsigned int * right_scaler);
+
+/* functions in core_pmatrix.c */
+
+PLL_EXPORT void pll_core_update_pmatrix(double * pmatrix,
+                                        unsigned int states,
+                                        double rate,
+                                        double prop_invar,
+                                        double branch_length,
+                                        double * eigenvals,
+                                        double * eigenvecs,
+                                        double * inv_eigenvecs,
+                                        unsigned int attrib);
 
 /* functions in compress.c */
 
