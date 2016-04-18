@@ -188,12 +188,17 @@ int main (int argc, char * argv[])
       printf ("[%d] CLV 7: ", i);
       pll_show_clv (partition, 7, PLL_SCALE_BUFFER_NONE, FLOAT_PRECISION);
 
+      unsigned int * params_indices = (unsigned int *) malloc (
+          n_cat_gamma[k] * sizeof(unsigned int));
+      for (j = 0; j < n_cat_gamma[k]; j++)
+        params_indices[j] = 0;
       lk_scores[k * N_ALPHAS + i] = pll_compute_edge_loglikelihood (
           partition, 6,
           PLL_SCALE_BUFFER_NONE,
           7,
           PLL_SCALE_BUFFER_NONE,
-          0, 0);
+          0, params_indices);
+      free(params_indices);
     }
 
     /* test illegal alpha value */

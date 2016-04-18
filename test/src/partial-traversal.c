@@ -4,8 +4,8 @@
 #include <stdarg.h>
 #include <search.h>
 
-#define STATES    4
-#define RATE_CATS 4
+#define STATES      4
+#define N_RATE_CATS 4
 
 #define FASTAFILE "testdata/246x4465.fas"
 #define TREEFILE  "testdata/246x4465.tree"
@@ -234,7 +234,7 @@ int main(int argc, char * argv[])
                                    (unsigned int)sites,
                                    1,
                                    branch_count,
-                                   RATE_CATS,
+                                   N_RATE_CATS,
                                    inner_nodes_count,
                                    pll_map_nt,
                                    attributes
@@ -404,13 +404,14 @@ int main(int argc, char * argv[])
        the CLV indices at the two end-point of the branch, the probability matrix
        index for the concrete branch length, and the index of the model of whose
        frequency vector is to be used */
+    unsigned int params_indices[N_RATE_CATS] = {0,0,0,0};
     double logl = pll_compute_edge_loglikelihood(partition,
                                                  node->clv_index,
                                                  node->scaler_index,
                                                  node->back->clv_index,
                                                  node->back->scaler_index,
                                                  node->pmatrix_index,
-                                                 0);
+                                                 params_indices);
 
     if (cmplogl >= -1)
       cmplogl = logl;

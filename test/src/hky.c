@@ -22,7 +22,7 @@
 
 #define NUM_TESTS 10
 #define N_STATES_NT 4
-
+#define N_CAT_GAMMA 4
 #define FLOAT_PRECISION 4
 
 static double titv[NUM_TESTS] = { 
@@ -35,7 +35,7 @@ int main(int argc, char * argv[])
   double lk_scores[NUM_TESTS];
 
   double alpha    = 1.0;
-  unsigned int n_cat_gamma = 4;
+
   unsigned int n_sites     = 20;
   unsigned int n_tips      = 5;
 
@@ -47,7 +47,7 @@ int main(int argc, char * argv[])
                                    n_sites,     /* sequence length */
                                    1,           /* different rate parameters */
                                    2*n_tips-3,  /* probability matrices */
-                                   n_cat_gamma, /* gamma categories */
+                                   N_CAT_GAMMA, /* gamma categories */
                                    0,           /* scale buffers */
                                    pll_map_nt,
                                    PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
@@ -58,7 +58,7 @@ int main(int argc, char * argv[])
   double subst_params[6] = {1,1,1,1,1,1};
   double rate_cats[4];
 
-  pll_compute_gamma_cats(alpha, n_cat_gamma, rate_cats);
+  pll_compute_gamma_cats(alpha, N_CAT_GAMMA, rate_cats);
 
   pll_set_frequencies(partition, 0, frequencies);
 
@@ -133,13 +133,14 @@ int main(int argc, char * argv[])
     printf ("[%d] CLV 7: ", i);
     pll_show_clv(partition,7,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
 
+    unsigned int params_indices[N_CAT_GAMMA] = {0,0,0,0};
     lk_scores[i] = pll_compute_edge_loglikelihood(partition,
                                                   6,
                                                   PLL_SCALE_BUFFER_NONE,
                                                   7,
                                                   PLL_SCALE_BUFFER_NONE,
                                                   0,
-                                                  0);
+                                                  params_indices);
   }
 
   printf("\n");

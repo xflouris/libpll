@@ -20,7 +20,7 @@
 */
 #include "common.h"
 
-#define N_CAT_GAMMA 4
+#define N_RATE_CATS 4
 #define ALPHA 1
 
 #define N_PROT_MODELS 19
@@ -88,7 +88,7 @@ int main(int argc, char * argv[])
                                    113,                         /* sites */
                                    1,       /* different rate parameters */
                                    8,            /* probability matrices */
-                                   N_CAT_GAMMA,       /* rate categories */
+                                   N_RATE_CATS,       /* rate categories */
                                    1,
                                    pll_map_aa,
                                    attributes
@@ -97,9 +97,9 @@ int main(int argc, char * argv[])
   double branch_lengths[4] = { 0.1, 0.2, 1, 1};
   unsigned int matrix_indices[4] = { 0, 1, 2, 3 };
 
-  double * rate_cats = (double *) malloc(N_CAT_GAMMA * sizeof(double));
+  double * rate_cats = (double *) malloc(N_RATE_CATS * sizeof(double));
 
-  if (pll_compute_gamma_cats(ALPHA, N_CAT_GAMMA, rate_cats) == PLL_FAILURE)
+  if (pll_compute_gamma_cats(ALPHA, N_RATE_CATS, rate_cats) == PLL_FAILURE)
   {
     printf("Fail computing the gamma rates\n");
     exit(1);
@@ -189,13 +189,14 @@ int main(int argc, char * argv[])
     printf ("CLV 7: ");
     pll_show_clv(partition,7,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
 
+    unsigned int params_indices[N_RATE_CATS] = {0,0,0,0};
     double logl = pll_compute_edge_loglikelihood(partition,
                                                  6,
                                                  PLL_SCALE_BUFFER_NONE,
                                                  7,
                                                  PLL_SCALE_BUFFER_NONE,
                                                  0,
-                                                 0);
+                                                 params_indices);
 
     printf("Log-L (%s): %.6f\n", prot_model_names[cur_model], logl);
   }
