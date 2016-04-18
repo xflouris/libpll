@@ -41,7 +41,6 @@ unsigned int i;
                                     4, /* clv buffers */
                                     N_STATES, /* states */
                                     N_SITES, /* sites */
-                                    0, /* mixture */
                                     1, /* different rate parameters */
                                     8, /* probability matrices */
                                     N_CAT_GAMMA, /* rate categories */
@@ -85,7 +84,6 @@ static int proteintest(unsigned int attributes)
                                     4, /* clv buffers */
                                     N_STATES, /* states */
                                     N_SITES, /* sites */
-                                    0, /* mixture */
                                     1, /* different rate parameters */
                                     8, /* probability matrices */
                                     N_CAT_GAMMA, /* rate categories */

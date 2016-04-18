@@ -86,7 +86,6 @@ int main(int argc, char * argv[])
                                    4,                     /* clv buffers */
                                    N_STATES,                   /* states */
                                    113,                         /* sites */
-                                   0,                         /* mixture */
                                    1,       /* different rate parameters */
                                    8,            /* probability matrices */
                                    N_CAT_GAMMA,       /* rate categories */
@@ -152,8 +151,8 @@ int main(int argc, char * argv[])
 
     printf ("\nSetting model %s...\n", prot_model_names[cur_model]);
 
-    pll_set_subst_params(partition, 0, 0, prot_matrices[cur_model]);
-    pll_set_frequencies(partition, 0, 0, prot_freqs[cur_model]);
+    pll_set_subst_params(partition, 0, prot_matrices[cur_model]);
+    pll_set_frequencies(partition, 0, prot_freqs[cur_model]);
 
     double sum_freqs = 0.0;
     for (i = 0; i < N_STATES; ++i)

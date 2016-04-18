@@ -78,7 +78,6 @@ int main(int argc, char * argv[])
                                 4,           /* clv buffers */
                                 N_STATES_NT, /* number of states */
                                 n_sites,     /* sequence length */
-                                1,           /* mixture */
                                 1,           /* different rate parameters */
                                 2*n_tips-3,  /* probability matrices */
                                 n_cat_gamma[k], /* gamma categories */
@@ -98,8 +97,8 @@ int main(int argc, char * argv[])
     unsigned int matrix_indices[4] = { 0, 1, 2, 3 };
     double subst_params[6] = {1,titv,1,1,titv,1};
 
-    pll_set_frequencies(partition, 0, 0, frequencies);
-    pll_set_subst_params(partition, 0, 0, subst_params);
+    pll_set_frequencies(partition, 0, frequencies);
+    pll_set_subst_params(partition, 0, subst_params);
 
     pll_set_tip_states(partition, 0, pll_map_nt, "WAACTCGCTA--ATTCTAAT");
     pll_set_tip_states(partition, 1, pll_map_nt, "CACCATGCTA--ATTGTCTT");
@@ -144,13 +143,18 @@ int main(int argc, char * argv[])
       printf ("[%d] CLV 7: ", i);
       pll_show_clv(partition,7,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
 
+      unsigned int * params_indices = (unsigned int *)
+    		  malloc(n_cat_gamma[k] * sizeof(unsigned int));
+      for (j=0; j<n_cat_gamma[k]; j++)
+    	  params_indices[j] = 0;
       lk_scores[k*NUM_ALPHAS + i] = pll_compute_edge_loglikelihood(partition,
                                                          6,
                                                          PLL_SCALE_BUFFER_NONE,
                                                          7,
                                                          PLL_SCALE_BUFFER_NONE,
                                                          0,
-                                                         0);
+                                                         params_indices);
+      free(params_indices);
     }
 
     /* test illegal alpha value */

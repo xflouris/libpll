@@ -36,7 +36,6 @@ int main(int argc, char * argv[])
                                    1,       /* Inner CLVs */
                                    4,       /* States */
                                    4,       /* Sequence length */
-                                   0,       /* Mixture models */
                                    1,       /* Models (sets of subst. params)*/
                                    3,       /* P matrices */
                                    4,       /* Rate categories */
@@ -52,8 +51,8 @@ int main(int argc, char * argv[])
   pll_compute_gamma_cats(alpha, 4, rate_cats);
 
   /* set */
-  pll_set_frequencies(partition, 0, 0, frequencies);
-  pll_set_subst_params(partition, 0, 0, subst_params);
+  pll_set_frequencies(partition, 0, frequencies);
+  pll_set_subst_params(partition, 0, subst_params);
   pll_set_category_rates(partition, rate_cats);
 
   if (attributes & PLL_ATTRIB_PATTERN_TIP)
@@ -113,11 +112,12 @@ int main(int argc, char * argv[])
 
   pll_update_partials(partition, operations, 1);
 
+  unsigned int params_indices[4] = {0,0,0,0};
   logl = pll_compute_edge_loglikelihood(partition,
                                                3,PLL_SCALE_BUFFER_NONE, /* parent clv/scaler */
                                                2,PLL_SCALE_BUFFER_NONE, /* child clv/scaler  */
                                                2,   /* P-matrix          */
-                                               0);  /* freqs index       */
+                                               params_indices);
 
   printf("Initial Log-L: %.10f\n", logl);
 
@@ -147,8 +147,7 @@ int main(int argc, char * argv[])
 
   double test_logl = pll_optimize_branch_lengths_local (partition,
                                      tree[2].back,
-                                     0,    /* params index */
-                                     0,    /* freqs index  */
+                                     params_indices,    /* params index */
                                      1e-4, /* tolerance    */
                                      1,    /* smoothings   */
                                      1,    /* radius       */
@@ -158,7 +157,7 @@ int main(int argc, char * argv[])
                                          3,PLL_SCALE_BUFFER_NONE, /* parent clv/scaler */
                                          2,PLL_SCALE_BUFFER_NONE, /* child clv/scaler  */
                                          2,   /* P-matrix          */
-                                         0);  /* freqs index       */
+                                         params_indices);
 
    printf("\n");
    printf("-Log-L returned by BL-opt:       %.10f\n", test_logl);

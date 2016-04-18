@@ -53,7 +53,6 @@ static int bigtest(unsigned int attributes)
                                     4, /* clv buffers */
                                     N_STATES, /* states */
                                     N_SITES, /* sites */
-                                    0, /* mixture */
                                     1, /* different rate parameters */
                                     8, /* probability matrices */
                                     N_CAT_GAMMA, /* rate categories */
@@ -126,7 +125,7 @@ static int smalltest (unsigned int attributes)
 
   partition = pll_partition_create(N_TAXA_SMALL, 4,
                                    N_STATES,
-                                   num_sites, 0, 1, 2 * N_TAXA_SMALL - 3,
+                                   num_sites, 1, 2 * N_TAXA_SMALL - 3,
                                    N_CAT_GAMMA,
                                    1, 
                                    pll_map_nt,
@@ -174,8 +173,8 @@ static int smalltest (unsigned int attributes)
   operations[2].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
   pll_compute_gamma_cats (ALPHA, N_CAT_GAMMA, rate_cats);
-  pll_set_subst_params (partition, 0, 0, subst_params);
-  pll_set_frequencies (partition, 0, 0, frequencies);
+  pll_set_subst_params (partition, 0, subst_params);
+  pll_set_frequencies (partition, 0, frequencies);
   pll_set_category_rates (partition, rate_cats);
   pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths, 4);
   pll_update_partials (partition, operations, 3);
