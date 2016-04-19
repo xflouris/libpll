@@ -372,6 +372,9 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
       dealloc_partition_data(partition);
       return PLL_FAILURE;
     }
+    memset(partition->clv[i],
+           0,
+           partition->sites*states_padded*rate_cats*sizeof(double));
   }
 
   /* pmatrix */
