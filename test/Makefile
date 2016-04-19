@@ -23,8 +23,10 @@ CLIBS = -lpll -lpll_optimize -lm
 
 CFILES = src/alpha-cats.c \
          src/blopt-minimal.c \
+         src/blopt-5states.c \
          src/fasta-dna.c \
          src/fasta-prot.c \
+         src/rooted.c \
          src/hky.c \
          src/odd-states.c \
          src/partial-traversal.c \
@@ -37,7 +39,7 @@ DATADIR = testdata
 RESULTDIR = result
 
 DEPFILES = worms16s.fas \
-					 small.fas small.tree \
+					 small.fas small.tree small.rooted.tree \
 					 246x4465.fas 246x4465.tree \
 					 ribosomal_l5_pf00673.fas \
 					 medium.fas medium.tree
