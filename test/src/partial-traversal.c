@@ -362,7 +362,8 @@ int main(int argc, char * argv[])
                                                  node->back->clv_index,
                                                  node->back->scaler_index,
                                                  node->pmatrix_index,
-                                                 params_indices);
+                                                 params_indices,
+                                                 NULL);
 
     if (cmplogl >= -1)
       cmplogl = logl;

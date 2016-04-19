@@ -116,7 +116,8 @@ int main(int argc, char * argv[])
                                                3,PLL_SCALE_BUFFER_NONE, /* parent clv/scaler */
                                                2,PLL_SCALE_BUFFER_NONE, /* child clv/scaler  */
                                                2,   /* P-matrix          */
-                                               params_indices);
+                                               params_indices,
+                                               NULL);
 
   printf("Initial Log-L: %.10f\n", logl);
 
@@ -156,7 +157,8 @@ int main(int argc, char * argv[])
                                          3,PLL_SCALE_BUFFER_NONE, /* parent clv/scaler */
                                          2,PLL_SCALE_BUFFER_NONE, /* child clv/scaler  */
                                          2,   /* P-matrix          */
-                                         params_indices);  /* freqs index       */
+                                         params_indices,
+                                         NULL);  /* freqs index       */
 
    printf("\n");
    printf("-Log-L returned by BL-opt:       %.10f\n", test_logl);

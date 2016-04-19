@@ -187,7 +187,8 @@ static int smalltest (unsigned int attributes)
                                  7,
                                  PLL_SCALE_BUFFER_NONE,
                                  0,
-                                 params_indices));
+                                 params_indices,
+                                 NULL));
 
   free (operations);
   pll_fasta_close (fp);
