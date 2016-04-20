@@ -549,13 +549,26 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
 
   if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
   {
-    for (i = 0; i < tips; ++i)
-      for (j = 0; j < sites; ++j)
-      {
-        state =  partition->tipmap[(int)(partition->tipchars[i][j])];
-        if (state < gap_state)
-          invariant[j] |= state;
-      }
+    if (states == 4)
+    {
+      for (i = 0; i < tips; ++i)
+        for (j = 0; j < sites; ++j)
+        {
+          state = (unsigned int)(partition->tipchars[i][j]);
+          if (state < gap_state)
+            invariant[j] |= state;
+        }
+    }
+    else
+    {
+      for (i = 0; i < tips; ++i)
+        for (j = 0; j < sites; ++j)
+        {
+          state = partition->tipmap[(int)(partition->tipchars[i][j])];
+          if (state < gap_state)
+            invariant[j] |= state;
+        }
+    }
   }
   else
   {

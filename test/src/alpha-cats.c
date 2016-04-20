@@ -153,7 +153,8 @@ int main(int argc, char * argv[])
                                                          7,
                                                          PLL_SCALE_BUFFER_NONE,
                                                          0,
-                                                         params_indices);
+                                                         params_indices,
+                                                         NULL);
       free(params_indices);
     }
 

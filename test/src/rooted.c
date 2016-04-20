@@ -281,7 +281,8 @@ int main(int argc, char * argv[])
     double logl = pll_compute_root_loglikelihood(partition,
                                                  tree->clv_index,
                                                  tree->scaler_index,
-                                                 params_indices);
+                                                 params_indices,
+                                                 NULL);
 
     if (cmplogl >= -1)
       cmplogl = logl;
