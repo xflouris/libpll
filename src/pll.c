@@ -401,7 +401,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     /* TODO: don't forget to add code for SSE/AVX */
     memset(partition->pmatrix[i],
            0,
-           states*states_padded*rate_cats*sizeof(double));
+           states*states_padded*rate_cats*sizeof(double) + displacement);
   }
 
   /* eigenvecs */
