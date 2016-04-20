@@ -856,3 +856,486 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
     }
   }
 }
+
+PLL_EXPORT int pll_core_update_sumtable_ii_4x4_avx(unsigned int sites,
+                                                   unsigned int rate_cats,
+                                                   const double * clvp,
+                                                   const double * clvc,
+                                                   double ** eigenvecs,
+                                                   double ** inv_eigenvecs,
+                                                   double ** freqs,
+                                                   double *sumtable)
+{
+  unsigned int i, j, k, n;
+
+  /* build sumtable */
+  double * sum = sumtable;
+
+  const double * t_clvp = clvp;
+  const double * t_clvc = clvc;
+  double * t_eigenvecs;
+  double * t_freqs;
+
+  unsigned int states = 4;
+
+  /* transposed inv_eigenvecs */
+  double * tt_inv_eigenvecs = (double *) pll_aligned_alloc (
+      (states * states * rate_cats) * sizeof(double),
+      PLL_ALIGNMENT_AVX);
+
+  if (!tt_inv_eigenvecs)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200, "Cannot allocate memory for tt_inv_eigenvecs");
+    return PLL_FAILURE;
+  }
+
+  for (i = 0; i < rate_cats; ++i)
+  {
+    for (j = 0; j < states; ++j)
+      for (k = 0; k < states; ++k)
+      {
+        tt_inv_eigenvecs[i * states * states + j * states + k] =
+            inv_eigenvecs[i][states * states + k * states + j];
+      }
+  }
+
+  /* vectorized loop from update_sumtable() */
+  for (n = 0; n < sites; n++)
+  {
+    for (i = 0; i < rate_cats; ++i)
+    {
+      t_eigenvecs = eigenvecs[i];
+      t_freqs = freqs[i];
+
+      const double * c_eigenvecs = t_eigenvecs;
+      const double * ct_inv_eigenvecs = tt_inv_eigenvecs;
+
+      __m256d v_lefterm[4], v_righterm[4];
+      v_lefterm[0] = v_lefterm[1] = v_lefterm[2] = v_lefterm[3] = _mm256_setzero_pd ();
+      v_righterm[0] = v_righterm[1] = v_righterm[2] = v_righterm[3] = _mm256_setzero_pd ();
+
+      __m256d v_eigen;
+      __m256d v_freqs;
+      __m256d v_clvp, v_clvc;
+
+      v_clvp = _mm256_load_pd (t_clvp);
+      v_clvc = _mm256_load_pd (t_clvc);
+      v_freqs = _mm256_load_pd (t_freqs);
+
+      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
+      v_lefterm[0] = _mm256_add_pd (
+          v_lefterm[0],
+          _mm256_mul_pd (v_freqs, _mm256_mul_pd (v_eigen, v_clvp)));
+      v_eigen = _mm256_load_pd (c_eigenvecs);
+      v_righterm[0] = _mm256_add_pd (v_righterm[0],
+                                     _mm256_mul_pd (v_eigen, v_clvc));
+      c_eigenvecs += 4;
+      ct_inv_eigenvecs += 4;
+
+      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
+      v_lefterm[1] = _mm256_add_pd (
+          v_lefterm[1],
+          _mm256_mul_pd (v_freqs, _mm256_mul_pd (v_eigen, v_clvp)));
+      v_eigen = _mm256_load_pd (c_eigenvecs);
+      v_righterm[1] = _mm256_add_pd (v_righterm[1],
+                                     _mm256_mul_pd (v_eigen, v_clvc));
+      c_eigenvecs += 4;
+      ct_inv_eigenvecs += 4;
+
+      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
+      v_lefterm[2] = _mm256_add_pd (
+          v_lefterm[2],
+          _mm256_mul_pd (v_freqs, _mm256_mul_pd (v_eigen, v_clvp)));
+      v_eigen = _mm256_load_pd (c_eigenvecs);
+      v_righterm[2] = _mm256_add_pd (v_righterm[2],
+                                     _mm256_mul_pd (v_eigen, v_clvc));
+      c_eigenvecs += 4;
+      ct_inv_eigenvecs += 4;
+
+      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
+      v_lefterm[3] = _mm256_add_pd (
+          v_lefterm[3],
+          _mm256_mul_pd (v_freqs, _mm256_mul_pd (v_eigen, v_clvp)));
+      v_eigen = _mm256_load_pd (c_eigenvecs);
+      v_righterm[3] = _mm256_add_pd (v_righterm[3],
+                                     _mm256_mul_pd (v_eigen, v_clvc));
+      c_eigenvecs += 4;
+      ct_inv_eigenvecs += 4;
+
+      /* compute lefterm */
+      __m256d xmm0 = _mm256_unpackhi_pd (v_lefterm[0], v_lefterm[1]);
+      __m256d xmm1 = _mm256_unpacklo_pd (v_lefterm[0], v_lefterm[1]);
+      __m256d xmm2 = _mm256_unpackhi_pd (v_lefterm[2], v_lefterm[3]);
+      __m256d xmm3 = _mm256_unpacklo_pd (v_lefterm[2], v_lefterm[3]);
+      xmm0 = _mm256_add_pd (xmm0, xmm1);
+      xmm1 = _mm256_add_pd (xmm2, xmm3);
+      xmm2 = _mm256_permute2f128_pd (xmm0, xmm1, _MM_SHUFFLE(0, 2, 0, 1));
+      xmm3 = _mm256_blend_pd (xmm0, xmm1, 12);
+      __m256d v_lefterm_sum = _mm256_add_pd (xmm2, xmm3);
+
+      /* compute righterm */
+      xmm0 = _mm256_unpackhi_pd (v_righterm[0], v_righterm[1]);
+      xmm1 = _mm256_unpacklo_pd (v_righterm[0], v_righterm[1]);
+      xmm2 = _mm256_unpackhi_pd (v_righterm[2], v_righterm[3]);
+      xmm3 = _mm256_unpacklo_pd (v_righterm[2], v_righterm[3]);
+      xmm0 = _mm256_add_pd (xmm0, xmm1);
+      xmm1 = _mm256_add_pd (xmm2, xmm3);
+      xmm2 = _mm256_permute2f128_pd (xmm0, xmm1, _MM_SHUFFLE(0, 2, 0, 1));
+      xmm3 = _mm256_blend_pd (xmm0, xmm1, 12);
+      __m256d v_righterm_sum = _mm256_add_pd (xmm2, xmm3);
+
+      /* update sum */
+      __m256d v_prod = _mm256_mul_pd (v_lefterm_sum, v_righterm_sum);
+      _mm256_store_pd (sum, v_prod);
+
+      t_clvc += states;
+      t_clvp += states;
+      sum += states;
+    }
+  }
+
+  pll_aligned_free (tt_inv_eigenvecs);
+
+  return PLL_SUCCESS;
+}
+
+PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
+                                               unsigned int sites,
+                                               unsigned int rate_cats,
+                                               const double * clvp,
+                                               const double * clvc,
+                                               double ** eigenvecs,
+                                               double ** inv_eigenvecs,
+                                               double ** freqs,
+                                               double *sumtable)
+{
+  unsigned int i, j, k, n;
+
+  /* build sumtable */
+  double * sum = sumtable;
+
+  const double * t_clvp = clvp;
+  const double * t_clvc = clvc;
+  double * t_eigenvecs;
+  double * t_freqs;
+
+  /* dedicated functions for 4x4 matrices */
+  if (states == 4)
+  {
+    return pll_core_update_sumtable_ii_4x4_avx(sites,
+                                       rate_cats,
+                                       clvp,
+                                       clvc,
+                                       eigenvecs,
+                                       inv_eigenvecs,
+                                       freqs,
+                                       sumtable);
+  }
+
+  unsigned int states_padded = (states+3) & 0xFFFFFFFC;
+
+  /* padded eigenvecs */
+  double * tt_eigenvecs = (double *) pll_aligned_alloc (
+        (states_padded * states_padded * rate_cats) * sizeof(double),
+        PLL_ALIGNMENT_AVX);
+
+  if (!tt_eigenvecs)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200, "Cannot allocate memory for tt_eigenvecs");
+    return PLL_FAILURE;
+  }
+
+  /* transposed padded inv_eigenvecs */
+  double * tt_inv_eigenvecs = (double *) pll_aligned_alloc (
+      (states_padded * states_padded * rate_cats) * sizeof(double),
+      PLL_ALIGNMENT_AVX);
+
+  if (!tt_inv_eigenvecs)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200, "Cannot allocate memory for tt_inv_eigenvecs");
+    return PLL_FAILURE;
+  }
+
+  for (i = 0; i < rate_cats; ++i)
+  {
+    for (j = 0; j < states; ++j)
+      for (k = 0; k < states; ++k)
+      {
+        tt_inv_eigenvecs[i * states_padded * states_padded + j * states_padded
+            + k] = inv_eigenvecs[i][k * states + j];
+        tt_eigenvecs[i * states_padded * states_padded + j * states_padded
+            + k] = eigenvecs[i][j * states + k];
+      }
+  }
+
+  /* vectorized loop from update_sumtable() */
+  for (n = 0; n < sites; n++)
+  {
+    t_eigenvecs = tt_eigenvecs;
+    for (i = 0; i < rate_cats; ++i)
+    {
+      t_freqs = freqs[i];
+
+      const double * c_eigenvecs = t_eigenvecs;
+      const double * ct_inv_eigenvecs = tt_inv_eigenvecs;
+
+      for (j = 0; j < states_padded; j += 4)
+      {
+        __m256d v_lefterm0 = _mm256_setzero_pd ();
+        __m256d v_righterm0 = _mm256_setzero_pd ();
+        __m256d v_lefterm1 = _mm256_setzero_pd ();
+        __m256d v_righterm1 = _mm256_setzero_pd ();
+        __m256d v_lefterm2 = _mm256_setzero_pd ();
+        __m256d v_righterm2 = _mm256_setzero_pd ();
+        __m256d v_lefterm3 = _mm256_setzero_pd ();
+        __m256d v_righterm3 = _mm256_setzero_pd ();
+
+        __m256d v_eigen;
+        __m256d v_freqs;
+        __m256d v_clv;
+
+        for (k = 0; k < states_padded; k += 4)
+        {
+          v_freqs = _mm256_load_pd (t_freqs + k);
+          v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
+          v_clv = _mm256_load_pd (t_clvp + k);
+          v_lefterm0 = _mm256_add_pd (
+              v_lefterm0,
+              _mm256_mul_pd (v_freqs, _mm256_mul_pd (v_eigen, v_clv)));
+
+          v_clv = _mm256_load_pd (t_clvc + k);
+          v_eigen = _mm256_load_pd (c_eigenvecs);
+          v_righterm0 = _mm256_add_pd (v_righterm0,
+                                       _mm256_mul_pd (v_eigen, v_clv));
+
+          c_eigenvecs += 4;
+          ct_inv_eigenvecs += 4;
+        }
+
+        for (k = 0; k < states_padded; k += 4)
+        {
+          v_freqs = _mm256_load_pd (t_freqs + k);
+          v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
+          v_clv = _mm256_load_pd (t_clvp + k);
+          v_lefterm1 = _mm256_add_pd (
+              v_lefterm1,
+              _mm256_mul_pd (v_freqs, _mm256_mul_pd (v_eigen, v_clv)));
+
+          v_clv = _mm256_load_pd (t_clvc + k);
+          v_eigen = _mm256_load_pd (c_eigenvecs);
+          v_righterm1 = _mm256_add_pd (v_righterm1,
+                                       _mm256_mul_pd (v_eigen, v_clv));
+
+          c_eigenvecs += 4;
+          ct_inv_eigenvecs += 4;
+        }
+
+        for (k = 0; k < states_padded; k += 4)
+        {
+          v_freqs = _mm256_load_pd (t_freqs + k);
+          v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
+          v_clv = _mm256_load_pd (t_clvp + k);
+          v_lefterm2 = _mm256_add_pd (
+              v_lefterm2,
+              _mm256_mul_pd (v_freqs, _mm256_mul_pd (v_eigen, v_clv)));
+
+          v_clv = _mm256_load_pd (t_clvc + k);
+          v_eigen = _mm256_load_pd (c_eigenvecs);
+          v_righterm2 = _mm256_add_pd (v_righterm2,
+                                       _mm256_mul_pd (v_eigen, v_clv));
+
+          c_eigenvecs += 4;
+          ct_inv_eigenvecs += 4;
+        }
+
+        for (k = 0; k < states_padded; k += 4)
+        {
+          v_freqs = _mm256_load_pd (t_freqs + k);
+          v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
+          v_clv = _mm256_load_pd (t_clvp + k);
+          v_lefterm3 = _mm256_add_pd (
+              v_lefterm3,
+              _mm256_mul_pd (v_freqs, _mm256_mul_pd (v_eigen, v_clv)));
+
+          v_clv = _mm256_load_pd (t_clvc + k);
+          v_eigen = _mm256_load_pd (c_eigenvecs);
+          v_righterm3 = _mm256_add_pd (v_righterm3,
+                                       _mm256_mul_pd (v_eigen, v_clv));
+
+          c_eigenvecs += 4;
+          ct_inv_eigenvecs += 4;
+        }
+
+        /* compute lefterm */
+        __m256d xmm0 = _mm256_unpackhi_pd (v_lefterm0, v_lefterm1);
+        __m256d xmm1 = _mm256_unpacklo_pd (v_lefterm0, v_lefterm1);
+        __m256d xmm2 = _mm256_unpackhi_pd (v_lefterm2, v_lefterm3);
+        __m256d xmm3 = _mm256_unpacklo_pd (v_lefterm2, v_lefterm3);
+        xmm0 = _mm256_add_pd (xmm0, xmm1);
+        xmm1 = _mm256_add_pd (xmm2, xmm3);
+        xmm2 = _mm256_permute2f128_pd (xmm0, xmm1, _MM_SHUFFLE(0, 2, 0, 1));
+        xmm3 = _mm256_blend_pd (xmm0, xmm1, 12);
+        __m256d v_lefterm_sum = _mm256_add_pd (xmm2, xmm3);
+
+        /* compute righterm */
+        xmm0 = _mm256_unpackhi_pd (v_righterm0, v_righterm1);
+        xmm1 = _mm256_unpacklo_pd (v_righterm0, v_righterm1);
+        xmm2 = _mm256_unpackhi_pd (v_righterm2, v_righterm3);
+        xmm3 = _mm256_unpacklo_pd (v_righterm2, v_righterm3);
+        xmm0 = _mm256_add_pd (xmm0, xmm1);
+        xmm1 = _mm256_add_pd (xmm2, xmm3);
+        xmm2 = _mm256_permute2f128_pd (xmm0, xmm1, _MM_SHUFFLE(0, 2, 0, 1));
+        xmm3 = _mm256_blend_pd (xmm0, xmm1, 12);
+        __m256d v_righterm_sum = _mm256_add_pd (xmm2, xmm3);
+
+        /* update sum */
+        __m256d v_prod = _mm256_mul_pd (v_lefterm_sum, v_righterm_sum);
+        _mm256_store_pd (sum + j, v_prod);
+      }
+
+      t_clvc += states_padded;
+      t_clvp += states_padded;
+      sum    += states_padded;
+
+      t_eigenvecs += states_padded * states_padded;
+    }
+  }
+
+  pll_aligned_free (tt_inv_eigenvecs);
+  pll_aligned_free (tt_eigenvecs);
+
+  return PLL_SUCCESS;
+}
+
+PLL_EXPORT double pll_core_likelihood_derivatives_avx(unsigned int states,
+                                                  unsigned int sites,
+                                                  unsigned int rate_cats,
+                                                  double * rate_weights,
+                                                  unsigned int * parent_scaler,
+                                                  unsigned int * child_scaler,
+                                                  int * invariant,
+                                                  unsigned int * pattern_weights,
+                                                  double branch_length,
+                                                  double * prop_invar,
+                                                  double ** freqs,
+                                                  const double * rates,
+                                                  double ** eigenvals,
+                                                  double * sumtable,
+                                                  double * d_f,
+                                                  double * dd_f)
+{
+  unsigned int n, i, j;
+  double site_lk[3];
+  const double * sum;
+  double logLK = 0.0;
+
+  double deriv1, deriv2;
+
+  const double * t_eigenvals;
+  const double * t_freqs;
+  double t_prop_invar;
+  double t_branch_length;
+
+  unsigned int states_padded = (states + 3) & 0xFFFFFFFC;
+
+  *d_f = 0.0;
+  *dd_f = 0.0;
+
+  double *diagptable = (double *) calloc (rate_cats * states * 3,
+                                          sizeof(double)), *diagp, ki;
+
+  if (!diagptable)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200, "Cannot allocate memory for diagptable");
+    return -INFINITY;
+  }
+
+  /* pre-compute the derivatives of the P matrix for all discrete GAMMA rates */
+  diagp = diagptable;
+  for (i = 0; i < rate_cats; ++i)
+  {
+    t_eigenvals = eigenvals[i];
+    ki = rates[i];
+    t_branch_length = branch_length / (1.0 - prop_invar[i]);
+    for (j = 0; j < states; ++j)
+    {
+      diagp[0] = exp (t_eigenvals[j] * ki * t_branch_length);
+      diagp[1] = t_eigenvals[j] * ki * diagp[0];
+      diagp[2] = t_eigenvals[j] * ki * t_eigenvals[j] * ki * diagp[0];
+      diagp += 3;
+    }
+  }
+
+  sum = sumtable;
+  for (n = 0; n < sites; ++n)
+  {
+    double inv_site_lk = 0.0;
+    site_lk[0] = site_lk[1] = site_lk[2] = 0;
+    diagp = diagptable;
+    for (i = 0; i < rate_cats; ++i)
+    {
+      t_freqs = freqs[i];
+
+      ki = rates[i];
+      double cat_sitelk0 = 0, cat_sitelk1 = 0, cat_sitelk2 = 0;
+      for (j = 0; j < states; ++j)
+      {
+
+        cat_sitelk0 += sum[j] * diagp[0];
+        cat_sitelk1 += sum[j] * diagp[1];
+        cat_sitelk2 += sum[j] * diagp[2];
+        diagp += 3;
+      }
+
+      /* account for invariant sites */
+      t_prop_invar = prop_invar[i];
+      if (t_prop_invar > 0)
+      {
+        inv_site_lk =
+            (invariant[n] == -1) ? 0 : t_freqs[invariant[n]] * t_prop_invar;
+        cat_sitelk0 = cat_sitelk0 * (1. - t_prop_invar) + inv_site_lk;
+        cat_sitelk1 = cat_sitelk1 * (1. - t_prop_invar);
+        cat_sitelk2 = cat_sitelk2 * (1. - t_prop_invar);
+      }
+
+      site_lk[0] += cat_sitelk0 * rate_weights[i];
+      site_lk[1] += cat_sitelk1 * rate_weights[i];
+      site_lk[2] += cat_sitelk2 * rate_weights[i];
+
+      sum += states_padded;
+    }
+
+    unsigned int scale_factors;
+    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
+    scale_factors += (child_scaler) ? child_scaler[n] : 0;
+
+    //    if (site_lk[0] < PLL_SCALE_THRESHOLD_SQRT)
+    //    {
+    //      /* correct for underflow */
+    //      scale_factors += 1;
+    //      double lk_div = PLL_SCALE_THRESHOLD;
+    //      site_lk[0] /= lk_div;
+    //      site_lk[1] /= lk_div;
+    //      site_lk[2] /= lk_div;
+    //    }
+
+    logLK += log (site_lk[0]) * pattern_weights[n];
+    if (scale_factors)
+    {
+      logLK += scale_factors * log (PLL_SCALE_THRESHOLD);
+    }
+
+    /* build derivatives */
+    deriv1 = (-site_lk[1] / site_lk[0]);
+    deriv2 = (deriv1 * deriv1 - (site_lk[2] / site_lk[0]));
+    *d_f += pattern_weights[n] * deriv1;
+    *dd_f += pattern_weights[n] * deriv2;
+  }
+
+  free (diagptable);
+  return logLK;
+}

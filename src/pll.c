@@ -686,6 +686,7 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
   return rc;
 }
 
+//TODO: <DOC> We should account for padding before calling this function
 PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
                                 unsigned int tip_index,
                                 const double * clv)

@@ -582,3 +582,365 @@ PLL_EXPORT void pll_core_create_lookup(unsigned int states,
     }
   }
 }
+
+PLL_EXPORT int pll_core_update_sumtable_ti_4x4(unsigned int sites,
+                                               unsigned int rate_cats,
+                                               const double * parent_clv,
+                                               const char * left_tipchars,
+                                               double ** eigenvecs,
+                                               double ** inv_eigenvecs,
+                                               double ** freqs,
+                                               unsigned int * tipmap,
+                                               double *sumtable,
+                                               unsigned int attrib)
+{
+  unsigned int i, j, k, n;
+  unsigned int tipstate;
+  double lefterm = 0;
+  double righterm = 0;
+
+  double * sum = sumtable;
+  const double * t_clvc = parent_clv;
+  const double * t_eigenvecs;
+  const double * t_inv_eigenvecs;
+  const double * t_freqs;
+
+  unsigned int states = 4;
+
+  /* build sumtable */
+  for (n = 0; n < sites; n++)
+  {
+    for (i = 0; i < rate_cats; ++i)
+    {
+      t_eigenvecs = eigenvecs[i];
+      t_inv_eigenvecs = inv_eigenvecs[i];
+      t_freqs = freqs[i];
+
+      for (j = 0; j < states; ++j)
+      {
+        tipstate = (unsigned int) left_tipchars[n];
+        lefterm = 0;
+        righterm = 0;
+        for (k = 0; k < states; ++k)
+        {
+          lefterm += (tipstate & 1) * t_freqs[k]
+              * t_inv_eigenvecs[k * states + j];
+          righterm += t_eigenvecs[j * states + k] * t_clvc[k];
+          tipstate >>= 1;
+        }
+        sum[j] = lefterm * righterm;
+      }
+
+      t_clvc += states;
+      sum += states;
+    }
+  }
+
+  return PLL_SUCCESS;
+}
+
+PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * parent_clv,
+                                           const double * child_clv,
+                                           double ** eigenvecs,
+                                           double ** inv_eigenvecs,
+                                           double ** freqs,
+                                           double *sumtable,
+                                           unsigned int attrib)
+{
+  unsigned int i, j, k, n;
+  double lefterm  = 0;
+  double righterm = 0;
+
+  double * sum                   = sumtable;
+  const double * t_clvp          = parent_clv;
+  const double * t_clvc          = child_clv;
+  const double * t_eigenvecs;
+  const double * t_inv_eigenvecs;
+  const double * t_freqs;
+
+#ifdef HAVE_AVX
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    return pll_core_update_sumtable_ii_avx(states,
+                                           sites,
+                                           rate_cats,
+                                           parent_clv,
+                                           child_clv,
+                                           eigenvecs,
+                                           inv_eigenvecs,
+                                           freqs,
+                                           sumtable);
+  }
+#endif
+#ifdef HAVE_SSE
+#endif
+
+  /* build sumtable */
+  for (n = 0; n < sites; n++)
+  {
+    for (i = 0; i < rate_cats; ++i)
+    {
+      t_eigenvecs     = eigenvecs[i];
+      t_inv_eigenvecs = inv_eigenvecs[i];
+      t_freqs         = freqs[i];
+
+      for (j = 0; j < states; ++j)
+      {
+        lefterm = 0;
+        righterm = 0;
+        for (k = 0; k < states; ++k)
+        {
+          lefterm  += t_clvp[k] * t_freqs[k] * t_inv_eigenvecs[k * states + j];
+          righterm += t_eigenvecs[j * states + k] * t_clvc[k];
+        }
+        sum[j] = lefterm * righterm;
+      }
+      t_clvc += states;
+      t_clvp += states;
+      sum += states;
+    }
+  }
+
+  return PLL_SUCCESS;
+}
+
+PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * parent_clv,
+                                           const char * left_tipchars,
+                                           double ** eigenvecs,
+                                           double ** inv_eigenvecs,
+                                           double ** freqs,
+                                           unsigned int * tipmap,
+                                           double *sumtable,
+                                           unsigned int attrib)
+{
+  unsigned int i, j, k, n;
+  unsigned int tipstate;
+  double lefterm = 0;
+  double righterm = 0;
+
+  double * sum = sumtable;
+  const double * t_clvc = parent_clv;
+  const double * t_eigenvecs;
+  const double * t_inv_eigenvecs;
+  const double * t_freqs;
+
+  unsigned int states_padded = states;
+
+  if (states == 4)
+  {
+    return pll_core_update_sumtable_ti_4x4(sites,
+                                    rate_cats,
+                                    parent_clv,
+                                    left_tipchars,
+                                    eigenvecs,
+                                    inv_eigenvecs,
+                                    freqs,
+                                    tipmap,
+                                    sumtable,
+                                    attrib);
+  }
+
+#ifdef HAVE_AVX
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    states_padded = (states+3) & 0xFFFFFFFC;
+  }
+#endif
+#ifdef HAVE_SSE
+#endif
+
+  /* build sumtable */
+  for (n = 0; n < sites; n++)
+  {
+    for (i = 0; i < rate_cats; ++i)
+    {
+      t_eigenvecs = eigenvecs[i];
+      t_inv_eigenvecs = inv_eigenvecs[i];
+      t_freqs = freqs[i];
+
+      for (j = 0; j < states; ++j)
+      {
+        tipstate = tipmap[(int) left_tipchars[n]];
+        lefterm = 0;
+        righterm = 0;
+        for (k = 0; k < states; ++k)
+        {
+          lefterm += (tipstate & 1) * t_freqs[k]
+              * t_inv_eigenvecs[k * states + j];
+          righterm += t_eigenvecs[j * states + k] * t_clvc[k];
+          tipstate >>= 1;
+        }
+        sum[j] = lefterm * righterm;
+      }
+      t_clvc += states_padded;
+      sum += states_padded;
+    }
+  }
+
+  return PLL_SUCCESS;
+}
+
+PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
+                                                  unsigned int sites,
+                                                  unsigned int rate_cats,
+                                                  double * rate_weights,
+                                                  unsigned int * parent_scaler,
+                                                  unsigned int * child_scaler,
+                                                  int * invariant,
+                                                  unsigned int * pattern_weights,
+                                                  double branch_length,
+                                                  double * prop_invar,
+                                                  double ** freqs,
+                                                  const double * rates,
+                                                  double ** eigenvals,
+                                                  double * sumtable,
+                                                  double * d_f,
+                                                  double * dd_f,
+                                                  unsigned int attrib)
+{
+  unsigned int n, i, j;
+  double site_lk[3];
+  const double * sum;
+  double logLK = 0.0;
+
+  double deriv1, deriv2;
+
+  const double * t_eigenvals;
+  const double * t_freqs;
+  double t_prop_invar;
+  double t_branch_length;
+
+  unsigned int states_padded = states;
+
+#ifdef HAVE_AVX
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+      return pll_core_likelihood_derivatives_avx(states,
+                                                 sites,
+                                                 rate_cats,
+                                                 rate_weights,
+                                                 parent_scaler,
+                                                 child_scaler,
+                                                 invariant,
+                                                 pattern_weights,
+                                                 branch_length,
+                                                 prop_invar,
+                                                 freqs,
+                                                 rates,
+                                                 eigenvals,
+                                                 sumtable,
+                                                 d_f,
+                                                 dd_f);
+  }
+#endif
+#ifdef HAVE_SSE
+#endif
+
+  *d_f = 0.0;
+  *dd_f = 0.0;
+
+  double
+    *diagptable = (double *) calloc (rate_cats * states * 3, sizeof(double)),
+    *diagp,
+    ki;
+
+  if (!diagptable)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200, "Cannot allocate memory for diagptable");
+    return -INFINITY;
+  }
+
+  /* pre-compute the derivatives of the P matrix for all discrete GAMMA rates */
+  diagp = diagptable;
+  for(i = 0; i < rate_cats; ++i)
+  {
+    t_eigenvals = eigenvals[i];
+    ki = rates[i];
+    t_branch_length = branch_length/(1.0 - prop_invar[i]);
+    for(j = 0; j < states; ++j)
+    {
+      diagp[0] = exp(t_eigenvals[j] * ki * t_branch_length);
+      diagp[1] = t_eigenvals[j] * ki * diagp[0];
+      diagp[2] = t_eigenvals[j] * ki * t_eigenvals[j] * ki * diagp[0];
+      diagp += 3;
+    }
+  }
+
+    sum = sumtable;
+    for (n = 0; n < sites; ++n)
+    {
+      double inv_site_lk = 0.0;
+      site_lk[0] = site_lk[1] = site_lk[2] = 0;
+      diagp = diagptable;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        t_freqs = freqs[i];
+
+        ki = rates[i];
+        double cat_sitelk0 = 0,
+           cat_sitelk1 = 0,
+           cat_sitelk2 = 0;
+        for (j = 0; j < states; ++j)
+        {
+
+        cat_sitelk0 += sum[j] * diagp[0];
+        cat_sitelk1 += sum[j] * diagp[1];
+        cat_sitelk2 += sum[j] * diagp[2];
+          diagp += 3;
+        }
+
+        /* account for invariant sites */
+        t_prop_invar = prop_invar[i];
+        if (t_prop_invar > 0)
+        {
+          inv_site_lk =
+              (invariant[n] == -1) ? 0 : t_freqs[invariant[n]] * t_prop_invar;
+          cat_sitelk0 = cat_sitelk0 * (1. - t_prop_invar) + inv_site_lk;
+          cat_sitelk1 = cat_sitelk1 * (1. - t_prop_invar);
+          cat_sitelk2 = cat_sitelk2 * (1. - t_prop_invar);
+        }
+
+        site_lk[0] += cat_sitelk0 * rate_weights[i];
+        site_lk[1] += cat_sitelk1 * rate_weights[i];
+        site_lk[2] += cat_sitelk2 * rate_weights[i];
+
+        sum += states_padded;
+      }
+
+      unsigned int scale_factors;
+      scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
+      scale_factors += (child_scaler) ? child_scaler[n] : 0;
+
+  //    if (site_lk[0] < PLL_SCALE_THRESHOLD_SQRT)
+  //    {
+  //      /* correct for underflow */
+  //      scale_factors += 1;
+  //      double lk_div = PLL_SCALE_THRESHOLD;
+  //      site_lk[0] /= lk_div;
+  //      site_lk[1] /= lk_div;
+  //      site_lk[2] /= lk_div;
+  //    }
+
+      logLK += log (site_lk[0]) * pattern_weights[n];
+      if (scale_factors)
+      {
+        logLK += scale_factors * log (PLL_SCALE_THRESHOLD);
+      }
+
+      /* build derivatives */
+      deriv1 = (-site_lk[1] / site_lk[0]);
+      deriv2 = (deriv1 * deriv1 - (site_lk[2] / site_lk[0]));
+      *d_f  += pattern_weights[n] * deriv1;
+      *dd_f += pattern_weights[n] * deriv2;
+    }
+
+  free(diagptable);
+  return logLK;
+}

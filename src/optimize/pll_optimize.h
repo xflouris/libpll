@@ -102,7 +102,7 @@ typedef struct
   double * branch_lengths;
   unsigned int * matrix_indices;
   int rooted;
-  unsigned int freqs_index;
+  unsigned int * params_indices;
   union {
       struct {
         unsigned int root_clv_index;
@@ -126,8 +126,8 @@ typedef struct
   pll_likelihood_info_t lk_params;
   unsigned int highest_freq_state;
   unsigned int highest_weight_state;
-  unsigned int params_index;
-  unsigned int mixture_index;
+  unsigned int * params_indices;     /* indices according to rate cats */
+  unsigned int params_index;         /* individual index to optimize */
   unsigned int which_parameters;
   int * subst_params_symmetries;
   double factr;
@@ -142,8 +142,7 @@ typedef struct
 {
   pll_partition_t * partition;
   pll_utree_t * tree;
-  unsigned int params_index;
-  unsigned int freqs_index;
+  unsigned int * params_indices;
   double * sumtable;
 } pll_newton_tree_params_t;
 
@@ -211,16 +210,14 @@ PLL_EXPORT double pll_optimize_parameters_multidim(pll_optimize_options_t * p,
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                               pll_partition_t * partition,
                                               pll_utree_t * tree,
-                                              unsigned int params_index,
-                                              unsigned int freqs_index,
+                                              unsigned int * params_indices,
                                               double tolerance,
                                               int smoothings,
                                               int keep_update);
 PLL_EXPORT double pll_optimize_branch_lengths_local (
                                               pll_partition_t * partition,
                                               pll_utree_t * tree,
-                                              unsigned int params_index,
-                                              unsigned int freqs_index,
+                                              unsigned int * params_indices,
                                               double tolerance,
                                               int smoothings,
                                               int radius,
