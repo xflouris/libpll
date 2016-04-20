@@ -43,7 +43,7 @@ int main(int argc, char * argv[])
   unsigned int i;
   pll_partition_t * partition;
   pll_operation_t * operations;
-  double rate_cats[RATE_CATS];
+  double rates[RATE_CATS];
   double alpha = 0.841;
   double logl;
   double test_logl;
@@ -69,12 +69,12 @@ int main(int argc, char * argv[])
   double subst_params[10] = {1.452176, 0.937951, 0.462880, 0.617729, 1.745312, 0.937951, 0.462880, 0.617729, 1.745312, 1.000000};
 
 
-  pll_compute_gamma_cats(alpha, RATE_CATS, rate_cats);
+  pll_compute_gamma_cats(alpha, RATE_CATS, rates);
 
   /* set */
   pll_set_frequencies(partition, 0, frequencies);
   pll_set_subst_params(partition, 0, subst_params);
-  pll_set_category_rates(partition, rate_cats);
+  pll_set_category_rates(partition, rates);
 
   pll_set_tip_states (partition, 0, odd_map, "DABC");
   pll_set_tip_states (partition, 1, odd_map, "DAEC");

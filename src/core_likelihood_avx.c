@@ -896,7 +896,7 @@ PLL_EXPORT int pll_core_update_sumtable_ii_4x4_avx(unsigned int sites,
       for (k = 0; k < states; ++k)
       {
         tt_inv_eigenvecs[i * states * states + j * states + k] =
-            inv_eigenvecs[i][states * states + k * states + j];
+            inv_eigenvecs[i][k * states + j];
       }
   }
 
@@ -1017,7 +1017,6 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
 
   const double * t_clvp = clvp;
   const double * t_clvc = clvc;
-  double * t_eigenvecs;
   double * t_freqs;
 
   /* dedicated functions for 4x4 matrices */
@@ -1059,6 +1058,9 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
     return PLL_FAILURE;
   }
 
+  memset(tt_eigenvecs, 0, (states_padded * states_padded * rate_cats) * sizeof(double));
+  memset(tt_inv_eigenvecs, 0, (states_padded * states_padded * rate_cats) * sizeof(double));
+
   for (i = 0; i < rate_cats; ++i)
   {
     for (j = 0; j < states; ++j)
@@ -1074,13 +1076,11 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
   /* vectorized loop from update_sumtable() */
   for (n = 0; n < sites; n++)
   {
-    t_eigenvecs = tt_eigenvecs;
+    const double * c_eigenvecs      = tt_eigenvecs;
+    const double * ct_inv_eigenvecs = tt_inv_eigenvecs;
     for (i = 0; i < rate_cats; ++i)
     {
       t_freqs = freqs[i];
-
-      const double * c_eigenvecs = t_eigenvecs;
-      const double * ct_inv_eigenvecs = tt_inv_eigenvecs;
 
       for (j = 0; j < states_padded; j += 4)
       {
@@ -1111,7 +1111,7 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
           v_righterm0 = _mm256_add_pd (v_righterm0,
                                        _mm256_mul_pd (v_eigen, v_clv));
 
-          c_eigenvecs += 4;
+          c_eigenvecs      += 4;
           ct_inv_eigenvecs += 4;
         }
 
@@ -1129,7 +1129,7 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
           v_righterm1 = _mm256_add_pd (v_righterm1,
                                        _mm256_mul_pd (v_eigen, v_clv));
 
-          c_eigenvecs += 4;
+          c_eigenvecs      += 4;
           ct_inv_eigenvecs += 4;
         }
 
@@ -1147,7 +1147,7 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
           v_righterm2 = _mm256_add_pd (v_righterm2,
                                        _mm256_mul_pd (v_eigen, v_clv));
 
-          c_eigenvecs += 4;
+          c_eigenvecs      += 4;
           ct_inv_eigenvecs += 4;
         }
 
@@ -1165,7 +1165,7 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
           v_righterm3 = _mm256_add_pd (v_righterm3,
                                        _mm256_mul_pd (v_eigen, v_clv));
 
-          c_eigenvecs += 4;
+          c_eigenvecs      += 4;
           ct_inv_eigenvecs += 4;
         }
 
@@ -1199,8 +1199,6 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
       t_clvc += states_padded;
       t_clvp += states_padded;
       sum    += states_padded;
-
-      t_eigenvecs += states_padded * states_padded;
     }
   }
 
@@ -1208,134 +1206,4 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
   pll_aligned_free (tt_eigenvecs);
 
   return PLL_SUCCESS;
-}
-
-PLL_EXPORT double pll_core_likelihood_derivatives_avx(unsigned int states,
-                                                  unsigned int sites,
-                                                  unsigned int rate_cats,
-                                                  double * rate_weights,
-                                                  unsigned int * parent_scaler,
-                                                  unsigned int * child_scaler,
-                                                  int * invariant,
-                                                  unsigned int * pattern_weights,
-                                                  double branch_length,
-                                                  double * prop_invar,
-                                                  double ** freqs,
-                                                  const double * rates,
-                                                  double ** eigenvals,
-                                                  double * sumtable,
-                                                  double * d_f,
-                                                  double * dd_f)
-{
-  unsigned int n, i, j;
-  double site_lk[3];
-  const double * sum;
-  double logLK = 0.0;
-
-  double deriv1, deriv2;
-
-  const double * t_eigenvals;
-  const double * t_freqs;
-  double t_prop_invar;
-  double t_branch_length;
-
-  unsigned int states_padded = (states + 3) & 0xFFFFFFFC;
-
-  *d_f = 0.0;
-  *dd_f = 0.0;
-
-  double *diagptable = (double *) calloc (rate_cats * states * 3,
-                                          sizeof(double)), *diagp, ki;
-
-  if (!diagptable)
-  {
-    pll_errno = PLL_ERROR_MEM_ALLOC;
-    snprintf (pll_errmsg, 200, "Cannot allocate memory for diagptable");
-    return -INFINITY;
-  }
-
-  /* pre-compute the derivatives of the P matrix for all discrete GAMMA rates */
-  diagp = diagptable;
-  for (i = 0; i < rate_cats; ++i)
-  {
-    t_eigenvals = eigenvals[i];
-    ki = rates[i];
-    t_branch_length = branch_length / (1.0 - prop_invar[i]);
-    for (j = 0; j < states; ++j)
-    {
-      diagp[0] = exp (t_eigenvals[j] * ki * t_branch_length);
-      diagp[1] = t_eigenvals[j] * ki * diagp[0];
-      diagp[2] = t_eigenvals[j] * ki * t_eigenvals[j] * ki * diagp[0];
-      diagp += 3;
-    }
-  }
-
-  sum = sumtable;
-  for (n = 0; n < sites; ++n)
-  {
-    double inv_site_lk = 0.0;
-    site_lk[0] = site_lk[1] = site_lk[2] = 0;
-    diagp = diagptable;
-    for (i = 0; i < rate_cats; ++i)
-    {
-      t_freqs = freqs[i];
-
-      ki = rates[i];
-      double cat_sitelk0 = 0, cat_sitelk1 = 0, cat_sitelk2 = 0;
-      for (j = 0; j < states; ++j)
-      {
-
-        cat_sitelk0 += sum[j] * diagp[0];
-        cat_sitelk1 += sum[j] * diagp[1];
-        cat_sitelk2 += sum[j] * diagp[2];
-        diagp += 3;
-      }
-
-      /* account for invariant sites */
-      t_prop_invar = prop_invar[i];
-      if (t_prop_invar > 0)
-      {
-        inv_site_lk =
-            (invariant[n] == -1) ? 0 : t_freqs[invariant[n]] * t_prop_invar;
-        cat_sitelk0 = cat_sitelk0 * (1. - t_prop_invar) + inv_site_lk;
-        cat_sitelk1 = cat_sitelk1 * (1. - t_prop_invar);
-        cat_sitelk2 = cat_sitelk2 * (1. - t_prop_invar);
-      }
-
-      site_lk[0] += cat_sitelk0 * rate_weights[i];
-      site_lk[1] += cat_sitelk1 * rate_weights[i];
-      site_lk[2] += cat_sitelk2 * rate_weights[i];
-
-      sum += states_padded;
-    }
-
-    unsigned int scale_factors;
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-    scale_factors += (child_scaler) ? child_scaler[n] : 0;
-
-    //    if (site_lk[0] < PLL_SCALE_THRESHOLD_SQRT)
-    //    {
-    //      /* correct for underflow */
-    //      scale_factors += 1;
-    //      double lk_div = PLL_SCALE_THRESHOLD;
-    //      site_lk[0] /= lk_div;
-    //      site_lk[1] /= lk_div;
-    //      site_lk[2] /= lk_div;
-    //    }
-
-    logLK += log (site_lk[0]) * pattern_weights[n];
-    if (scale_factors)
-    {
-      logLK += scale_factors * log (PLL_SCALE_THRESHOLD);
-    }
-
-    /* build derivatives */
-    deriv1 = (-site_lk[1] / site_lk[0]);
-    deriv2 = (deriv1 * deriv1 - (site_lk[2] / site_lk[0]));
-    *d_f += pattern_weights[n] * deriv1;
-    *dd_f += pattern_weights[n] * deriv2;
-  }
-
-  free (diagptable);
-  return logLK;
 }

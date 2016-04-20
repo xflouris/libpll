@@ -806,37 +806,28 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
 {
   unsigned int n, i, j;
   double site_lk[3];
-  const double * sum;
+  double inv_site_lk;
   double logLK = 0.0;
 
+  const double * sum;
   double deriv1, deriv2;
+  double cat_sitelk0, cat_sitelk1, cat_sitelk2;
 
   const double * t_eigenvals;
   const double * t_freqs;
   double t_prop_invar;
   double t_branch_length;
+  unsigned int scale_factors;
+
+  double *diagptable, *diagp;
+  double ki;
 
   unsigned int states_padded = states;
 
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
-      return pll_core_likelihood_derivatives_avx(states,
-                                                 sites,
-                                                 rate_cats,
-                                                 rate_weights,
-                                                 parent_scaler,
-                                                 child_scaler,
-                                                 invariant,
-                                                 pattern_weights,
-                                                 branch_length,
-                                                 prop_invar,
-                                                 freqs,
-                                                 rates,
-                                                 eigenvals,
-                                                 sumtable,
-                                                 d_f,
-                                                 dd_f);
+    states_padded = (states+3) & 0xFFFFFFFC;
   }
 #endif
 #ifdef HAVE_SSE
@@ -845,11 +836,7 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
   *d_f = 0.0;
   *dd_f = 0.0;
 
-  double
-    *diagptable = (double *) calloc (rate_cats * states * 3, sizeof(double)),
-    *diagp,
-    ki;
-
+  diagptable = (double *) calloc (rate_cats * states * 3, sizeof(double));
   if (!diagptable)
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -873,74 +860,60 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
     }
   }
 
-    sum = sumtable;
-    for (n = 0; n < sites; ++n)
+  sum = sumtable;
+  for (n = 0; n < sites; ++n)
+  {
+    inv_site_lk = 0.0;
+    site_lk[0] = site_lk[1] = site_lk[2] = 0;
+    diagp = diagptable;
+    for (i = 0; i < rate_cats; ++i)
     {
-      double inv_site_lk = 0.0;
-      site_lk[0] = site_lk[1] = site_lk[2] = 0;
-      diagp = diagptable;
-      for (i = 0; i < rate_cats; ++i)
+      t_freqs = freqs[i];
+
+      ki = rates[i];
+      cat_sitelk0 = cat_sitelk1 = cat_sitelk2 = 0;
+      for (j = 0; j < states; ++j)
       {
-        t_freqs = freqs[i];
-
-        ki = rates[i];
-        double cat_sitelk0 = 0,
-           cat_sitelk1 = 0,
-           cat_sitelk2 = 0;
-        for (j = 0; j < states; ++j)
-        {
-
         cat_sitelk0 += sum[j] * diagp[0];
         cat_sitelk1 += sum[j] * diagp[1];
         cat_sitelk2 += sum[j] * diagp[2];
-          diagp += 3;
-        }
-
-        /* account for invariant sites */
-        t_prop_invar = prop_invar[i];
-        if (t_prop_invar > 0)
-        {
-          inv_site_lk =
-              (invariant[n] == -1) ? 0 : t_freqs[invariant[n]] * t_prop_invar;
-          cat_sitelk0 = cat_sitelk0 * (1. - t_prop_invar) + inv_site_lk;
-          cat_sitelk1 = cat_sitelk1 * (1. - t_prop_invar);
-          cat_sitelk2 = cat_sitelk2 * (1. - t_prop_invar);
-        }
-
-        site_lk[0] += cat_sitelk0 * rate_weights[i];
-        site_lk[1] += cat_sitelk1 * rate_weights[i];
-        site_lk[2] += cat_sitelk2 * rate_weights[i];
-
-        sum += states_padded;
+        diagp += 3;
       }
 
-      unsigned int scale_factors;
-      scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-      scale_factors += (child_scaler) ? child_scaler[n] : 0;
-
-  //    if (site_lk[0] < PLL_SCALE_THRESHOLD_SQRT)
-  //    {
-  //      /* correct for underflow */
-  //      scale_factors += 1;
-  //      double lk_div = PLL_SCALE_THRESHOLD;
-  //      site_lk[0] /= lk_div;
-  //      site_lk[1] /= lk_div;
-  //      site_lk[2] /= lk_div;
-  //    }
-
-      logLK += log (site_lk[0]) * pattern_weights[n];
-      if (scale_factors)
+      /* account for invariant sites */
+      t_prop_invar = prop_invar[i];
+      if (t_prop_invar > 0)
       {
-        logLK += scale_factors * log (PLL_SCALE_THRESHOLD);
+        inv_site_lk =
+            (invariant[n] == -1) ? 0 : t_freqs[invariant[n]] * t_prop_invar;
+        cat_sitelk0 = cat_sitelk0 * (1. - t_prop_invar) + inv_site_lk;
+        cat_sitelk1 = cat_sitelk1 * (1. - t_prop_invar);
+        cat_sitelk2 = cat_sitelk2 * (1. - t_prop_invar);
       }
 
-      /* build derivatives */
-      deriv1 = (-site_lk[1] / site_lk[0]);
-      deriv2 = (deriv1 * deriv1 - (site_lk[2] / site_lk[0]));
-      *d_f  += pattern_weights[n] * deriv1;
-      *dd_f += pattern_weights[n] * deriv2;
+      site_lk[0] += cat_sitelk0 * rate_weights[i];
+      site_lk[1] += cat_sitelk1 * rate_weights[i];
+      site_lk[2] += cat_sitelk2 * rate_weights[i];
+
+      sum += states_padded;
     }
 
-  free(diagptable);
+    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
+    scale_factors += (child_scaler) ? child_scaler[n] : 0;
+
+    logLK += log (site_lk[0]) * pattern_weights[n];
+    if (scale_factors)
+    {
+      logLK += scale_factors * log (PLL_SCALE_THRESHOLD);
+    }
+
+    /* build derivatives */
+    deriv1 = (-site_lk[1] / site_lk[0]);
+    deriv2 = (deriv1 * deriv1 - (site_lk[2] / site_lk[0]));
+    *d_f += pattern_weights[n] * deriv1;
+    *dd_f += pattern_weights[n] * deriv2;
+  }
+
+  free (diagptable);
   return logLK;
 }

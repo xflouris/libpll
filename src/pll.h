@@ -734,22 +734,6 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
                                                double ** freqs,
                                                double *sumtable);
 
-PLL_EXPORT double pll_core_likelihood_derivatives_avx(unsigned int states,
-                                                  unsigned int sites,
-                                                  unsigned int rate_cats,
-                                                  double * rate_weights,
-                                                  unsigned int * parent_scaler,
-                                                  unsigned int * child_scaler,
-                                                  int * invariant,
-                                                  unsigned int * pattern_weights,
-                                                  double branch_length,
-                                                  double * prop_invar,
-                                                  double ** freqs,
-                                                  const double * rates,
-                                                  double ** eigenvals,
-                                                  double * sumtable,
-                                                  double * d_f,
-                                                  double * dd_f);
 /* functions in core_pmatrix.c */
 
 PLL_EXPORT void pll_core_update_pmatrix(double * pmatrix,
