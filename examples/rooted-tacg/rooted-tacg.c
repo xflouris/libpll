@@ -189,7 +189,6 @@ int main(int argc, char * argv[])
                                    4,       /* How many extra CLV buffers (apart from the tip sequences) should we allocate */
                                    4,       /* How many states do our data have */
                                    6,       /* How long are the tip sequences (number of sites) */
-                                   0,       /* Mixture models */
                                    1,       /* How many different substitution models (or eigen decompositions) do we want to use concurrently (i.e. 4 for LG4) */
                                    5,       /* How many probability matrices should we allocate */
                                    4,       /* Number of rate categories */
@@ -219,10 +218,10 @@ int main(int argc, char * argv[])
                          2.38629436117236260};
 
   /* set frequencies */
-  pll_set_frequencies(partition, 0, 0, frequencies);
+  pll_set_frequencies(partition, 0, frequencies);
 
   /* set substitution parameters */
-  pll_set_subst_params(partition, 0, 0, subst_params);
+  pll_set_subst_params(partition, 0, subst_params);
 
   /* set rate categories */
   pll_set_category_rates(partition, rate_cats);
@@ -250,7 +249,13 @@ int main(int argc, char * argv[])
   free(enc);
 
   /* update two probability matrices for the corresponding branch lengths */
-  pll_update_prob_matrices(partition, 0, matrix_indices, branch_lengths, 5);
+  unsigned int params_indices[4] = {0,0,0,0};
+
+  pll_update_prob_matrices(partition,
+                           params_indices,
+                           matrix_indices,
+                           branch_lengths,
+                           5);
 
   /* output the two probability matrices (for each rate category) on screen */
   for (i = 0; i < 5; ++i)
@@ -327,7 +332,7 @@ int main(int argc, char * argv[])
 
   /* compute the likelihood at the root of the rooted tree by specifying the CLV
      index of the root CLV and the index of the frequency vector to be used */
-  double logl = pll_compute_root_loglikelihood(partition,8,3,0);
+  double logl = pll_compute_root_loglikelihood(partition,8,3,params_indices,NULL);
 
   printf("Log-L: %f\n", logl);
 
@@ -341,13 +346,17 @@ int main(int argc, char * argv[])
 
   /* we need to update the probability matrices after stating that we want 
      to use invariant sites */
-  pll_update_prob_matrices(partition, 0, matrix_indices, branch_lengths, 5);
+  pll_update_prob_matrices(partition,
+                           params_indices,
+                           matrix_indices,
+                           branch_lengths,
+                           5);
 
   /* recompute the CLVs using the same traversal */
   pll_update_partials(partition, operations, 4);
 
   /* re-evaluate the log-likelihood */
-  logl = pll_compute_root_loglikelihood(partition,8,3,0);
+  logl = pll_compute_root_loglikelihood(partition,8,3,params_indices,NULL);
   
   printf("Log-L (Inv+Gamma 0.5): %f\n", logl);
 
@@ -355,13 +364,17 @@ int main(int argc, char * argv[])
      tip states haven't changed, we should only update the proportion and
      then update the probability matrices */
   pll_update_invariant_sites_proportion(partition, 0, 0.75);
-  pll_update_prob_matrices(partition, 0, matrix_indices, branch_lengths, 5);
+  pll_update_prob_matrices(partition,
+                           params_indices,
+                           matrix_indices,
+                           branch_lengths,
+                           5);
   
   /* recompute the CLVs using the same traversal */
   pll_update_partials(partition, operations, 4);
 
   /* re-evaluate the log-likelihood */
-  logl = pll_compute_root_loglikelihood(partition,8,3,0);
+  logl = pll_compute_root_loglikelihood(partition,8,3,params_indices,NULL);
 
   printf("Log-L (Inv+Gamma 0.75): %f\n", logl);
 

@@ -200,7 +200,6 @@ int main(int argc, char * argv[])
                                    inner_nodes_count,
                                    STATES,
                                    (unsigned int)sites,
-                                   0,
                                    1,
                                    branch_count,
                                    RATE_CATS,
@@ -293,10 +292,10 @@ int main(int argc, char * argv[])
   pll_compute_gamma_cats(1, 4, rate_cats);
 
   /* set frequencies at model with index 0 (we currently have only one model) */
-  pll_set_frequencies(partition, 0, 0, frequencies);
+  pll_set_frequencies(partition, 0, frequencies);
 
   /* set 6 substitution parameters at model with index 0 */
-  pll_set_subst_params(partition, 0, 0, subst_params);
+  pll_set_subst_params(partition, 0, subst_params);
 
   /* set rate categories */
   pll_set_category_rates(partition, rate_cats);
@@ -306,8 +305,10 @@ int main(int argc, char * argv[])
      branch_lengths[i] and can be refered to with index matrix_indices[i]. Note
      that for our case, branch_count = matrix_count since we have one matrix
      per branch */
+  unsigned int params_indices[4] = {0,0,0,0};
+
   pll_update_prob_matrices(partition, 
-                           0, 
+                           params_indices, 
                            matrix_indices, 
                            branch_lengths, 
                            matrix_count);
@@ -343,10 +344,12 @@ int main(int argc, char * argv[])
      the CLV indices at the two end-point of the branch, the probability matrix
      index for the concrete branch length, and the index of the model of whose
      frequency vector is to be used */
+
   double logl = pll_compute_root_loglikelihood(partition,
                                                tree->clv_index,
                                                tree->scaler_index,
-                                               0);
+                                               params_indices,
+                                               NULL);
 
   printf("Log-L: %f\n", logl);
 

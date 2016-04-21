@@ -276,13 +276,12 @@ int main(int argc, char * argv[])
                                    inner_nodes_count,
                                    STATES,
                                    (unsigned int)sites,
-                                   0,
                                    1,
                                    branch_count,
                                    RATE_CATS,
                                    inner_nodes_count,
                                    pll_map_nt,
-                                   PLL_ATTRIB_ARCH_CPU);
+                                   PLL_ATTRIB_ARCH_AVX);
 
   /* find sequences in hash table and link them with the corresponding taxa */
   for (i = 0; i < tip_nodes_count; ++i)
@@ -364,16 +363,20 @@ int main(int argc, char * argv[])
   {
 
     /* set frequencies at model with index 0 (we currently have only one model) */
-    pll_set_frequencies(partition, 0, 0, protein_models_freqs_list[i]);
+    pll_set_frequencies(partition, 0, protein_models_freqs_list[i]);
 
     /* set 6 substitution parameters at model with index 0 */
-    pll_set_subst_params(partition, 0, 0, protein_models_rates_list[i]);
+    pll_set_subst_params(partition, 0, protein_models_rates_list[i]);
 
-    /* update 2*tip_count-3 probability matrices for model with index 0. The i-th
-       matrix (i ranges from 0 to 2*tip_count-4) is generated using branch length
-       branch_lengths[i] and can be refered to with index matrix_indices[i] */
+    /* update matrix_count probability matrices using the rate matrix with
+       index 0. The i-th matrix (i ranges from 0 to matrix_count - 1) is
+       generated using branch length branch_lengths[i] and rate matrix
+       (substitution rates + frequencies) params_indices[i], and can be refered
+       to with index matrix_indices[i] */
+    unsigned int params_indices[4] = {0,0,0,0};
+
     pll_update_prob_matrices(partition, 
-                             0, 
+                             params_indices, 
                              matrix_indices, 
                              branch_lengths, 
                              matrix_count);
@@ -406,15 +409,17 @@ int main(int argc, char * argv[])
 
   /* compute the likelihood on an edge of the unrooted tree by specifying
      the CLV indices at the two end-point of the branch, the probability matrix
-     index for the concrete branch length, and the index of the model of whose
-     frequency vector is to be used */
+     index for the concrete branch length, and the array of indices of rate matrix
+     whose frequency vector is to be used for each rate category */
+
   double logl = pll_compute_edge_loglikelihood(partition,
                                                tree->clv_index,
                                                tree->scaler_index,
                                                tree->back->clv_index,
                                                tree->back->scaler_index,
                                                tree->pmatrix_index,
-                                               0);
+                                               params_indices,
+                                               NULL);
 
     printf("Log-L (%s): %f\n", protein_models_names_list[i], logl);
   }

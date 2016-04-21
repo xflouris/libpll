@@ -26,7 +26,7 @@ WARN=-Wall -Wsign-compare
 
 CC = gcc
 CFLAGS = -I. -Wall -g -O3 $(WARN)
-LINKFLAGS = $(PROFILING)
+LINKFLAGS = -L. $(PROFILING)
 LIBS=-lpll -lm
 PROG=protein-list
 
