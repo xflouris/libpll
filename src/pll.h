@@ -342,7 +342,7 @@ PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
                                  unsigned int params_index);
 
 PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
-                                         unsigned int params_index, 
+                                         unsigned int * params_index, 
                                          unsigned int * matrix_indices, 
                                          double * branch_lengths, 
                                          unsigned int count);

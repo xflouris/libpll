@@ -302,13 +302,13 @@ PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
   free(a);
 }
 
-PLL_EXPORT void pll_update_prob_matrices_generic(pll_partition_t * partition, 
-                                                 unsigned int * params_indices,
-                                                 unsigned int * matrix_indices, 
-                                                 double * branch_lengths, 
-                                                 unsigned int count)
+PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
+                                         unsigned int * params_indices,
+                                         unsigned int * matrix_indices, 
+                                         double * branch_lengths, 
+                                         unsigned int count)
 {
-  unsigned int i,n;
+  unsigned int i,n,j,k,m;
   double * expd;
   double * temp;
 
@@ -346,72 +346,11 @@ PLL_EXPORT void pll_update_prob_matrices_generic(pll_partition_t * partition,
     {
       pmatrix = partition->pmatrix[matrix_indices[i]] + n*states*states_padded;
 
-      prop_invar    = partition->prop_invar[params_indices[n]];
-      eigenvecs     = partition->eigenvecs[params_indices[n]];
+      prop_invar = partition->prop_invar[params_indices[n]];
+      eigenvecs = partition->eigenvecs[params_indices[n]];
       inv_eigenvecs = partition->inv_eigenvecs[params_indices[n]];
-      eigenvals     = partition->eigenvals[params_indices[n]];
+      eigenvals = partition->eigenvals[params_indices[n]];
 
-      pll_core_update_pmatrix(pmatrix,
-                              states,
-                              rates[n],
-                              prop_invar,
-                              branch_lengths[i],
-                              eigenvals,
-                              eigenvecs,
-                              inv_eigenvecs,
-                              partition->attributes);
-    }
-  }
-  free(expd);
-  free(temp);
-}
-
-PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
-                                         unsigned int params_index,
-                                         unsigned int * matrix_indices, 
-                                         double * branch_lengths, 
-                                         unsigned int count)
-{
-  unsigned int i,n;
-  #ifndef DEBUG_CHECK_CORE
-  unsigned int j,k,m;
-  double * expd;
-  double * temp;
-  #endif
-
-  double * eigenvecs = partition->eigenvecs[params_index];
-  double * inv_eigenvecs = partition->inv_eigenvecs[params_index];
-  double * eigenvals = partition->eigenvals[params_index];
-  double * rates = partition->rates;
-
-  double * pmatrix;
-
-  double prop_invar = partition->prop_invar[params_index];
-
-  unsigned int states = partition->states;
-  unsigned int states_padded = partition->states_padded;
-
-  /* check whether we have cached an eigen decomposition. If not, compute it */
-  if (!partition->eigen_decomp_valid[params_index])
-  {
-    pll_update_eigen(partition, params_index);
-  }
-
-  #ifndef DEBUG_CHECK_CORE
-  expd = (double *)malloc(states * sizeof(double));
-  temp = (double *)malloc(states*states* sizeof(double));
-  #endif
-
-  for (i = 0; i < count; ++i)
-  {
-    assert(branch_lengths[i] >= 0);
-
-    /* compute effective pmatrix location */
-    for (n = 0; n < partition->rate_cats; ++n)
-    {
-      pmatrix = partition->pmatrix[matrix_indices[i]] + n*states*states_padded;
-
-#ifndef DEBUG_CHECK_CORE
       /* if branch length is zero then set the p-matrix to identity matrix */
       if (!branch_lengths[i])
       {
@@ -441,23 +380,10 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
             }
           }
       }
-#else
-      pll_core_update_pmatrix(pmatrix,
-                              states,
-                              rates[n],
-                              prop_invar,
-                              branch_lengths[i],
-                              eigenvals,
-                              eigenvecs,
-                              inv_eigenvecs,
-                              partition->attributes);
-#endif
     }
   }
-#ifndef DEBUG_CHECK_CORE
   free(expd);
   free(temp);
-#endif
 }
 
 PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
