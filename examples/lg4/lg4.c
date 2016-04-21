@@ -1,11 +1,30 @@
+/*
+    Copyright (C) 2015 Tomas Flouri, Diego Darriba
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    Contact: Tomas Flouri <Tomas.Flouri@h-its.org>,
+    Exelixis Lab, Heidelberg Instutute for Theoretical Studies
+    Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
+*/
+
 #include "pll.h"
 #include <stdarg.h>
 #include <search.h>
 
-
 #define STATES    20
-#define MIXTURE 4
-#define RATE_CATS MIXTURE
+#define RATE_CATS 4
 #define PROT_MODELS_COUNT 19
 
 static void fatal(const char * format, ...) __attribute__ ((noreturn));
@@ -176,20 +195,18 @@ int main(int argc, char * argv[])
   RATE_CATS : number of rate categories we will use
   inner_nodes_count : how many scale buffers to use
   PLL_ATTRIB_ARCH_SSE : list of flags for hardware acceleration
-  PLL_ATTRIB_MIXT_LINKED : flag for linking the matrices to the gamma rates
   */
 
   partition = pll_partition_create(tip_nodes_count,
                                    inner_nodes_count,
                                    STATES,
                                    (unsigned int)sites,
-                                   MIXTURE,
-                                   1,
+                                   4,
                                    branch_count,
                                    RATE_CATS,
                                    inner_nodes_count,
                                    pll_map_aa,
-                                   PLL_ATTRIB_ARCH_CPU | PLL_ATTRIB_MIXT_LINKED);
+                                   PLL_ATTRIB_ARCH_CPU);
 
   /* find sequences in hash table and link them with the corresponding taxa */
   for (i = 0; i < tip_nodes_count; ++i)
@@ -264,23 +281,28 @@ int main(int argc, char * argv[])
   /* set rate categories */
   pll_set_category_rates(partition, rate_cats);
 
-  for (i=0; i<partition->mixture; i++)
+  for (i=0; i<partition->rate_matrices; i++)
   {
-    /* set frequencies at model with index i */
-    pll_set_frequencies(partition, 0, i, pll_aa_freqs_lg4m[i]);
+    /* set frequencies for rate matrix i */
+    pll_set_frequencies(partition, i, pll_aa_freqs_lg4m[i]);
 
-    /* set substitution parameters at model with index i */
-    pll_set_subst_params(partition, 0, i, pll_aa_rates_lg4m[i]);
+    /* set substitution rates for rate matrix i */
+    pll_set_subst_params(partition, i, pll_aa_rates_lg4m[i]);
   }
 
-    /* update 2*tip_count-3 probability matrices for model with index 0. The i-th
-       matrix (i ranges from 0 to 2*tip_count-4) is generated using branch length
-       branch_lengths[i] and can be refered to with index matrix_indices[i] */
-    pll_update_prob_matrices(partition, 
-                             0, 
-                             matrix_indices, 
-                             branch_lengths, 
-                             matrix_count);
+  /* update matrix_count probability matrices using the rate matrix with
+     index 0. The i-th matrix (i ranges from 0 to matrix_count - 1) is
+     generated using branch length branch_lengths[i] and rate matrix
+     (substitution rates + frequencies) params_indices[i], and can be refered
+     to with index matrix_indices[i] */
+
+  unsigned int params_indices[4] = {0,1,2,3};
+
+  pll_update_prob_matrices(partition, 
+                           params_indices, 
+                           matrix_indices, 
+                           branch_lengths, 
+                           matrix_count);
 
     /*
     for (i = 0; i < branch_count; ++i)
@@ -291,48 +313,51 @@ int main(int argc, char * argv[])
     }
     */
 
-    /* use the operations array to compute all tip_count-2 inner CLVs. Operations
-       will be carried out sequentially starting from operation 0 and upwards */
-    pll_update_partials(partition, operations, ops_count);
+  /* use the operations array to compute all tip_count-2 inner CLVs. Operations
+     will be carried out sequentially starting from operation 0 and upwards */
+
+  pll_update_partials(partition, operations, ops_count);
 
   /* compute the likelihood on an edge of the unrooted tree by specifying
      the CLV indices at the two end-point of the branch, the probability matrix
      index for the concrete branch length, and the index of the model of whose
      frequency vector is to be used */
+
   double logl = pll_compute_edge_loglikelihood(partition,
                                                tree->clv_index,
                                                tree->scaler_index,
                                                tree->back->clv_index,
                                                tree->back->scaler_index,
                                                tree->pmatrix_index,
-                                               0);
+                                               params_indices,
+                                               NULL);
 
   printf("\nRates:   ");
-      for (i = 0; i < partition->mixture; i++)
+      for (i = 0; i < partition->rate_cats; i++)
         printf("%.6f ", partition->rates[i]);
   printf("\nLog-L (LG4M): %f\n", logl);
 
   /* now let's switch into LG4X model with fixed rates and weights */
 
-  for (i = 0; i < partition->mixture; i++)
+  for (i = 0; i < partition->rate_matrices; i++)
   {
-    /* set frequencies at model with index i */
-    pll_set_frequencies (partition, 0, i, pll_aa_freqs_lg4x[i]);
+    /* set frequencies for rate matrix i */
+    pll_set_frequencies (partition,i,pll_aa_freqs_lg4x[i]);
 
-    /* set substitution parameters at model with index i */
-    pll_set_subst_params (partition, 0, i, pll_aa_rates_lg4x[i]);
+    /* set substitution rates for rate matrix i */
+    pll_set_subst_params (partition,i,pll_aa_rates_lg4x[i]);
   }
 
-  /* set free rates and weights */
-  double fixedweights[] =
-    { 0.209224645, 0.224707726, 0.277599198, 0.288468431 };
-  double fixedrates[] =
-    { 0.498991136, 0.563680734, 0.808264032, 1.887769458 };
-  pll_set_category_rates (partition, fixedrates);
-  pll_set_category_weights (partition, fixedweights);
+  /* set rates and weights */
+  double weights[4] = { 0.209224645, 0.224707726, 0.277599198, 0.288468431 };
+  double rates[4] = { 0.498991136, 0.563680734, 0.808264032, 1.887769458 };
 
+  pll_set_category_rates (partition, rates);
+  pll_set_category_weights (partition, weights);
+
+  /* update transition probability matrices */
   pll_update_prob_matrices(partition,
-                           0,
+                           params_indices,
                            matrix_indices,
                            branch_lengths,
                            matrix_count);
@@ -355,13 +380,14 @@ int main(int argc, char * argv[])
                                         tree->back->clv_index,
                                         tree->back->scaler_index,
                                         tree->pmatrix_index,
-                                        0);
+                                        params_indices,
+                                        NULL);
 
   printf("\nWeights: ");
-  for (i = 0; i < partition->mixture; i++)
+  for (i = 0; i < partition->rate_cats; i++)
     printf("%.6f ", partition->rate_weights[i]);
   printf("\nRates:   ");
-    for (i = 0; i < partition->mixture; i++)
+    for (i = 0; i < partition->rate_cats; i++)
       printf("%.6f ", partition->rates[i]);
   printf("\nLog-L (LG4X): %f\n", logl);
 
