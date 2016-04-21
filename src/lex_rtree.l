@@ -40,16 +40,19 @@ static char * xstrndup(const char * s, size_t len)
 
 static char * append(size_t * dstlen, const char * src, size_t srclen)
 {
-  char * mem = (char *)realloc(pll_rtree_lval.s, (*dstlen + srclen + 1));
+  char * mem = (char *)malloc((*dstlen + srclen + 1)*sizeof(char));
   if (!mem)
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return PLL_FAILURE;
   }
+  memcpy(mem,pll_rtree_lval.s,*dstlen);
+  strncpy(mem+(*dstlen),src,srclen);
+  mem[*dstlen+srclen] = 0;
+  if (*dstlen)
+    free(pll_rtree_lval.s);
   pll_rtree_lval.s =  mem;
-  strncpy(&pll_rtree_lval.s[*dstlen], src, srclen);
-  pll_rtree_lval.s[*dstlen + srclen] = 0;
   *dstlen += srclen;
   return pll_rtree_lval.s;
 }
@@ -59,41 +62,42 @@ static char * append(size_t * dstlen, const char * src, size_t srclen)
 %option prefix="pll_rtree_"
 %option nounput
 %option noinput
-%s apos
-%s quot
+%x apos
+%x quot
 
 %%
 <quot>{
-\\\"                                         append(&string_length, "\"", 1);
-\'                                           append(&string_length, "\'", 1);
-\"                                           {BEGIN(INITIAL);return STRING;}
+\\\"                                             {append(&string_length, "\\\"", 2);}
+\'                                               {append(&string_length, "\'", 1);}
+\"                                               {BEGIN(INITIAL);return STRING;}
 }
 
 <apos>{
-\\\'                                         append(&string_length, "\'", 1);
-\"                                           append(&string_length, "\"", 1);
-\'                                           {BEGIN(INITIAL);return STRING;}
+\\\'                                             {append(&string_length, "\\\'", 2);}
+\"                                               {append(&string_length, "\"", 1);}
+\'                                               {BEGIN(INITIAL);return STRING;}
 }
 
 <apos,quot>{
-\\n                                          append(&string_length, "\n", 1);
-\\t                                          append(&string_length, "\t", 1);
-\\\\                                         append(&string_length, "\\", 1);
-([^\"\'\\]|\n)+                              append(&string_length, pll_rtree_text, pll_rtree_leng);
+\\n                                              {append(&string_length, "\\n", 2);}
+\\t                                              {append(&string_length, "\\t", 2);}
+\\                                               {append(&string_length, "\\", 1);}
+\\\\                                             {append(&string_length, "\\\\", 2);}
+([^\"\'\\]|\n)+                                  {append(&string_length, pll_rtree_text, pll_rtree_leng);}
 }
 
-\:                                           return COLON;
-\;                                           return SEMICOLON;
-\)                                           return CPAR;
-\(                                           return OPAR;
-\,                                           return COMMA;
-\"                                           {string_length =0; BEGIN(quot);}
-\'                                           {string_length =0; BEGIN(apos);}
-[a-zA-Z_][a-zA-Z_0-9]*                       {pll_rtree_lval.s = xstrndup(pll_rtree_text, pll_rtree_leng); return STRING;}
-[\+|\-]?[0-9]+                               {pll_rtree_lval.d = xstrndup(pll_rtree_text, pll_rtree_leng); return NUMBER;}
-[\+|\-]?[0-9]+\.[0-9]+([e|E][\+|\-]?[0-9]+)? {pll_rtree_lval.d = xstrndup(pll_rtree_text, pll_rtree_leng); return NUMBER;}
-[ \t\n\r]                                    ;
-.                                            {snprintf(pll_errmsg, 200, "Syntax error (%c)\n", pll_rtree_text[0]);
-                                              pll_errno = PLL_ERROR_NEWICK_SYNTAX; 
-                                              return PLL_FAILURE;}
+\:                                               return COLON;
+\;                                               return SEMICOLON;
+\)                                               return CPAR;
+\(                                               return OPAR;
+\,                                               return COMMA;
+\"                                               {string_length = 0; BEGIN(quot);}
+\'                                               {string_length = 0; BEGIN(apos);}
+[\+|\-]?[0-9]+                                   {pll_rtree_lval.d = xstrndup(pll_rtree_text, pll_rtree_leng); return NUMBER;}
+[\+|\-]?[0-9]+\.[0-9]+([e|E][\+|\-]?[0-9]+)?     {pll_rtree_lval.d = xstrndup(pll_rtree_text, pll_rtree_leng); return NUMBER;}
+[^ \'\",\(\):;\[\]\t\n\r][^ \t\n\r\)\(\[\]\,:;]* {pll_rtree_lval.s = xstrndup(pll_rtree_text, pll_rtree_leng); return STRING;}
+[ \t\n\r]                                        ;
+.                                                {snprintf(pll_errmsg, 200, "Syntax error (%c)\n", pll_rtree_text[0]);
+                                                  pll_errno = PLL_ERROR_NEWICK_SYNTAX; 
+                                                  return PLL_FAILURE;}
 %%
