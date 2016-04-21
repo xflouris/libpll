@@ -56,6 +56,8 @@ int main (int argc, char * argv[])
   unsigned int attributes = get_attributes (argc, argv);
 
   operations = (pll_operation_t *) malloc (4 * sizeof(pll_operation_t));
+  
+  unsigned int params_indices[6] = {0,0,0,0,0,0};
 
   operations[0].parent_clv_index = 5;
   operations[0].child1_clv_index = 0;
@@ -170,8 +172,12 @@ int main (int argc, char * argv[])
       pll_set_category_rates (partition, rate_cats);
       free (rate_cats);
 
-      pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths,
-                                4);
+      pll_update_prob_matrices(partition,
+                               params_indices,
+                               matrix_indices,
+                               branch_lengths,
+                               4);
+
       pll_update_partials (partition, operations, 3);
 
       for (j = 0; j < 4; ++j)
@@ -188,17 +194,12 @@ int main (int argc, char * argv[])
       printf ("[%d] CLV 7: ", i);
       pll_show_clv (partition, 7, PLL_SCALE_BUFFER_NONE, FLOAT_PRECISION);
 
-      unsigned int * params_indices = (unsigned int *) malloc (
-          n_cat_gamma[k] * sizeof(unsigned int));
-      for (j = 0; j < n_cat_gamma[k]; j++)
-        params_indices[j] = 0;
       lk_scores[k * N_ALPHAS + i] = pll_compute_edge_loglikelihood (
           partition, 6,
           PLL_SCALE_BUFFER_NONE,
           7,
           PLL_SCALE_BUFFER_NONE,
           0, params_indices, NULL);
-      free(params_indices);
     }
 
     /* test illegal alpha value */

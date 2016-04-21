@@ -77,6 +77,7 @@ int main(int argc, char * argv[])
 
   pll_partition_t * partition;
   pll_operation_t * operations;
+  unsigned int params_indices[N_RATE_CATS] = {0,0,0,0};
 
   unsigned int attributes = get_attributes(argc, argv);
 
@@ -172,7 +173,11 @@ int main(int argc, char * argv[])
     printf ("Updating prob matrices...\n");
 
    // pll_update_invariant_sites_proportion(partition, 0.17);
-    pll_update_prob_matrices(partition, 0, matrix_indices, branch_lengths, 4);
+    pll_update_prob_matrices(partition,
+                             params_indices,
+                             matrix_indices,
+                             branch_lengths,
+                             4);
     for (i = 0; i < 4; ++i)
     {
       printf ("P-matrix for branch length %f\n", branch_lengths[i]);
@@ -189,7 +194,6 @@ int main(int argc, char * argv[])
     printf ("CLV 7: ");
     pll_show_clv(partition,7,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
 
-    unsigned int params_indices[N_RATE_CATS] = {0,0,0,0};
     double logl = pll_compute_edge_loglikelihood(partition,
                                                  6,
                                                  PLL_SCALE_BUFFER_NONE,

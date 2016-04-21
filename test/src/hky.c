@@ -38,6 +38,7 @@ int main(int argc, char * argv[])
 
   unsigned int n_sites     = 20;
   unsigned int n_tips      = 5;
+  unsigned int params_indices[N_CAT_GAMMA] = {0,0,0,0};
 
   pll_partition_t * partition;
   pll_operation_t * operations;
@@ -104,7 +105,12 @@ int main(int argc, char * argv[])
     subst_params[1] = subst_params[4] = titv[i];
     pll_set_subst_params(partition, 0, subst_params);
 
-    pll_update_prob_matrices(partition, 0, matrix_indices, branch_lengths, 4);
+    pll_update_prob_matrices(partition,
+                             params_indices,
+                             matrix_indices,
+                             branch_lengths,
+                             4);
+
     pll_update_partials(partition, operations, 3);
 
     printf("\n\n TEST ti/tv = %.4f\n\n", titv[i]);
@@ -133,7 +139,6 @@ int main(int argc, char * argv[])
     printf ("[%d] CLV 7: ", i);
     pll_show_clv(partition,7,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
 
-    unsigned int params_indices[N_CAT_GAMMA] = {0,0,0,0};
     lk_scores[i] = pll_compute_edge_loglikelihood(partition,
                                                   6,
                                                   PLL_SCALE_BUFFER_NONE,

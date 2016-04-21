@@ -113,6 +113,7 @@ static int smalltest (unsigned int attributes)
   pll_partition_t * partition;
   pll_operation_t * operations;
   double rate_cats[4];
+  unsigned int params_indices[N_RATE_CATS] = {0,0,0,0};
 
   unsigned int num_sites = 4 * N_SITES;
 
@@ -176,10 +177,9 @@ static int smalltest (unsigned int attributes)
   pll_set_subst_params (partition, 0, subst_params);
   pll_set_frequencies (partition, 0, frequencies);
   pll_set_category_rates (partition, rate_cats);
-  pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths, 4);
+  pll_update_prob_matrices (partition, params_indices, matrix_indices, branch_lengths, 4);
   pll_update_partials (partition, operations, 3);
 
-  unsigned int params_indices[N_RATE_CATS] = {0,0,0,0};
   printf ("logL: %17.6f\n", 
   pll_compute_edge_loglikelihood(partition,
                                  6,

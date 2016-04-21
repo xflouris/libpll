@@ -114,6 +114,7 @@ int main(int argc, char * argv[])
   pll_operation_t * operations;
   pll_utree_t ** travbuffer;
   pll_utree_t ** inner_nodes_list;
+  unsigned int params_indices[N_RATE_CATS] = {0,0,0,0};
 
   /* parse the unrooted binary tree in newick format, and store the number
      of tip nodes in tip_nodes_count */
@@ -342,7 +343,7 @@ int main(int argc, char * argv[])
        length branch_lengths[i] and can be refered to with index 
        matrix_indices[i] */
     pll_update_prob_matrices(partition, 
-                             0, 
+                             params_indices, 
                              matrix_indices, 
                              branch_lengths, 
                              matrix_count);
@@ -355,7 +356,6 @@ int main(int argc, char * argv[])
        the CLV indices at the two end-point of the branch, the probability matrix
        index for the concrete branch length, and the index of the model of whose
        frequency vector is to be used */
-    unsigned int params_indices[N_RATE_CATS] = {0,0,0,0};
     double logl = pll_compute_edge_loglikelihood(partition,
                                                  node->clv_index,
                                                  node->scaler_index,

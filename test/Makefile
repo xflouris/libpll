@@ -19,11 +19,12 @@
 
 CC = gcc
 CFLAGS = -O3 -Wall 
-CLIBS = -lpll -lpll_optimize -lm
+CLIBS = -lpll -lm #-lpll_optimize
+
+CFILES_INVALID = src/blopt-minimal.c \
+                 src/blopt-5states.c
 
 CFILES = src/alpha-cats.c \
-         src/blopt-minimal.c \
-         src/blopt-5states.c \
          src/fasta-dna.c \
          src/fasta-prot.c \
          src/rooted.c \
