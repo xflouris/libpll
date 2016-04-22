@@ -70,7 +70,7 @@ PLL_EXPORT void pll_utree_destroy(pll_utree_t * root)
 
 static void pll_utree_error(pll_utree_t * tree, const char * s) 
 {
-  fprintf(stderr, "%s.\n", s);
+  snprintf(pll_errmsg, 200, "%s.\n", s);
 }
 
 %}
@@ -210,7 +210,8 @@ static void recursive_assign_indices(pll_utree_t * node,
   *inner_scaler_index = *inner_scaler_index + 1;
 }
 
-static void assign_indices(pll_utree_t * node, unsigned int tip_count)
+PLL_EXPORT void pll_utree_reset_template_indices(pll_utree_t * node,
+                                                 unsigned int tip_count)
 {
   unsigned int tip_clv_index = 0;
   unsigned int inner_clv_index = tip_count;
@@ -278,7 +279,7 @@ PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
   *tip_count = tip_cnt;
   
   /* initialize clv and scaler indices */
-  assign_indices(tree, tip_cnt);
+  pll_utree_reset_template_indices(tree, tip_cnt);
 
   return tree;
 }

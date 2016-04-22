@@ -38,6 +38,19 @@ static void print_node_info(pll_utree_t * tree, int options)
   printf("\n");
 }
 
+static char * xstrdup(const char * s)
+{
+  size_t len = strlen(s);
+  char * p = (char *)malloc(len+1);
+  if (!p)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Memory allocation failed");
+    return NULL;
+  }
+  return strcpy(p,s);
+}
+
 static void print_tree_recurse(pll_utree_t * tree, 
                                int indend_level, 
                                int * active_node_order,
@@ -190,12 +203,11 @@ PLL_EXPORT char * pll_utree_export_newick(pll_utree_t * root)
   }
 
   size_alloced = asprintf(&newick,
-                          "(%s,%s,%s)%s:%f;",
+                          "(%s,%s,%s)%s:0.0;",
                           subtree1,
                           subtree2,
                           subtree3,
-                          root->label ? root->label : "",
-                          root->length);
+                          root->label ? root->label : "");
   free(subtree1);
   free(subtree2);
   free(subtree3);
@@ -468,4 +480,73 @@ PLL_EXPORT pll_utree_t * pll_utree_clone(pll_utree_t * root)
   }
 
   return new_tree;
+}
+
+static pll_utree_t * rtree_unroot(pll_rtree_t * root, pll_utree_t * back)
+{
+  pll_utree_t * uroot = (void *)calloc(1,sizeof(pll_utree_t));
+  uroot->back = back;
+  uroot->label = (root->label) ? xstrdup(root->label) : NULL;
+  uroot->length = uroot->back->length;
+
+  if (!root->left)
+  {
+    uroot->next = NULL;
+    return uroot;
+  }
+
+  uroot->next = (void *)calloc(1,sizeof(pll_utree_t));
+  uroot->next->next = (void *)calloc(1,sizeof(pll_utree_t));
+  uroot->next->next->next = uroot;
+
+  uroot->next->length = root->left->length;
+  uroot->next->back = rtree_unroot(root->left, uroot->next);
+  uroot->next->next->length = root->right->length;
+  uroot->next->next->back = rtree_unroot(root->right, uroot->next->next);
+
+  return uroot;
+}
+
+PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * root)
+{
+  if (!root->left->left && !root->right->left)
+  {
+    pll_errno = PLL_ERROR_TREE_CONVERSION;
+    snprintf(pll_errmsg,
+             200,
+             "Tree requires at least three tips to be converted to unrooted");
+    return NULL;
+  }
+
+  pll_rtree_t * new_root;
+
+  pll_utree_t * uroot = (void *)calloc(1,sizeof(pll_utree_t));
+  uroot->next = (void *)calloc(1,sizeof(pll_utree_t));
+  uroot->next->next = (void *)calloc(1,sizeof(pll_utree_t));
+  uroot->next->next->next = uroot;
+  uroot->length = root->left->length + root->right->length;
+
+  /* get the first root child that has descendants and make  it the new root */
+  if (root->left->left)
+  {
+    new_root = root->left;
+    uroot->back = rtree_unroot(root->right,uroot);
+  }
+  else
+  {
+    new_root = root->right;
+    uroot->back = rtree_unroot(root->left,uroot);
+  }
+
+  uroot->label = (new_root->label) ? xstrdup(new_root->label) : NULL;
+
+  uroot->next->label = uroot->label;
+  uroot->next->length = new_root->left->length;
+  uroot->next->back = rtree_unroot(new_root->left, uroot->next);
+
+  uroot->next->next->label = uroot->label;
+  uroot->next->next->length = new_root->right->length;
+  uroot->next->next->back = rtree_unroot(new_root->right, uroot->next->next);
+
+  return uroot;
 }
