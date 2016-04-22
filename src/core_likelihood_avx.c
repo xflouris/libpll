@@ -825,6 +825,9 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
 
       }
 
+      /* reset pointers to point to the start of the next p-matrix, as the
+         vectorization assumes a square states_padded * states_padded matrix,
+         even though the real matrix is states * states_padded */
       lmat -= displacement;
       rmat -= displacement;
 

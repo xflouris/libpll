@@ -71,8 +71,10 @@ static void dealloc_partition_data(pll_partition_t * partition)
   free(partition->clv);
 
   if (partition->pmatrix)
-    for (i = 0; i < partition->prob_matrices; ++i)
-      pll_aligned_free(partition->pmatrix[i]);
+  {
+    //for (i = 0; i < partition->prob_matrices; ++i)
+      pll_aligned_free(partition->pmatrix[0]);
+  }
   free(partition->pmatrix);
 
   if (partition->subst_params)
@@ -372,6 +374,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
       dealloc_partition_data(partition);
       return PLL_FAILURE;
     }
+    /* zero-out CLV vectors to avoid valgrind warnings when using odd number of
+       states with vectorized code */
     memset(partition->clv[i],
            0,
            partition->sites*states_padded*rate_cats*sizeof(double));
@@ -386,23 +390,29 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     return PLL_FAILURE;
   }
 
+  /* allocate transition probability matrices in contiguous space, in order
+     to save the 'displacement' amount of memory per matrix, which is
+     required for updating partials when the number of states is not a multiple
+     of states_padded. */
   size_t displacement = (states_padded - states) * (states_padded) * sizeof(double);
-  for (i = 0; i < partition->prob_matrices; ++i)
+  partition->pmatrix[0] = pll_aligned_alloc(partition->prob_matrices *
+                                            states * states_padded * rate_cats *
+                                            sizeof(double) + displacement,
+                                            partition->alignment);
+  if (!partition->pmatrix[0])
   {
-    partition->pmatrix[i] = pll_aligned_alloc(states * states_padded *
-                                              rate_cats * sizeof(double) +
-                                              displacement,
-                                              partition->alignment);
-    if (!partition->pmatrix[i])
-    {
-      dealloc_partition_data(partition);
-      return PLL_FAILURE;
-    }
-    /* TODO: don't forget to add code for SSE/AVX */
-    memset(partition->pmatrix[i],
-           0,
-           states*states_padded*rate_cats*sizeof(double) + displacement);
+    dealloc_partition_data(partition);
+    return PLL_FAILURE;
   }
+  for (i = 1; i < partition->prob_matrices; ++i)
+    partition->pmatrix[i] = partition->pmatrix[i-1] +
+                            states * states_padded * rate_cats;
+
+  /* zero-out p-matrices to avoid valgrind warnings when using odd number of
+     states with vectorized code */
+  memset(partition->pmatrix[0],0,partition->prob_matrices * states *
+                                 states_padded * rate_cats * sizeof(double) +
+                                 displacement);
 
   /* eigenvecs */
   partition->eigenvecs = (double **)calloc(partition->rate_matrices,
