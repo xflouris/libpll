@@ -41,7 +41,7 @@ PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root)
 
 static void pll_rtree_error(pll_rtree_t * tree, const char * s) 
 {
-  fprintf(stderr, "%s.\n", s);
+  snprintf(pll_errmsg, 200, "%s.\n", s);
 }
 
 %}

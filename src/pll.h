@@ -92,6 +92,7 @@
 #define PLL_ERROR_MULTIPLE_ARCH           10
 #define PLL_ERROR_INIT_CHARMAP            11
 #define PLL_ERROR_PHYLIP_SYNTAX           12
+#define PLL_ERROR_TREE_CONVERSION         13
 
 #define PLL_ERROR_ALPHA                  101
 #define PLL_ERROR_PINV                   102
@@ -441,6 +442,9 @@ PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
 
 PLL_EXPORT void pll_utree_destroy(pll_utree_t * root);
 
+PLL_EXPORT void pll_utree_reset_template_indices(pll_utree_t * node,
+                                                 unsigned int tip_count);
+
 /* functions in utree.c */
 
 PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options);
@@ -469,6 +473,7 @@ PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
 PLL_EXPORT int pll_utree_check_integrity(pll_utree_t * root);
 
 PLL_EXPORT pll_utree_t * pll_utree_clone(pll_utree_t * root);
+PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * root);
 
 /* functions in pll_phylip.y */
 

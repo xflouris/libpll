@@ -24,39 +24,21 @@ PROFILING=-g
 # Compiler warnings
 WARN=-Wall -Wsign-compare
 
-ifndef CC
 CC = gcc
-endif
-CFLAGS = -DHAVE_AVX -D_GNU_SOURCE -fPIC -std=c99 -g -msse3 -O3 $(WARN)
-AVXFLAGS = -mavx
-LINKFLAGS=$(PROFILING)
-LIBS=-lm
-
-BISON = bison
-FLEX = flex
-
-PROG=libpll.so
+CFLAGS = -Wall -g -O3 $(WARN)
+LINKFLAGS = -L. $(PROFILING)
+LIBS=-lpll -lm
+PROG=load-utree
 
 all: $(PROG)
 
-OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o \
-     parse_utree.o parse_rtree.o lex_utree.o lex_rtree.o utree.o rtree.o \
-     core_likelihood.o pll_tree.o compress.o parse_phylip.o \
-     lex_phylip.o core_likelihood_avx.o core_pmatrix.o
+OBJS=load-utree.o
 
 $(PROG): $(OBJS)
-	$(CC) -shared -Wl,-soname,$@ -o $@ $+
+	$(CC) $(LINKFLAGS) -o $@ $+ $(LIBS) $(LDFLAGS)
 
-%_avx.o: %_avx.c
-	$(CC) $(CFLAGS) $(AVXFLAGS) -c -o $@ $<
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-parse_%.c: parse_%.y
-	$(BISON) -p pll_$*_ -d -o $@ $<
-
-lex_%.c: lex_%.l
-	$(FLEX) -P pll_$*_ -o $@ $<
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f *~ $(OBJS) gmon.out $(PROG) parse_rtree.h parse_utree.h parse_phylip.h parse_rtree.c parse_utree.c parse_phylip.c
+	rm -f *~ $(OBJS) gmon.out $(PROG)
