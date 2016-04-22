@@ -734,7 +734,6 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
   double lnl = 0.0,
      new_lnl = 0.0;
   pll_utree_t *tr_p, *tr_q, *tr_z;
-  unsigned int i;
 
   DBG("Optimizing branch %3d - %3d (%.6f) [%.4f]\n",
       tree->clv_index, tree->back->clv_index, tree->length, prev_lnl);
@@ -807,13 +806,10 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
     tr_p->back->length = tr_p->length;
     if (keep_update)
     {
-      for (i=0; i<params->partition->rate_cats; ++i)
-      {
-        pll_update_prob_matrices(params->partition,
-                                 params->params_indices[i],
-                                 &(params->tree->pmatrix_index),
-                                 &(tr_p->length),1);
-      }
+       pll_update_prob_matrices(params->partition,
+                                params->params_indices,
+                                &(params->tree->pmatrix_index),
+                                &(tr_p->length),1);
 #ifndef NDEBUG
     {
       lnl = pll_compute_edge_loglikelihood (
@@ -834,13 +830,10 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
     /* revert */
     if (keep_update)
     {
-       for (i=0; i<params->partition->rate_cats; ++i)
-       {
-         pll_update_prob_matrices(params->partition,
-                                  params->params_indices[i],
-                                  &tr_p->pmatrix_index,
-                                  &tr_p->length, 1);
-       }
+       pll_update_prob_matrices(params->partition,
+                                params->params_indices,
+                                &tr_p->pmatrix_index,
+                                &tr_p->length, 1);
     }
 #ifndef NDEBUG
     {
