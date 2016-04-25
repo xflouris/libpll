@@ -162,6 +162,7 @@ int main(int argc, char * argv[])
 
   printf("Original sequence (alignment) length : %d\n", msa->length);
   unsigned int * weight = pll_compress_site_patterns(msa->sequence,
+                                                     pll_map_nt,
                                                      tip_nodes_count,
                                                      &(msa->length));
   printf("Number of unique site patterns: %d\n", msa->length);

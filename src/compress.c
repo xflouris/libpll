@@ -80,7 +80,61 @@ static void ssort1(char ** x, int n, int depth)
   r = d - c; ssort1(x+n-r,r,depth);
 }
 
+static void remap_range(const unsigned int * map,
+                        unsigned char * charmap)
+{
+  unsigned int oldmap[PLL_ASCII_SIZE];
+  unsigned int i,j;
+  unsigned char k = 1;
+
+  memcpy(oldmap, map, PLL_ASCII_SIZE * sizeof(unsigned int));
+
+  for (i = 0; i < PLL_ASCII_SIZE; ++i)
+    if (oldmap[i])
+    {
+      charmap[i] = k;
+
+      for (j = i+1; j < PLL_ASCII_SIZE; ++j)
+        if (oldmap[i] == oldmap[j])
+        {
+          charmap[j] = k;
+          oldmap[j] = 0;
+        }
+
+      ++k;
+    }
+}
+
+static unsigned int findmax(const unsigned int * map)
+{
+  int i;
+  unsigned int max = 0;
+
+  for (i = 0; i < PLL_ASCII_SIZE; ++i)
+    if (map[i] > max)
+      max = map[i];
+
+  return max;
+}
+
+static void encode(char ** sequence, const unsigned char * map, int count)
+{
+  int i;
+  char * p;
+
+  for (i = 0; i < count; ++i)
+  {
+    p = sequence[i];
+    while (*p)
+    {
+      *p = map[(int)(*p)];
+      ++p;
+    }
+  }
+}
+
 PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
+                                                     const unsigned int * map,
                                                      int count,
                                                      int * length)
 {
@@ -89,8 +143,37 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
   char ** column;
   unsigned int * weight;
 
+  unsigned char charmap[PLL_ASCII_SIZE];
+  unsigned char inv_charmap[PLL_ASCII_SIZE];
+
   /* check that at least one sequence is given */
   if (!count) return NULL;
+
+  /* a map must be given */
+  if (!map) return NULL;
+
+  /* a zero can never be used as a state */
+  if (map[0]) return NULL;
+
+  /* if map states are out of the BYTE range, remap */
+  if (findmax(map) >= PLL_ASCII_SIZE)
+  {
+    remap_range(map,charmap);
+  }
+  else
+  {
+    for (i = 0; i < PLL_ASCII_SIZE; ++i)
+      charmap[i] = (unsigned char)(map[i]);
+  }
+
+  /* create inverse charmap to decode states back to characters when
+     compression is finished */
+  for (i = 0; i < PLL_ASCII_SIZE; ++i)
+    if (map[i])
+      inv_charmap[map[i]] = i;
+
+  /* encode sequences using charmap */
+  encode(sequence,charmap,count);
 
   /* allocate memory for columns */
   column = (char **)malloc((size_t)(*length)*sizeof(char *));
@@ -179,26 +262,24 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
   /* adjust weight vector size to compressed length */
   unsigned int * mem = (unsigned int *)malloc((size_t)compressed_length *
                                               sizeof(unsigned int));
-  if (!mem)
+  if (mem)
   {
-    pll_errno = PLL_ERROR_MEM_ALLOC;
-    snprintf(pll_errmsg, 200,
-             "Cannot allocate space for storing compressed site weights.");
+    /* copy weights */
+    for (i = 0; i < compressed_length; ++i)
+      mem[i] = weight[i];
+
+    /* free and re-point */
     free(weight);
-    return NULL;
+    weight = mem;
   }
 
-  /* copy weights */
-  for (i = 0; i < compressed_length; ++i)
-    mem[i] = weight[i];
-
-  /* free and re-point */
-  free(weight);
-  weight = mem;
 
   /* update length */
   *length = compressed_length;
   
+  /* decode sequences using inv_charmap */
+  encode(sequence,inv_charmap,count);
+
   return weight;
 }
 
