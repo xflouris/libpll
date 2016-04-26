@@ -554,7 +554,7 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
 static int sumtable_tipinner(pll_partition_t * partition,
                                 unsigned int parent_clv_index,
                                 unsigned int child_clv_index,
-                                unsigned int * params_indices,
+                                const unsigned int * params_indices,
                                 double *sumtable)
 {
   unsigned int i, retval;
@@ -608,7 +608,7 @@ static int sumtable_tipinner(pll_partition_t * partition,
 static int sumtable_innerinner(pll_partition_t * partition,
                                 unsigned int parent_clv_index,
                                 unsigned int child_clv_index,
-                                unsigned int * params_indices,
+                                const unsigned int * params_indices,
                                 double *sumtable)
 {
   unsigned int i, retval;
@@ -652,7 +652,7 @@ static int sumtable_innerinner(pll_partition_t * partition,
 PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
                                       unsigned int parent_clv_index,
                                       unsigned int child_clv_index,
-                                      unsigned int * params_indices,
+                                      const unsigned int * params_indices,
                                       double *sumtable)
 {
   int retval;
@@ -709,8 +709,8 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
                                                  int parent_scaler_index,
                                                  int child_scaler_index,
                                                  double branch_length,
-                                                 unsigned int * params_indices,
-                                                 double * sumtable,
+                                                 const unsigned int * params_indices,
+                                                 const double * sumtable,
                                                  double * d_f,
                                                  double * dd_f)
 {

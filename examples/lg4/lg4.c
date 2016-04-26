@@ -391,6 +391,23 @@ int main(int argc, char * argv[])
       printf("%.6f ", partition->rates[i]);
   printf("\nLog-L (LG4X): %f\n", logl);
 
+  logl = pll_compute_edge_loglikelihood(partition,
+                                        tree->back->clv_index,
+                                        tree->back->scaler_index,
+                                        tree->clv_index,
+                                        tree->scaler_index,
+                                        tree->pmatrix_index,
+                                        params_indices,
+                                        NULL);
+
+  printf("\nWeights: ");
+  for (i = 0; i < partition->rate_cats; i++)
+    printf("%.6f ", partition->rate_weights[i]);
+  printf("\nRates:   ");
+    for (i = 0; i < partition->rate_cats; i++)
+      printf("%.6f ", partition->rates[i]);
+  printf("\nLog-L (LG4X): %f\n", logl);
+
   /* destroy all structures allocated for the concrete PLL partition instance */
   pll_partition_destroy(partition);
 

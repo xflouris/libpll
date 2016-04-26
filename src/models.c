@@ -25,7 +25,7 @@ static int mytqli(double *d, double *e, const unsigned int n, double **z)
 {
   unsigned int     m, l, iter, i, k;
   double  s, r, p, g, f, dd, c, b;
-   
+
   for (i = 2; i <= n; i++)
     e[i - 2] = e[i - 1];
 
@@ -45,7 +45,7 @@ static int mytqli(double *d, double *e, const unsigned int n, double **z)
           if (m != l)
            {
              assert(iter < 30);
-             
+
              g = (d[l] - d[l - 1]) / (2.0 * e[l - 1]);
              r = sqrt((g * g) + 1.0);
              g = d[m - 1] - d[l - 1] + e[l - 1] / (g + ((g < 0)?-fabs(r):fabs(r)));/*MYSIGN(r, g));*/
@@ -62,7 +62,7 @@ static int mytqli(double *d, double *e, const unsigned int n, double **z)
                      r = sqrt((c * c) + 1.0);
                      e[i] = f * r;
                      c *= (s = 1.0 / r);
-                   } 
+                   }
                  else
                    {
                      s = f / g;
@@ -87,12 +87,12 @@ static int mytqli(double *d, double *e, const unsigned int n, double **z)
              e[l - 1] = g;
              e[m - 1] = 0.0;
            }
-        } 
+        }
       while (m != l);
     }
 
-    
- 
+
+
     return (1);
  }
 
@@ -100,14 +100,14 @@ static int mytqli(double *d, double *e, const unsigned int n, double **z)
 static void mytred2(double **a, const unsigned int n, double *d, double *e)
 {
   unsigned int     l, k, j, i;
-  double  scale, hh, h, g, f; 
+  double  scale, hh, h, g, f;
 
   for (i = n; i > 1; i--)
     {
       l = i - 1;
       h = 0.0;
       scale = 0.0;
-      
+
       if (l > 1)
         {
           for (k = 1; k <= l; k++)
@@ -148,14 +148,14 @@ static void mytred2(double **a, const unsigned int n, double *d, double *e)
                     a[k - 1][j - 1] -= (f * e[k - 1] + g * a[k - 1][i - 1]);
                 }
             }
-        } 
+        }
       else
         e[i - 1] = a[l - 1][i - 1];
       d[i - 1] = h;
     }
   d[0] = 0.0;
   e[0] = 0.0;
-  
+
   for (i = 1; i <= n; i++)
     {
       l = i - 1;
@@ -179,8 +179,8 @@ static void mytred2(double **a, const unsigned int n, double *d, double *e)
 
 /* TODO: Add code for SSE/AVX. Perhaps allocate qmatrix in one chunk to avoid the
 complex checking when to dealloc */
-static double ** create_ratematrix(double * params, 
-                                   double * frequencies, 
+static double ** create_ratematrix(double * params,
+                                   double * frequencies,
                                    unsigned int states)
 {
   unsigned int i,j,k,success;
@@ -199,7 +199,7 @@ static double ** create_ratematrix(double * params,
 
   /* allocate qmatrix */
   qmatrix = (double **)malloc(states*sizeof(double *));
-  if (!qmatrix) 
+  if (!qmatrix)
   {
     free(params_normalized);
     return NULL;
@@ -237,12 +237,12 @@ static double ** create_ratematrix(double * params,
 
   double mean = 0;
   for (i = 0; i < states; ++i) mean += frequencies[i] * (-qmatrix[i][i]);
-  for (i = 0; i < states; ++i) 
-    for (j = 0; j < states; ++j) 
+  for (i = 0; i < states; ++i)
+    for (j = 0; j < states; ++j)
       qmatrix[i][j] /= mean;
-    
+
   free(params_normalized);
-  
+
   return qmatrix;
 }
 
@@ -302,10 +302,10 @@ PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
   free(a);
 }
 
-PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
-                                         unsigned int * params_indices,
-                                         unsigned int * matrix_indices, 
-                                         double * branch_lengths, 
+PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
+                                         const unsigned int * params_indices,
+                                         const unsigned int * matrix_indices,
+                                         const double * branch_lengths,
                                          unsigned int count)
 {
   unsigned int i,n,j,k,m;
@@ -386,12 +386,12 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
   free(temp);
 }
 
-PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
+PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition,
                                     unsigned int freqs_index,
                                     const double * frequencies)
 {
   memcpy(partition->frequencies[freqs_index],
-         frequencies, 
+         frequencies,
          partition->states*sizeof(double));
   partition->eigen_decomp_valid[freqs_index] = 0;
 }
@@ -424,12 +424,12 @@ PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition,
 
 PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition,
                                                      unsigned int params_index,
-                                                     double prop_invar) 
+                                                     double prop_invar)
 {
-  if (prop_invar < 0 || prop_invar >= 1) 
+  if (prop_invar < 0 || prop_invar >= 1)
   {
     pll_errno = PLL_ERROR_PINV;
-    snprintf(pll_errmsg, 200, 
+    snprintf(pll_errmsg, 200,
         "Invalid proportion of invariant sites (%f)", prop_invar);
     return PLL_FAILURE;
   }
@@ -447,7 +447,7 @@ PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition
   return PLL_SUCCESS;
 }
 
-PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition) 
+PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
 {
   unsigned int i,j,k;
   double * tipclv;
@@ -465,7 +465,7 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
     gap_state |= 1;
   }
 
-  if (!partition->invariant) 
+  if (!partition->invariant)
   {
     partition->invariant = (int *)malloc(sites * sizeof(int));
   }
@@ -515,7 +515,7 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
     }
   }
 
-  /* if all basecalls at current site are the same and not degenerate set the 
+  /* if all basecalls at current site are the same and not degenerate set the
      index in invariant to the frequency index of the basecall, otherwise -1 */
   for (i = 0; i < partition->sites; ++i)
   {

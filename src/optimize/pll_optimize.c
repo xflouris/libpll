@@ -49,8 +49,9 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
   pll_partition_t * partition = params->lk_params.partition;
   pll_operation_t * operations = params->lk_params.operations;
   double * branch_lengths = params->lk_params.branch_lengths;
-  unsigned int * matrix_indices = params->lk_params.matrix_indices;
+  const unsigned int * matrix_indices = params->lk_params.matrix_indices;
   unsigned int params_index = params->params_index;
+  const unsigned int * params_indices = params->lk_params.params_indices;
   unsigned int n_branches, n_inner_nodes;
   double * xptr = x;
 
@@ -159,11 +160,15 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
   if (params->which_parameters & PLL_PARAMETER_PINV)
   {
     assert(!is_nan(xptr[0]));
-    if (!pll_update_invariant_sites_proportion (partition,
-                                                params_index,
-                                                xptr[0]))
+    unsigned int i;
+    for (i = 0; i < (partition->rate_cats); ++i)
     {
-      return PLL_FAILURE;
+      if (!pll_update_invariant_sites_proportion (partition,
+                                                  params_indices[i],
+                                                  xptr[0]))
+      {
+        return PLL_FAILURE;
+      }
     }
     xptr++;
   }
@@ -204,11 +209,11 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
   if (params->which_parameters & PLL_PARAMETER_RATE_WEIGHTS)
   {
     unsigned int i;
-    unsigned int n_rate_cats = params->lk_params.partition->rate_cats;
+    unsigned int rate_cats = params->lk_params.partition->rate_cats;
     unsigned int cur_index;
     double sum_ratios = 1.0;
     double *weights;
-    if ((weights = (double *) malloc ((size_t) n_rate_cats * sizeof(double)))
+    if ((weights = (double *) malloc ((size_t) rate_cats * sizeof(double)))
         == NULL)
     {
       pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -217,13 +222,13 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
       return PLL_FAILURE;
     }
 
-    for (i = 0; i < (n_rate_cats - 1); ++i)
+    for (i = 0; i < (rate_cats - 1); ++i)
     {
       assert(!is_nan (xptr[i]));
       sum_ratios += xptr[i];
     }
     cur_index = 0;
-    for (i = 0; i < (n_rate_cats); ++i)
+    for (i = 0; i < (rate_cats); ++i)
     {
       if (i != params->highest_freq_state)
       {
@@ -234,7 +239,7 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
     weights[params->highest_freq_state] = 1.0 / sum_ratios;
     pll_set_category_weights (partition, weights);
     free (weights);
-    xptr += (n_rate_cats - 1);
+    xptr += (rate_cats - 1);
   }
 
   /* update all branch lengths */
@@ -252,15 +257,18 @@ static int set_x_to_parameters(pll_optimize_options_t * params,
      /* assign branch length */
      *branch_lengths = *xptr;
      pll_update_prob_matrices (partition,
-                         0,
-                         &params->lk_params.where.unrooted_t.edge_pmatrix_index,
-                         xptr,
-                         1);
+                               params_indices,
+                               &params->lk_params.where.unrooted_t.edge_pmatrix_index,
+                               xptr,
+                               1);
      xptr++;
    }
   else
    {
-       pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths,
+       pll_update_prob_matrices (partition,
+                                 params_indices,
+                                 matrix_indices,
+                                 branch_lengths,
                                  n_branches);
 
        pll_update_partials (partition, operations, n_inner_nodes);
@@ -405,9 +413,10 @@ PLL_EXPORT double pll_optimize_parameters_onedim(
                                    &f2x,
                                    (void *) params,
                                    &brent_target);
-  score = brent_target(params, xres);
+  set_x_to_parameters(params, &xres);
+
   return score;
-} /* pll_optimize_parameters_multidim */
+} /* pll_optimize_parameters_onedim */
 
 /******************************************************************************/
 /* L-BFGS-B OPTIMIZATION */
@@ -478,7 +487,7 @@ PLL_EXPORT double pll_optimize_parameters_multidim (
       }
       else
       {
-        n_subst_free_params = n_subst_rates;
+        n_subst_free_params = n_subst_rates - 1;
       }
 
       int current_rate = 0;
@@ -588,36 +597,35 @@ PLL_EXPORT double pll_optimize_parameters_multidim (
 
       if (params->which_parameters & PLL_PARAMETER_RATE_WEIGHTS)
       {
-        unsigned int n_rates = params->lk_params.partition->rate_cats;
-              unsigned int n_weights_free_params = n_rates - 1;
-              unsigned int cur_index;
+      unsigned int rate_cats = params->lk_params.partition->rate_cats;
+      unsigned int n_weights_free_params = rate_cats - 1;
+      unsigned int cur_index;
 
-              double * rate_weights =
-                  params->lk_params.partition->rate_weights;
+      double * rate_weights = params->lk_params.partition->rate_weights;
 
-              params->highest_weight_state = n_rates - 1;
-              for (i = 1; i < n_rates; i++)
-                      if (rate_weights[i] > rate_weights[params->highest_weight_state])
-                        params->highest_weight_state = i;
+      params->highest_weight_state = rate_cats - 1;
+      for (i = 1; i < rate_cats; i++)
+        if (rate_weights[i] > rate_weights[params->highest_weight_state])
+          params->highest_weight_state = i;
 
-              cur_index = 0;
-              for (i = 0; i < n_rates; i++)
-              {
-                if (i != params->highest_weight_state)
-                {
-                  nbd_ptr[cur_index] = PLL_LBFGSB_BOUND_BOTH;
-                  x[check_n + cur_index] = rate_weights[i]
-                      / rate_weights[params->highest_weight_state];
-                  l_ptr[cur_index] = ul_ptr?(*(ul_ptr++)):PLL_OPT_MIN_RATE_WEIGHT;
-                  u_ptr[cur_index] = uu_ptr?(*(uu_ptr++)):PLL_OPT_MAX_RATE_WEIGHT;
-                  cur_index++;
-                }
-              }
-              check_n += n_weights_free_params;
-              nbd_ptr += n_weights_free_params;
-              l_ptr += n_weights_free_params;
-              u_ptr += n_weights_free_params;
+      cur_index = 0;
+      for (i = 0; i < rate_cats; i++)
+      {
+        if (i != params->highest_weight_state)
+        {
+          nbd_ptr[cur_index] = PLL_LBFGSB_BOUND_BOTH;
+          x[check_n + cur_index] = rate_weights[i]
+              / rate_weights[params->highest_weight_state];
+          l_ptr[cur_index] = ul_ptr ? (*(ul_ptr++)) : PLL_OPT_MIN_RATE_WEIGHT;
+          u_ptr[cur_index] = uu_ptr ? (*(uu_ptr++)) : PLL_OPT_MAX_RATE_WEIGHT;
+          cur_index++;
+        }
       }
+      check_n += n_weights_free_params;
+      nbd_ptr += n_weights_free_params;
+      l_ptr += n_weights_free_params;
+      u_ptr += n_weights_free_params;
+    }
 
     /* topology (UNIMPLEMENTED) */
     if (params->which_parameters & PLL_PARAMETER_TOPOLOGY)
@@ -687,10 +695,10 @@ PLL_EXPORT double pll_optimize_parameters_multidim (
 /******************************************************************************/
 /* GENERIC */
 /******************************************************************************/
-static void update_op_scalers(pll_partition_t * partition,
-                              pll_utree_t * parent,
-                              pll_utree_t * right_child,
-                              pll_utree_t * left_child)
+static void update_partials_and_scalers(pll_partition_t * partition,
+                                        pll_utree_t * parent,
+                                        pll_utree_t * right_child,
+                                        pll_utree_t * left_child)
 {
   int i;
   pll_operation_t op;
@@ -801,7 +809,7 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
   if (new_lnl > lnl)
   {
     /* consolidate */
-    DBG("Consolidate branch %.14f  to %.14f [%f]\n", tr_p->length, params->lk_params.branch_lengths[0], new_lnl);
+    DBG("Consolidate branch %.14f  to %.14f [%f]\n", tr_p->length, xres, new_lnl);
     tr_p->length = xres;
     tr_p->back->length = tr_p->length;
     if (keep_update)
@@ -859,7 +867,7 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
      * Scaler is updated by subtracting Q->back and adding P->back
      */
 
-    update_op_scalers(params->partition,
+    update_partials_and_scalers(params->partition,
                       tr_q,
                       tr_p,
                       tr_z);
@@ -875,7 +883,7 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
      * Scaler is updated by subtracting Z->back and adding Q->back
      */
 
-    update_op_scalers(params->partition,
+    update_partials_and_scalers(params->partition,
                       tr_z,
                       tr_q,
                       tr_p);
@@ -889,7 +897,7 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
      * Scaler is updated by subtracting P->back and adding Z->back
      */
 
-    update_op_scalers(params->partition,
+    update_partials_and_scalers(params->partition,
                       tr_p,
                       tr_z,
                       tr_q);
@@ -901,7 +909,7 @@ static double recomp_iterative (pll_newton_tree_params_t * params,
 PLL_EXPORT double pll_optimize_branch_lengths_local (
                                               pll_partition_t * partition,
                                               pll_utree_t * tree,
-                                              unsigned int * params_indices,
+                                              const unsigned int * params_indices,
                                               double tolerance,
                                               int smoothings,
                                               int radius,
@@ -1018,7 +1026,7 @@ PLL_EXPORT double pll_optimize_branch_lengths_local (
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                               pll_partition_t * partition,
                                               pll_utree_t * tree,
-                                              unsigned int * params_indices,
+                                              const unsigned int * params_indices,
                                               double tolerance,
                                               int smoothings,
                                               int keep_update)
@@ -1044,7 +1052,7 @@ PLL_EXPORT double pll_derivative_func(void * parameters,
       params->lk_params.where.unrooted_t.parent_scaler_index,
       params->lk_params.where.unrooted_t.child_scaler_index,
       proposal,
-      params->params_indices,
+      params->lk_params.params_indices,
       params->sumtable,
       df, ddf);
   return score;

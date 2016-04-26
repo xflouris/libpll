@@ -18,7 +18,7 @@
 #    Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 
 CC = gcc
-CFLAGS = -O3 -Wall 
+CFLAGS = -g -O3 -Wall 
 CLIBS = -lpll -lm #-lpll_optimize
 
 CFILES_INVALID = src/blopt-minimal.c \
