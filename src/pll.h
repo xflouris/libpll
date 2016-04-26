@@ -754,8 +754,10 @@ PLL_EXPORT void pll_core_update_pmatrix(double * pmatrix,
 /* functions in compress.c */
 
 PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
+                                                     const unsigned int * map,
                                                      int count,
                                                      int * length);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
