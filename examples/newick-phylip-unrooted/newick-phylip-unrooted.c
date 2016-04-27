@@ -162,6 +162,7 @@ int main(int argc, char * argv[])
 
   printf("Original sequence (alignment) length : %d\n", msa->length);
   unsigned int * weight = pll_compress_site_patterns(msa->sequence,
+                                                     pll_map_nt,
                                                      tip_nodes_count,
                                                      &(msa->length));
   printf("Number of unique site patterns: %d\n", msa->length);
@@ -185,7 +186,6 @@ int main(int argc, char * argv[])
                                    inner_nodes_count,
                                    STATES,
                                    (unsigned int)(msa->length),
-                                   0,
                                    1,
                                    branch_count,
                                    RATE_CATS,
@@ -208,10 +208,10 @@ int main(int argc, char * argv[])
   pll_compute_gamma_cats(1, 4, rate_cats);
 
   /* set frequencies at model with index 0 (we currently have only one model) */
-  pll_set_frequencies(partition, 0, 0, frequencies);
+  pll_set_frequencies(partition, 0, frequencies);
 
   /* set 6 substitution parameters at model with index 0 */
-  pll_set_subst_params(partition, 0, 0, subst_params);
+  pll_set_subst_params(partition, 0, subst_params);
 
   /* set rate categories */
   pll_set_category_rates(partition, rate_cats);
@@ -281,12 +281,15 @@ int main(int argc, char * argv[])
   printf ("Operations: %d\n", ops_count);
   printf ("Probability Matrices: %d\n", matrix_count);
 
-  /* update matrix_count probability matrices for model with index 0. The i-th
-     matrix (i ranges from 0 to matrix_count - 1) is generated using branch
-     length branch_lengths[i] and can be refered to with index
-     matrix_indices[i] */
+  /* update matrix_count probability matrices using the rate matrix with
+     index 0. The i-th matrix (i ranges from 0 to matrix_count - 1) is
+     generated using branch length branch_lengths[i] and rate matrix
+     (substitution rates + frequencies) params_indices[i], and can be refered
+     to with index matrix_indices[i] */
+  unsigned int params_indices[4] = {0,0,0,0};
+
   pll_update_prob_matrices(partition, 
-                           0, 
+                           params_indices, 
                            matrix_indices, 
                            branch_lengths, 
                            matrix_count);
@@ -304,8 +307,7 @@ int main(int argc, char * argv[])
 
   /* use the operations array to compute all ops_count inner CLVs. Operations
      will be carried out sequentially starting from operation 0 towrds ops_count-1 */
-  for (i = 0; i < 100; ++i)
-    pll_update_partials(partition, operations, ops_count);
+  pll_update_partials(partition, operations, ops_count);
 
   /* Uncomment to print on screen the CLVs at tip and inner nodes. From 0 to
      tip_nodes_count-1 are tip CLVs, the rest are inner node CLVs.
@@ -320,15 +322,17 @@ int main(int argc, char * argv[])
 
   /* compute the likelihood on an edge of the unrooted tree by specifying
      the CLV indices at the two end-point of the branch, the probability matrix
-     index for the concrete branch length, and the index of the model of whose
-     frequency vector is to be used */
+     index for the concrete branch length, and the array of indices of rate matrix
+     whose frequency vector is to be used for each rate category */
+
   double logl = pll_compute_edge_loglikelihood(partition,
                                                tree->clv_index,
                                                tree->scaler_index,
                                                tree->back->clv_index,
                                                tree->back->scaler_index,
                                                tree->pmatrix_index,
-                                               0);
+                                               params_indices,
+                                               NULL);
 
   printf("Log-L: %f\n", logl);
   

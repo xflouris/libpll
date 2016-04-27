@@ -22,11 +22,11 @@
 #include <string.h>
 #include <assert.h>
 
-#define ALPHA 0.5
-#define N_STATES 20
-#define N_CAT_GAMMA 4
+#define ALPHA        0.5
+#define N_STATES    20
+#define N_RATE_CATS  4
 
-#define N_TAXA 21
+#define N_TAXA   21
 #define N_SITES 112
 
 static int failtest(unsigned int attributes)
@@ -41,10 +41,9 @@ unsigned int i;
                                     4, /* clv buffers */
                                     N_STATES, /* states */
                                     N_SITES, /* sites */
-                                    0, /* mixture */
                                     1, /* different rate parameters */
                                     8, /* probability matrices */
-                                    N_CAT_GAMMA, /* rate categories */
+                                    N_RATE_CATS, /* rate categories */
                                     1, 
                                     pll_map_aa,
                                     attributes
@@ -85,10 +84,9 @@ static int proteintest(unsigned int attributes)
                                     4, /* clv buffers */
                                     N_STATES, /* states */
                                     N_SITES, /* sites */
-                                    0, /* mixture */
                                     1, /* different rate parameters */
                                     8, /* probability matrices */
-                                    N_CAT_GAMMA, /* rate categories */
+                                    N_RATE_CATS, /* rate categories */
                                     1,
                                     pll_map_aa,
                                     attributes);

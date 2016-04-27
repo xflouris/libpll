@@ -22,13 +22,13 @@
 #include <string.h>
 #include <assert.h>
 
-#define ALPHA 0.5
-#define N_STATES 4
-#define N_CAT_GAMMA 4
+#define ALPHA        0.5
+#define N_STATES     4
+#define N_RATE_CATS  4
 
-#define N_TAXA_BIG 43
-#define N_TAXA_SMALL 5
-#define N_SITES 491
+#define N_TAXA_BIG    43
+#define N_TAXA_SMALL   5
+#define N_SITES      491
 
 static int failtest(unsigned int attributes)
 {
@@ -53,10 +53,9 @@ static int bigtest(unsigned int attributes)
                                     4, /* clv buffers */
                                     N_STATES, /* states */
                                     N_SITES, /* sites */
-                                    0, /* mixture */
                                     1, /* different rate parameters */
                                     8, /* probability matrices */
-                                    N_CAT_GAMMA, /* rate categories */
+                                    N_RATE_CATS, /* rate categories */
                                     1, 
                                     pll_map_nt,
                                     attributes
@@ -114,6 +113,7 @@ static int smalltest (unsigned int attributes)
   pll_partition_t * partition;
   pll_operation_t * operations;
   double rate_cats[4];
+  unsigned int params_indices[N_RATE_CATS] = {0,0,0,0};
 
   unsigned int num_sites = 4 * N_SITES;
 
@@ -126,8 +126,8 @@ static int smalltest (unsigned int attributes)
 
   partition = pll_partition_create(N_TAXA_SMALL, 4,
                                    N_STATES,
-                                   num_sites, 0, 1, 2 * N_TAXA_SMALL - 3,
-                                   N_CAT_GAMMA,
+                                   num_sites, 1, 2 * N_TAXA_SMALL - 3,
+                                   N_RATE_CATS,
                                    1, 
                                    pll_map_nt,
                                    attributes);
@@ -173,21 +173,22 @@ static int smalltest (unsigned int attributes)
   operations[2].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
   operations[2].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
-  pll_compute_gamma_cats (ALPHA, N_CAT_GAMMA, rate_cats);
-  pll_set_subst_params (partition, 0, 0, subst_params);
-  pll_set_frequencies (partition, 0, 0, frequencies);
+  pll_compute_gamma_cats (ALPHA, N_RATE_CATS, rate_cats);
+  pll_set_subst_params (partition, 0, subst_params);
+  pll_set_frequencies (partition, 0, frequencies);
   pll_set_category_rates (partition, rate_cats);
-  pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths, 4);
+  pll_update_prob_matrices (partition, params_indices, matrix_indices, branch_lengths, 4);
   pll_update_partials (partition, operations, 3);
 
   printf ("logL: %17.6f\n", 
-          pll_compute_edge_loglikelihood(partition,
-                                         6, 
-                                         PLL_SCALE_BUFFER_NONE,
-                                         7,
-                                         PLL_SCALE_BUFFER_NONE, 
-                                         0, 
-                                         0));
+  pll_compute_edge_loglikelihood(partition,
+                                 6,
+                                 PLL_SCALE_BUFFER_NONE,
+                                 7,
+                                 PLL_SCALE_BUFFER_NONE,
+                                 0,
+                                 params_indices,
+                                 NULL));
 
   free (operations);
   pll_fasta_close (fp);

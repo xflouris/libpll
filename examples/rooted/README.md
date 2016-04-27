@@ -15,7 +15,6 @@ partition = pll_create_partition(5,
                                  4, 
                                  4, 
                                  6,
-                                 0,   
                                  1, 
                                  8, 
                                  4, 
@@ -28,8 +27,7 @@ The parameters of the function (in the order passed) indicate
 * the extra number of Conditional Likelihood Vectors (CLVs) that should be allocated apart from those created for the tip sequences (typically, number of tips minus one for rooted trees), 
 * number of states in the dataset (for instance 4 for nucleotide datasets, 20 for aminoacid datasets),
 * the length of the alignment, i.e. the number of sites at the tip sequences,
-* for mixture models, how many different models
-* how many different substitution models we want to have at one time, 
+* how many different substitution models (or eigen decompositions) we want to have at one time, 
 * the number of probability matrices that should be allocated (typically 2 times the number of tip sequences minus 2),
 * number of discrete rate categories (rate heterogeneity),
 * number of scale buffers to be allocated,
@@ -39,9 +37,9 @@ For a more detailed explanation of the function arguments refer to the [API Refe
 
 Model parameters are set with the function calls 
 
-[`pll_set_frequencies(partition, 0, 0, frequencies);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_frequencies)
+[`pll_set_frequencies(partition, 0, frequencies);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_frequencies)
 
-[`pll_set_subst_params(partition, 0, 0, subst_params, 6);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_subst_params)
+[`pll_set_subst_params(partition, 0, subst_params);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_subst_params)
 
 `pll_set_category_rates(partition, rate_cats);`
 
@@ -60,22 +58,24 @@ that CLVs for tips are numbered from 0 to _n-1_, where _n_ is the number of tips
 For inner node CLVs you may use any number starting from _n_ upto _n+x-1_, where
 _x_ is the second parameter of [`pll_create_partition(...)`](https://github.com/xflouris/libpll/wiki/API-Reference#pll_create_partition).
 
-Next, we compute the transition probability matrices for each unique branch
-length in the tree by calling the function
+Next, we compute the transition probability matrices for each branch
+in the tree by calling the function
 
 ```C
+unsigned int params_indices[4] = {0,0,0,0};
+
 pll_update_prob_matrices(partition, 
-                         0, 
+                         params_indices, 
                          matrix_indices, 
                          branch_lengths, 
                          5);
 ```
-
-and which computes the probability matrices at indices `matrix_indices` from
-the corresponding branch lengths specified in `branch_lengths`. The last
-argument indicates the size of the two arrays. Note that the function will the
-probability matrices for all available rate categories. For more information on
-this function check the documentation.
+which computes the probability matrices at indices `matrix_indices` from the
+corresponding branch lengths specified in `branch_lengths` and the
+corresponding rate matrices whose index is specified with `params_indices`
+(second parameter). The last argument indicates the size of the two arrays.
+Note that the function will compute probability matrices for all available rate
+categories. For more information on this function check the documentation.
 
 The next step is to create a traversal descriptor for driving the likelihood
 computation. This is done by allocating a `pll_operation_t` structure which we
@@ -84,10 +84,13 @@ node.
 
 ```C
 operations[0].parent_clv_index    = 5;
+operations[0].parent_scaler_index = 0;
 operations[0].child1_clv_index    = 0;
 operations[0].child2_clv_index    = 1;
 operations[0].child1_matrix_index = 0;
 operations[0].child2_matrix_index = 0;
+operations[0].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
+operations[0].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 ```
 
 `parent_clv_index` indicates which CLV we want to update/compute, using the
@@ -95,6 +98,10 @@ CLVs specified by `child1_clv_index` and `child2_clv_index`. The probability
 matrices used for each child CLV is specified by `child1_matrix_index` and
 `child2_matrix_index`, respectively.  Note that the node indices in the tree
 illustration directly correspond to the indices used in the example program.
+For the two tip nodes (child1 and child2) we use no scalers for maintaining
+numerical stability, and we use one scaler for the inner node with index 5.
+Note that, a scaler is an array of integer values which holds how many times
+each partial entry was scaled.
 
 Now we can use the created `pll_operation_t` structure to compute the CLVs by
 calling
@@ -113,13 +120,24 @@ Finally, we obtain the  log-likelihood of the dataset by a call to
 ```C
 logl = pll_compute_root_loglikelihood(partition,
                                       8,
-                                      0);
+                                      3,
+                                      params_indices,
+                                      NULL);
 ```
 
-where the last two parameters specify the
+where the parameters specify:
 
+* the partition
 * index of the CLV to be used for integrating the log-likelihood over sites,
-* the index of the frequency array to use.
+* index of the scaler for the particular CLV
+* array of indices indicating the frequency array to use for each rate category.
+* array to store per-site log-likelihood values, or `NULL` otherwise.
+
+In the example, we use only one rate matrix and one frequency array, which
+results in four different p-matrices per tree branch due to the four different
+rate categories. Therefore, we use use the array `freqs_indices`composed of
+four identical indices to denote that we want the same frequency array used for
+each CLV obtained from one of the four different p-matrices.
 
 Before exiting, we dispose of the allocated memory by calling
 

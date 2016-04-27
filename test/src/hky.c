@@ -22,7 +22,7 @@
 
 #define NUM_TESTS 10
 #define N_STATES_NT 4
-
+#define N_CAT_GAMMA 4
 #define FLOAT_PRECISION 4
 
 static double titv[NUM_TESTS] = { 
@@ -35,9 +35,10 @@ int main(int argc, char * argv[])
   double lk_scores[NUM_TESTS];
 
   double alpha    = 1.0;
-  unsigned int n_cat_gamma = 4;
+
   unsigned int n_sites     = 20;
   unsigned int n_tips      = 5;
+  unsigned int params_indices[N_CAT_GAMMA] = {0,0,0,0};
 
   pll_partition_t * partition;
   pll_operation_t * operations;
@@ -45,10 +46,9 @@ int main(int argc, char * argv[])
                                    4,           /* clv buffers */
                                    N_STATES_NT, /* number of states */
                                    n_sites,     /* sequence length */
-                                   0,           /* mixture */
                                    1,           /* different rate parameters */
                                    2*n_tips-3,  /* probability matrices */
-                                   n_cat_gamma, /* gamma categories */
+                                   N_CAT_GAMMA, /* gamma categories */
                                    0,           /* scale buffers */
                                    pll_map_nt,
                                    PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
@@ -59,9 +59,9 @@ int main(int argc, char * argv[])
   double subst_params[6] = {1,1,1,1,1,1};
   double rate_cats[4];
 
-  pll_compute_gamma_cats(alpha, n_cat_gamma, rate_cats);
+  pll_compute_gamma_cats(alpha, N_CAT_GAMMA, rate_cats);
 
-  pll_set_frequencies(partition, 0, 0, frequencies);
+  pll_set_frequencies(partition, 0, frequencies);
 
   pll_set_category_rates(partition, rate_cats);
 
@@ -103,9 +103,14 @@ int main(int argc, char * argv[])
   for (i = 0; i < NUM_TESTS; ++i) 
   {
     subst_params[1] = subst_params[4] = titv[i];
-    pll_set_subst_params(partition, 0, 0, subst_params);
+    pll_set_subst_params(partition, 0, subst_params);
 
-    pll_update_prob_matrices(partition, 0, matrix_indices, branch_lengths, 4);
+    pll_update_prob_matrices(partition,
+                             params_indices,
+                             matrix_indices,
+                             branch_lengths,
+                             4);
+
     pll_update_partials(partition, operations, 3);
 
     printf("\n\n TEST ti/tv = %.4f\n\n", titv[i]);
@@ -140,7 +145,8 @@ int main(int argc, char * argv[])
                                                   7,
                                                   PLL_SCALE_BUFFER_NONE,
                                                   0,
-                                                  0);
+                                                  params_indices,
+                                                  NULL);
   }
 
   printf("\n");

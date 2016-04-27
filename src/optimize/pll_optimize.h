@@ -45,7 +45,7 @@
 #define PLL_LBFGSB_BOUND_BOTH  2
 #define PLL_LBFGSB_BOUND_UPPER 3
 
-/* Parameter defaults and limits */
+/* Parameter defaults */
 #define PLL_OPT_DEFAULT_RATE_RATIO        1
 #define PLL_OPT_DEFAULT_FREQ_RATIO        1
 #define PLL_OPT_DEFAULT_PINV            0.5
@@ -55,19 +55,14 @@
 #define PLL_OPT_MIN_BRANCH_LEN       1.0e-4
 #define PLL_OPT_MAX_BRANCH_LEN         100.
 #define PLL_OPT_TOL_BRANCH_LEN       1.0e-4
-#define PLL_OPT_BRANCH_LEN_OFFSET         5
 #define PLL_OPT_MIN_SUBST_RATE       1.0e-3
 #define PLL_OPT_MAX_SUBST_RATE        1000.
-#define PLL_OPT_SUBST_RATE_OFFSET        10
 #define PLL_OPT_MIN_FREQ             1.0e-3
 #define PLL_OPT_MAX_FREQ               100.
-#define PLL_OPT_FREQ_OFFSET              10
 #define PLL_OPT_MIN_ALPHA            0.0201 + PLL_LBFGSB_ERROR
 #define PLL_OPT_MAX_ALPHA              100.
-#define PLL_OPT_ALPHA_OFFSET            0.1
 #define PLL_OPT_MIN_PINV                  0
 #define PLL_OPT_MAX_PINV               0.99
-#define PLL_OPT_PINV_OFFSET             0.1
 #define PLL_OPT_LNL_UNLIKELY         -1e+80
 
 /* mixture models limits */
@@ -81,15 +76,15 @@
 #define PLL_BRANCH_OPT_BRENT  2
 #define PLL_BRANCH_OPT_LBFGSB 3
 
-/* error codes */
-#define PLL_ERROR_PARAMETER           100
-#define PLL_ERROR_TAXA_MISMATCH       101
-#define PLL_ERROR_SEQLEN_MISMATCH     102
-#define PLL_ERROR_ALIGN_UNREADABLE    103
-#define PLL_ERROR_LBFGSB_UNKNOWN      110
-#define PLL_ERROR_NEWTON_DERIV        120
-#define PLL_ERROR_NEWTON_LIMIT        130
-#define PLL_ERROR_NEWTON_UNKNOWN      140
+/* error codes (for this module, 2000-3000) */
+#define PLL_ERROR_PARAMETER           2000
+#define PLL_ERROR_TAXA_MISMATCH       2010
+#define PLL_ERROR_SEQLEN_MISMATCH     2020
+#define PLL_ERROR_ALIGN_UNREADABLE    2030
+#define PLL_ERROR_LBFGSB_UNKNOWN      2100
+#define PLL_ERROR_NEWTON_DERIV        2210
+#define PLL_ERROR_NEWTON_LIMIT        2220
+#define PLL_ERROR_NEWTON_UNKNOWN      2230
 
 /* Structure with information necessary for evaluating the likelihood */
 
@@ -102,7 +97,7 @@ typedef struct
   double * branch_lengths;
   unsigned int * matrix_indices;
   int rooted;
-  unsigned int freqs_index;
+  const unsigned int * params_indices;
   union {
       struct {
         unsigned int root_clv_index;
@@ -126,8 +121,8 @@ typedef struct
   pll_likelihood_info_t lk_params;
   unsigned int highest_freq_state;
   unsigned int highest_weight_state;
-  unsigned int params_index;
-  unsigned int mixture_index;
+  //const unsigned int * params_indices;     /* indices according to rate cats */
+  unsigned int params_index;         /* individual index to optimize */
   unsigned int which_parameters;
   int * subst_params_symmetries;
   double factr;
@@ -142,8 +137,7 @@ typedef struct
 {
   pll_partition_t * partition;
   pll_utree_t * tree;
-  unsigned int params_index;
-  unsigned int freqs_index;
+  const unsigned int * params_indices;
   double * sumtable;
 } pll_newton_tree_params_t;
 
@@ -160,6 +154,7 @@ PLL_EXPORT double pll_minimize_newton(double x1,
                                       double (deriv_func)(void *,
                                                           double,
                                                           double *, double *));
+
 /* core L-BFGS-B optimization function */
 PLL_EXPORT double pll_minimize_lbfgsb(double *x,
                                       double *xmin,
@@ -172,6 +167,7 @@ PLL_EXPORT double pll_minimize_lbfgsb(double *x,
                                       double (*target_funk)(
                                               void *,
                                               double *));
+
 /* core Brent optimization function */
 PLL_EXPORT double pll_minimize_brent(double xmin,
                                      double xguess,
@@ -183,6 +179,7 @@ PLL_EXPORT double pll_minimize_brent(double xmin,
                                      double (*target_funk)(
                                          void *,
                                          double));
+
 /* core Expectation-Maximization (EM) function */
 PLL_EXPORT void pll_minimize_em( double *w,
                                  unsigned int w_count,
@@ -205,22 +202,23 @@ PLL_EXPORT double pll_derivative_func(void * parameters,
 PLL_EXPORT double pll_optimize_parameters_onedim(pll_optimize_options_t * p,
                                                  double min,
                                                  double max);
+
 PLL_EXPORT double pll_optimize_parameters_multidim(pll_optimize_options_t * p,
                                                    double *umin,
                                                    double *umax);
+
 PLL_EXPORT double pll_optimize_branch_lengths_iterative (
                                               pll_partition_t * partition,
                                               pll_utree_t * tree,
-                                              unsigned int params_index,
-                                              unsigned int freqs_index,
+                                              const unsigned int * params_indices,
                                               double tolerance,
                                               int smoothings,
                                               int keep_update);
+
 PLL_EXPORT double pll_optimize_branch_lengths_local (
                                               pll_partition_t * partition,
                                               pll_utree_t * tree,
-                                              unsigned int params_index,
-                                              unsigned int freqs_index,
+                                              const unsigned int * params_indices,
                                               double tolerance,
                                               int smoothings,
                                               int radius,

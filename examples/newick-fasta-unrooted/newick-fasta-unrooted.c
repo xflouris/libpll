@@ -90,6 +90,7 @@ int main(int argc, char * argv[])
   pll_partition_t * partition;
   pll_operation_t * operations;
   pll_utree_t ** travbuffer;
+  unsigned int params_indices[RATE_CATS] = {0,0,0,0};
 
   /* we accept only two arguments - the newick tree (unrooted binary) and the
      alignment in the form of FASTA reads */
@@ -212,7 +213,6 @@ int main(int argc, char * argv[])
                                    inner_nodes_count,
                                    STATES,
                                    (unsigned int)sites,
-                                   0,
                                    1,
                                    branch_count,
                                    RATE_CATS,
@@ -235,10 +235,10 @@ int main(int argc, char * argv[])
   pll_compute_gamma_cats(1, 4, rate_cats);
 
   /* set frequencies at model with index 0 (we currently have only one model) */
-  pll_set_frequencies(partition, 0, 0, frequencies);
+  pll_set_frequencies(partition, 0, frequencies);
 
   /* set 6 substitution parameters at model with index 0 */
-  pll_set_subst_params(partition, 0, 0, subst_params);
+  pll_set_subst_params(partition, 0, subst_params);
 
   /* set rate categories */
   pll_set_category_rates(partition, rate_cats);
@@ -317,7 +317,7 @@ int main(int argc, char * argv[])
      length branch_lengths[i] and can be refered to with index
      matrix_indices[i] */
   pll_update_prob_matrices(partition, 
-                           0, 
+                           params_indices,
                            matrix_indices, 
                            branch_lengths, 
                            matrix_count);
@@ -335,8 +335,7 @@ int main(int argc, char * argv[])
 
   /* use the operations array to compute all ops_count inner CLVs. Operations
      will be carried out sequentially starting from operation 0 towrds ops_count-1 */
-  for (i = 0; i < 100; ++i)
-    pll_update_partials(partition, operations, ops_count);
+  pll_update_partials(partition, operations, ops_count);
 
   /* Uncomment to print on screen the CLVs at tip and inner nodes. From 0 to
      tip_nodes_count-1 are tip CLVs, the rest are inner node CLVs.
@@ -353,14 +352,15 @@ int main(int argc, char * argv[])
      the CLV indices at the two end-point of the branch, the probability matrix
      index for the concrete branch length, and the index of the model of whose
      frequency vector is to be used */
+
   double logl = pll_compute_edge_loglikelihood(partition,
                                                tree->clv_index,
                                                tree->scaler_index,
                                                tree->back->clv_index,
                                                tree->back->scaler_index,
                                                tree->pmatrix_index,
-                                               0);
-
+                                               params_indices,
+                                               NULL);
   printf("Log-L: %f\n", logl);
   
   /* destroy all structures allocated for the concrete PLL partition instance */

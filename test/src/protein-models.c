@@ -20,7 +20,7 @@
 */
 #include "common.h"
 
-#define N_CAT_GAMMA 4
+#define N_RATE_CATS 4
 #define ALPHA 1
 
 #define N_PROT_MODELS 19
@@ -77,6 +77,9 @@ int main(int argc, char * argv[])
 
   pll_partition_t * partition;
   pll_operation_t * operations;
+  unsigned int params_indices[N_RATE_CATS] = {0,0,0,0};
+
+  unsigned int attributes = get_attributes(argc, argv);
 
   unsigned int attributes = get_attributes(argc, argv);
 
@@ -86,10 +89,9 @@ int main(int argc, char * argv[])
                                    4,                     /* clv buffers */
                                    N_STATES,                   /* states */
                                    113,                         /* sites */
-                                   0,                         /* mixture */
                                    1,       /* different rate parameters */
                                    8,            /* probability matrices */
-                                   N_CAT_GAMMA,       /* rate categories */
+                                   N_RATE_CATS,       /* rate categories */
                                    1,
                                    pll_map_aa,
                                    attributes
@@ -98,9 +100,9 @@ int main(int argc, char * argv[])
   double branch_lengths[4] = { 0.1, 0.2, 1, 1};
   unsigned int matrix_indices[4] = { 0, 1, 2, 3 };
 
-  double * rate_cats = (double *) malloc(N_CAT_GAMMA * sizeof(double));
+  double * rate_cats = (double *) malloc(N_RATE_CATS * sizeof(double));
 
-  if (pll_compute_gamma_cats(ALPHA, N_CAT_GAMMA, rate_cats) == PLL_FAILURE)
+  if (pll_compute_gamma_cats(ALPHA, N_RATE_CATS, rate_cats) == PLL_FAILURE)
   {
     printf("Fail computing the gamma rates\n");
     exit(1);
@@ -152,8 +154,8 @@ int main(int argc, char * argv[])
 
     printf ("\nSetting model %s...\n", prot_model_names[cur_model]);
 
-    pll_set_subst_params(partition, 0, 0, prot_matrices[cur_model]);
-    pll_set_frequencies(partition, 0, 0, prot_freqs[cur_model]);
+    pll_set_subst_params(partition, 0, prot_matrices[cur_model]);
+    pll_set_frequencies(partition, 0, prot_freqs[cur_model]);
 
     double sum_freqs = 0.0;
     for (i = 0; i < N_STATES; ++i)
@@ -173,7 +175,11 @@ int main(int argc, char * argv[])
     printf ("Updating prob matrices...\n");
 
    // pll_update_invariant_sites_proportion(partition, 0.17);
-    pll_update_prob_matrices(partition, 0, matrix_indices, branch_lengths, 4);
+    pll_update_prob_matrices(partition,
+                             params_indices,
+                             matrix_indices,
+                             branch_lengths,
+                             4);
     for (i = 0; i < 4; ++i)
     {
       printf ("P-matrix for branch length %f\n", branch_lengths[i]);
@@ -196,7 +202,8 @@ int main(int argc, char * argv[])
                                                  7,
                                                  PLL_SCALE_BUFFER_NONE,
                                                  0,
-                                                 0);
+                                                 params_indices,
+                                                 NULL);
 
     printf("Log-L (%s): %.6f\n", prot_model_names[cur_model], logl);
   }

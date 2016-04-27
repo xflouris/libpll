@@ -16,6 +16,8 @@
 #include <time.h>
 
 #define STATES    4
+#define RATE_CATS 4
+
 #define SUBST_PARAMS (STATES*(STATES-1)/2)
 
 typedef struct
@@ -26,9 +28,8 @@ typedef struct
   unsigned int child_clv_index;
   unsigned int child_scaler_index;
   unsigned int edge_pmatrix_index;
-  unsigned int freqs_index;
+  unsigned int freqs_indices[RATE_CATS];
   unsigned int params_index;
-  unsigned int mixture_index;
 
   /* traverse */
   unsigned int * matrix_indices;

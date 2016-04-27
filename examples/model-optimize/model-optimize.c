@@ -20,8 +20,6 @@
  */
 #include "utils.h"
 
-#define RATE_CATS 4
-
 /* parameters to optimize */
 #define OPTIMIZE_BRANCHES     1
 #define OPTIMIZE_SUBST_PARAMS 1
@@ -195,7 +193,7 @@ int main (int argc, char * argv[])
   for (i = 0; i < STATES; i++)
     printf ("%.4f ", empirical_freqs[i]);
   printf ("\n");
-  pll_set_frequencies (partition, 0, 0, empirical_freqs);
+  pll_set_frequencies (partition, 0, empirical_freqs);
   free (empirical_freqs);
 
   /* Additionally, for these examples we define the substitution rate matrix
@@ -285,7 +283,7 @@ int main (int argc, char * argv[])
   hl_opt_params.lk_params.branch_lengths = branch_lengths;
   hl_opt_params.lk_params.matrix_indices = matrix_indices;
   hl_opt_params.lk_params.alpha_value = 0;
-  hl_opt_params.lk_params.freqs_index = 0;
+  hl_opt_params.lk_params.freqs_indices = {0,0,0,0};
   hl_opt_params.lk_params.rooted = 0;
   hl_opt_params.lk_params.where.unrooted_t.parent_clv_index = tree->clv_index;
   hl_opt_params.lk_params.where.unrooted_t.parent_scaler_index = tree->scaler_index;
@@ -296,7 +294,6 @@ int main (int argc, char * argv[])
 
   /* optimization parameters */
   hl_opt_params.params_index = 0;
-  hl_opt_params.mixture_index = 0;
   hl_opt_params.subst_params_symmetries = subst_params_symmetries;
   hl_opt_params.factr = 1e7;
   hl_opt_params.pgtol = OPT_PARAM_EPSILON;
@@ -309,9 +306,8 @@ int main (int argc, char * argv[])
   ll_opt_params.child_clv_index = tree->back->clv_index;
   ll_opt_params.child_scaler_index = tree->back->scaler_index;
   ll_opt_params.edge_pmatrix_index = tree->pmatrix_index;
-  ll_opt_params.freqs_index = 0;
+  ll_opt_params.freqs_indices = {0,0,0,0};
   ll_opt_params.params_index = 0;
-  ll_opt_params.mixture_index = 0;
 
   ll_opt_params.symmetries = subst_params_symmetries;
   ll_opt_params.n_subst_params = n_subst_free_params;
@@ -359,7 +355,7 @@ int main (int argc, char * argv[])
       cur_logl = -1
           * pll_optimize_branch_lengths_iterative (partition, tree,
                                                    hl_opt_params.params_index,
-                                                   hl_opt_params.lk_params.freqs_index,
+                                                   hl_opt_params.lk_params.freqs_indices,
                                                    hl_opt_params.pgtol, smoothings++,
                                                    KEEP_UPDATE);
 

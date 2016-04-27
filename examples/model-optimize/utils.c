@@ -226,7 +226,6 @@ pll_partition_t * partition_fasta_create (const char *file,
         tip_count, rooted ? (tip_count - 1) : (tip_count - 2),
         states,
         (unsigned int) sites,
-        0, /* mixture */
         n_rate_matrices,
         rooted ? (2 * tip_count - 2) : (2 * tip_count - 3),
         n_rate_cats,
@@ -346,8 +345,7 @@ double target_rates_opt (void * p, double * x)
     memcpy (subst_rates, x, ((size_t) n_subst_rates - 1) * sizeof(double));
     subst_rates[n_subst_rates - 1] = 1.0;
   }
-  pll_set_subst_params (partition, params->params_index, params->mixture_index,
-                        subst_rates);
+  pll_set_subst_params (partition, params->params_index, subst_rates);
   free (subst_rates);
 
   update_clvs(partition,
@@ -362,7 +360,8 @@ double target_rates_opt (void * p, double * x)
                                         params->child_clv_index,
                                         params->child_scaler_index,
                                         params->edge_pmatrix_index,
-                                        params->freqs_index);
+                                        params->freqs_indices,
+                                        NULL);
 
   return score;
 }
@@ -392,8 +391,7 @@ double target_freqs_opt (void * p, double * x)
     }
   }
   freqs[params->highest_freq_state] = 1.0 / sum_ratios;
-  pll_set_frequencies (partition, params->params_index, params->mixture_index,
-                       freqs);
+  pll_set_frequencies (partition, params->params_index, freqs);
   free (freqs);
 
   update_clvs (partition, params->params_index, params->matrix_indices,
@@ -405,7 +403,8 @@ double target_freqs_opt (void * p, double * x)
                                         params->child_clv_index,
                                         params->child_scaler_index,
                                         params->edge_pmatrix_index,
-                                        params->freqs_index);
+                                        params->freqs_indices,
+                                        NULL);
 
   return score;
 }

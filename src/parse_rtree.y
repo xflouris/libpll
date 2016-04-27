@@ -41,7 +41,7 @@ PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root)
 
 static void pll_rtree_error(pll_rtree_t * tree, const char * s) 
 {
-  fprintf(stderr, "%s.\n", s);
+  snprintf(pll_errmsg, 200, "%s.\n", s);
 }
 
 %}
@@ -109,10 +109,10 @@ subtree: OPAR subtree COMMA subtree CPAR optional_label optional_length
 };
 
  
-optional_label:  { $$ = NULL;} | label  {$$ = $1;};
-optional_length: { $$ = NULL;} | COLON number {$$ = $2;};
-label: STRING    { $$=$1;};
-number: NUMBER   { $$=$1;};
+optional_label:  {$$ = NULL;} | label  {$$ = $1;};
+optional_length: {$$ = NULL;} | COLON number {$$ = $2;};
+label: STRING    {$$=$1;} | NUMBER {$$=$1;};
+number: NUMBER   {$$=$1;};
 
 %%
 

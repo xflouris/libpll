@@ -15,12 +15,12 @@ partition = pll_create_partition(4,
                                  2, 
                                  4, 
                                  6, 
-                                 0,
                                  1, 
                                  5, 
                                  4, 
-                                 1, 
-                                 PLL_ATTRIB_ARCH_SSE);
+                                 2, 
+                                 pll_map_nt,
+                                 PLL_ATTRIB_ARCH_AVX);
 ```
 
 The parameters of the function (in the order passed) indicate
@@ -29,19 +29,18 @@ The parameters of the function (in the order passed) indicate
 * number of states in the dataset (for instance 4 for nucleotide datasets, 20 for aminoacid datasets) (4),
 * the length of the alignment, i.e. the number of sites at the tip sequences (6),
 * how many different substitution models we want to have at one time (1), 
-* for mixture models, how many different models
 * the number of probability matrices that should be allocated (typically 2 times the number of tip sequences minus 3 for unrooted trees) (5) ,
 * number of discrete rate categories (rate heterogeneity) (4),
-* number of scale buffers to be allocated (not yet implemented) (1),
-* attributes that specify what kind of hardware acceleration should be used (PLL\_ATTRIB\_ARCH\_SSE).
+* number of scale buffers to be allocated (2),
+* attributes that specify what kind of hardware acceleration should be used (PLL\_ATTRIB\_ARCH\_AVX).
 
 For a more detailed explanation of the function arguments refer to the [API Reference](https://github.com/xflouris/libpll/wiki/API-Reference#pll_create_partition).
 
 Model parameters are set with the function calls 
 
-[`pll_set_frequencies(partition, 0, 0, frequencies);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_frequencies)
+[`pll_set_frequencies(partition, 0, frequencies);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_frequencies)
 
-[`pll_set_subst_params(partition, 0, 0, subst_params, 6);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_subst_params)
+[`pll_set_subst_params(partition, 0, subst_params, 6);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_subst_params)
 
 `pll_set_category_rates(partition, rate_cats);`
 
@@ -64,18 +63,20 @@ Next, we compute the transition probability matrices for each unique branch
 length in the tree by calling the function
 
 ```C
+unsigned int params_indices[4] = {0,0,0,0};
+
 pll_update_prob_matrices(partition, 
                          0, 
                          matrix_indices, 
                          branch_lengths, 
                          5);
 ```
-
-and which computes the probability matrices at indices `matrix_indices` from
-the corresponding branch lengths specified in `branch_lengths`. The last
-argument indicates the size of the two arrays. Note that the function will the
-probability matrices for all available rate categories. For more information on
-this function check the API reference.
+which computes the probability matrices at indices `matrix_indices` from the
+corresponding branch lengths specified in `branch_lengths` and the
+corresponding rate matrices whose index is specified with `params_indices`
+(second parameter). The last argument indicates the size of the two arrays.
+Note that the function will compute probability matrices for all available rate
+categories. For more information on this function check the documentation.
 
 The next step is to create a traversal descriptor for driving the likelihood
 computation. This is done by allocating a `pll_operation_t` structure which we
@@ -88,6 +89,9 @@ operations[0].child1_clv_index    = 0;
 operations[0].child2_clv_index    = 1;
 operations[0].child1_matrix_index = 0;
 operations[0].child2_matrix_index = 1;
+operations[0].parent_scaler_index = 0;
+operations[0].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
+operations[0].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 ```
 
 `parent_clv_index` indicates which CLV we want to update/compute, using the
@@ -95,6 +99,10 @@ CLVs specified by `child1_clv_index` and `child2_clv_index`. The probability
 matrices used for each child CLV is specified by `child1_matrix_index` and
 `child2_matrix_index`, respectively.  Note that the node indices in the tree
 illustration directly correspond to the indices used in the example program.
+For the two tip nodes (child1 and child2) we use no scalers for maintaining
+numerical stability, and we use one scaler for the inner node with index 4.
+Note that, a scaler is an array of integer values which holds how many times
+each partial entry was scaled.
 
 Now we can use the created `pll_operation_t` structure to compute the CLVs by
 calling
@@ -109,18 +117,24 @@ Finally, we obtain the log-likelihood of the dataset by a call to
 ```C
 logl = pll_compute_edge_loglikelihood(partition,
                                       4,
+                                      0,
                                       5,
+                                      1,
                                       4,
-                                      0);
+                                      params_indices,
+                                      NULL);
 ```
 
 where the parameters (in order of appearance) specify the
 
 * partition
 * index of one of the end-point nodes of the edge on which the log-likelihood will be computed
+* index of the scaler for the particular CLV
 * index of the other end-point node
+* index of the scaler for the other end-point node CLV
 * index of the probability matrix for that particular edge,
-* the index of the frequency array to use.
+* array of indices indicating the frequency array to use for each rate category.
+* array to store per-site log-likelihood values, or `NULL` otherwise.
 
 Before exiting, we dispose of the allocated memory by calling
 

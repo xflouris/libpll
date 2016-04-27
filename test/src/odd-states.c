@@ -56,6 +56,11 @@ int main (int argc, char * argv[])
   unsigned int attributes = get_attributes (argc, argv);
 
   operations = (pll_operation_t *) malloc (4 * sizeof(pll_operation_t));
+<<<<<<< HEAD
+=======
+  
+  unsigned int params_indices[6] = {0,0,0,0,0,0};
+>>>>>>> fix_dev
 
   operations[0].parent_clv_index = 5;
   operations[0].child1_clv_index = 0;
@@ -91,7 +96,10 @@ int main (int argc, char * argv[])
                                       4, /* clv buffers */
                                       N_STATES, /* number of states */
                                       n_sites, /* sequence length */
+<<<<<<< HEAD
                                       1, /* mixture */
+=======
+>>>>>>> fix_dev
                                       1, /* different rate parameters */
                                       2 * n_tips - 3, /* probability matrices */
                                       n_cat_gamma[k], /* gamma categories */
@@ -123,8 +131,13 @@ int main (int argc, char * argv[])
     }
     printf ("\n");
 
+<<<<<<< HEAD
     pll_set_frequencies (partition, 0, 0, frequencies);
     pll_set_subst_params (partition, 0, 0, subst_params);
+=======
+    pll_set_frequencies (partition, 0, frequencies);
+    pll_set_subst_params (partition, 0, subst_params);
+>>>>>>> fix_dev
 
     int check_states = 1;
     check_states &= pll_set_tip_states (partition, 0, odd_map,
@@ -171,8 +184,17 @@ int main (int argc, char * argv[])
       pll_set_category_rates (partition, rate_cats);
       free (rate_cats);
 
+<<<<<<< HEAD
       pll_update_prob_matrices (partition, 0, matrix_indices, branch_lengths,
                                 4);
+=======
+      pll_update_prob_matrices(partition,
+                               params_indices,
+                               matrix_indices,
+                               branch_lengths,
+                               4);
+
+>>>>>>> fix_dev
       pll_update_partials (partition, operations, 3);
 
       for (j = 0; j < 4; ++j)
@@ -194,7 +216,11 @@ int main (int argc, char * argv[])
           PLL_SCALE_BUFFER_NONE,
           7,
           PLL_SCALE_BUFFER_NONE,
+<<<<<<< HEAD
           0, 0);
+=======
+          0, params_indices, NULL);
+>>>>>>> fix_dev
     }
 
     /* test illegal alpha value */
