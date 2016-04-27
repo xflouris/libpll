@@ -81,8 +81,6 @@ int main(int argc, char * argv[])
 
   unsigned int attributes = get_attributes(argc, argv);
 
-  unsigned int attributes = get_attributes(argc, argv);
-
   printf ("Creating PLL partition\n");
 
   partition = pll_partition_create(5,                            /* tips */

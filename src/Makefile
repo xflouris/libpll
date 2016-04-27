@@ -41,8 +41,8 @@ all: $(PROG)
 
 OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o \
      parse_utree.o parse_rtree.o lex_utree.o lex_rtree.o utree.o rtree.o \
-     core_likelihood.o pll_tree.o compress.o parse_phylip.o \
-     lex_phylip.o core_likelihood_avx.o core_pmatrix.o
+     core_likelihood.o compress.o parse_phylip.o lex_phylip.o \
+     core_likelihood_avx.o core_pmatrix.o
 
 $(PROG): $(OBJS)
 	$(CC) -shared -Wl,-soname,$@ -o $@ $+

@@ -122,11 +122,7 @@ int main(int argc, char * argv[])
   
   unsigned int attributes = get_attributes(argc, argv);
 
-<<<<<<< HEAD
-  /* fix all missing branch lengths (i.e. those that did not appear in the 
-=======
   /* fix all missing branch lengths (i.e. those that did not appear in the
->>>>>>> fix_dev
      newick) to 0.000001 */
   set_missing_branch_length(tree, 0.000001);
 
