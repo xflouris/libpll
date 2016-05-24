@@ -45,7 +45,6 @@ unsigned int i;
                                     8, /* probability matrices */
                                     N_RATE_CATS, /* rate categories */
                                     1, 
-                                    pll_map_aa,
                                     attributes
                                     );
 
@@ -88,7 +87,6 @@ static int proteintest(unsigned int attributes)
                                     8, /* probability matrices */
                                     N_RATE_CATS, /* rate categories */
                                     1,
-                                    pll_map_aa,
                                     attributes);
 
   fp = pll_fasta_open ("testdata/ribosomal_l5_pf00673.fas", pll_map_fasta);

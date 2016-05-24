@@ -147,8 +147,8 @@ typedef struct pll_partition
   unsigned int log2_maxstates;
   unsigned int log2_states;
   unsigned int log2_rates;
-  char ** tipchars;
-  char * charmap;
+  unsigned char ** tipchars;
+  unsigned char * charmap;
   double * ttlookup;
   unsigned int * tipmap;
 
@@ -300,7 +300,6 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                                                   unsigned int prob_matrices,
                                                   unsigned int rate_cats,
                                                   unsigned int scale_buffers,
-                                                  const unsigned int * map,
                                                   unsigned int attributes);
 
 PLL_EXPORT void pll_partition_destroy(pll_partition_t * partition);
@@ -310,9 +309,9 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
                                   const unsigned int * map,
                                   const char * sequence);
 
-PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
-                                unsigned int tip_index,
-                                const double * clv);
+PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
+                               unsigned int tip_index,
+                               const double * clv);
 
 PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
                                         const unsigned int * pattern_weights);
@@ -523,8 +522,8 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
                                            unsigned int rate_cats,
                                            double * parent_clv,
                                            unsigned int * parent_scaler,
-                                           const char * left_tipchars,
-                                           const char * right_tipchars,
+                                           const unsigned char * left_tipchars,
+                                           const unsigned char * right_tipchars,
                                            const unsigned int * tipmap,
                                            unsigned int tipmap_size,
                                            const double * lookup,
@@ -535,7 +534,7 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
                                            unsigned int rate_cats,
                                            double * parent_clv,
                                            unsigned int * parent_scaler,
-                                           const char * left_tipchars,
+                                           const unsigned char * left_tipchars,
                                            const double * right_clv,
                                            const double * left_matrix,
                                            const double * right_matrix,
@@ -565,15 +564,15 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4(unsigned int sites,
                                                unsigned int rate_cats,
                                                double * parent_clv,
                                                unsigned int * parent_scaler,
-                                               const char * left_tipchars,
-                                               const char * right_tipchars,
+                                               const unsigned char * left_tipchars,
+                                               const unsigned char * right_tipchars,
                                                const double * lookup);
 
 PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,                                   
                                                unsigned int rate_cats,
                                                double * parent_clv,
                                                unsigned int * parent_scaler,
-                                               const char * left_tipchars,
+                                               const unsigned char * left_tipchars,
                                                const double * right_clv,
                                                const double * left_matrix,
                                                const double * right_matrix,
@@ -583,7 +582,7 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
 PLL_EXPORT int pll_core_update_sumtable_ti_4x4(unsigned int sites,
                                                unsigned int rate_cats,
                                                const double * parent_clv,
-                                               const char * left_tipchars,
+                                               const unsigned char * left_tipchars,
                                                double ** eigenvecs,
                                                double ** inv_eigenvecs,
                                                double ** freqs,
@@ -606,7 +605,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
                                            unsigned int sites,
                                            unsigned int rate_cats,
                                            const double * parent_clv,
-                                           const char * left_tipchars,
+                                           const unsigned char * left_tipchars,
                                            double ** eigenvecs,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
@@ -647,8 +646,8 @@ PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
                                                unsigned int rate_cats,
                                                double * parent_clv,
                                                unsigned int * parent_scaler,
-                                               const char * left_tipchars,
-                                               const char * right_tipchars,
+                                               const unsigned char * left_tipchars,
+                                               const unsigned char * right_tipchars,
                                                const double * lookup,
                                                unsigned int tipstates_count);
 
@@ -657,7 +656,7 @@ PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
                                                unsigned int rate_cats,
                                                double * parent_clv,
                                                unsigned int * parent_scaler,
-                                               const char * left_tipchars,
+                                               const unsigned char * left_tipchars,
                                                const double * right_clv,
                                                const double * left_matrix,
                                                const double * right_matrix,
@@ -685,15 +684,15 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4_avx(unsigned int sites,
                                                    unsigned int rate_cats,
                                                    double * parent_clv,
                                                    unsigned int * parent_scaler,
-                                                   const char * left_tipchars,
-                                                   const char * right_tipchars,
+                                                   const unsigned char * left_tipchars,
+                                                   const unsigned char * right_tipchars,
                                                    const double * lookup);
 
 PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
                                                    unsigned int rate_cats,
                                                    double * parent_clv,
                                                    unsigned int * parent_scaler,
-                                                   const char * left_tipchar,
+                                                   const unsigned char * left_tipchar,
                                                    const double * right_clv,
                                                    const double * left_matrix,
                                                    const double * right_matrix,
@@ -724,8 +723,8 @@ PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
                                                unsigned int rate_cats,
                                                double * parent_clv,
                                                unsigned int * parent_scaler,
-                                               const char * left_tipchars,
-                                               const char * right_tipchars,
+                                               const unsigned char * left_tipchars,
+                                               const unsigned char * right_tipchars,
                                                const double * lookup,
                                                unsigned int tipstates_count);
 

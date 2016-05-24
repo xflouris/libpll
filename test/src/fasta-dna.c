@@ -57,7 +57,6 @@ static int bigtest(unsigned int attributes)
                                     8, /* probability matrices */
                                     N_RATE_CATS, /* rate categories */
                                     1, 
-                                    pll_map_nt,
                                     attributes
                                     );
 
@@ -129,7 +128,6 @@ static int smalltest (unsigned int attributes)
                                    num_sites, 1, 2 * N_TAXA_SMALL - 3,
                                    N_RATE_CATS,
                                    1, 
-                                   pll_map_nt,
                                    attributes);
 
   fp = pll_fasta_open ("testdata/small.fas", pll_map_fasta);

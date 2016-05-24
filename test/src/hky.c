@@ -50,7 +50,6 @@ int main(int argc, char * argv[])
                                    2*n_tips-3,  /* probability matrices */
                                    N_CAT_GAMMA, /* gamma categories */
                                    0,           /* scale buffers */
-                                   pll_map_nt,
                                    PLL_ATTRIB_ARCH_AVX //| PLL_ATTRIB_PATTERN_TIP
                                    );          /* attributes */
   double branch_lengths[4] = { 0.1, 0.2, 1, 1};

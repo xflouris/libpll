@@ -193,8 +193,7 @@ int main(int argc, char * argv[])
                                    5,       /* How many probability matrices should we allocate */
                                    4,       /* Number of rate categories */
                                    4,       /* How many scale buffers do we want */
-                                   pll_map_nt,
-                                   PLL_ATTRIB_ARCH_CPU);        /* various attributes (not yet implemented) */
+                                   PLL_ATTRIB_ARCH_CPU);        /* various attributes */
   
   /* initialize an array of two different branch lengths */
   double branch_lengths[5] = { 0.36, 0.722, 0.985, 0.718, 1.44};
@@ -229,23 +228,23 @@ int main(int argc, char * argv[])
   /* set the 5 tip CLVs, and use the pll_map_nt map for converting
      the sequences to CLVs */
   double * enc = encode_tacg("WAAAAB");
-  pll_set_tip_clv(partition, 0, enc);
+  assert(pll_set_tip_clv(partition, 0, enc));
   free(enc);
 
   enc = encode_tacg("CACACD");
-  pll_set_tip_clv(partition, 1, enc);
+  assert(pll_set_tip_clv(partition, 1, enc));
   free(enc);
 
   enc = encode_tacg("AGGACA");
-  pll_set_tip_clv(partition, 2, enc);
+  assert(pll_set_tip_clv(partition, 2, enc));
   free(enc);
 
   enc = encode_tacg("CGTAGT");
-  pll_set_tip_clv(partition, 3, enc);
+  assert(pll_set_tip_clv(partition, 3, enc));
   free(enc);
 
   enc = encode_tacg("CGAATT");
-  pll_set_tip_clv(partition, 4, enc);
+  assert(pll_set_tip_clv(partition, 4, enc));
   free(enc);
 
   /* update two probability matrices for the corresponding branch lengths */

@@ -97,7 +97,7 @@ int main (int argc, char * argv[])
                                       2 * n_tips - 3, /* probability matrices */
                                       n_cat_gamma[k], /* gamma categories */
                                       0, /* scale buffers */
-                                      odd_map, attributes); /* attributes */
+                                      attributes); /* attributes */
 
     if (!partition)
     {

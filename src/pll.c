@@ -131,6 +131,137 @@ PLL_EXPORT void pll_aligned_free(void * ptr)
 #endif
 }
 
+static int update_charmap(pll_partition_t * partition, const unsigned int * map)
+{
+  unsigned int i,j,k = 0;
+  unsigned int new_states_count = 0;
+  unsigned int mapcopy[PLL_ASCII_SIZE];
+  
+  memcpy(mapcopy, map, PLL_ASCII_SIZE * sizeof(unsigned int));
+
+  /* find maximum value in charmap table */
+  k = 0;
+  while (partition->tipmap[k]) ++k;
+
+  /* compute the number of new states in the map */
+  for (i = 0; i < PLL_ASCII_SIZE; ++i)
+  {
+    if (mapcopy[i])
+    {
+      /* check whether state map[i] already exists in the tipmap */
+      for (j = 0; j < k; ++j)
+        if (mapcopy[i] == partition->tipmap[j])
+          break;
+
+      /* if it does not exist */
+      if (j == k)
+      {
+        /* check whether it is the first time we find it */
+        for (j = 0; j < i; ++j)
+          if (mapcopy[j] == mapcopy[i])
+            break;
+
+        /* if first time, increase number of new states */
+        if (j == i) new_states_count++;
+      }
+    }
+  }
+
+  /* erase old charmap */
+  memset(partition->charmap,0,PLL_ASCII_SIZE*sizeof(unsigned char));
+
+  /* using this map we will have more than 256 states, so return an error */
+  if (new_states_count + k >= PLL_ASCII_SIZE)
+  {
+    snprintf(pll_errmsg, 200,
+             "Cannot specify 256 or more states with PLL_ATTRIB_PATTERN_TIP.");
+    return PLL_FAILURE;
+  }
+
+  /* traverse the new map */
+  for (i = 0; i < PLL_ASCII_SIZE; ++i)
+  {
+    if (mapcopy[i])
+    {
+      unsigned int code = 0;
+
+      /* check whether state map[i] already exists in the tipmap */
+      for (j = 0; j < k; ++j)
+        if (mapcopy[i] == partition->tipmap[j])
+          break;
+
+      if (j == k)
+      {
+        /* if it does not exist */
+        code = k;
+        partition->tipmap[code] = mapcopy[i];
+        ++k;
+      }
+      else
+      {
+        /* if it exists already then j is the index to the tipmap */
+        code = j;
+      }
+
+      partition->charmap[i] = code;
+
+      /* find all characters with the same state in the map */
+      for (j=i+1; j < PLL_ASCII_SIZE; ++j)
+      {
+        if (mapcopy[i] == mapcopy[j])
+        {
+          partition->charmap[j] = code;
+          mapcopy[j] = 0;
+        }
+      }
+    }
+  }
+
+  /* set maximum number of states (including ambiguities), its logarithm,
+     and the logarithm of states */
+  if (new_states_count)
+  {
+    /* special cases which do not use remapping */
+    if (partition->states == 4)
+    {
+      for (k = 0, i = 0; partition->tipmap[i]; ++i)
+        if (partition->tipmap[i] > k)
+          k = partition->tipmap[i];
+
+      partition->maxstates = k+1;
+    }
+    else
+      partition->maxstates += new_states_count;
+    partition->log2_maxstates = (unsigned int)ceil(log2(partition->maxstates));
+    partition->log2_states = (unsigned int)ceil(log2(partition->states));
+    partition->log2_rates = (unsigned int)ceil(log2(partition->rate_cats));
+
+    /* allocate space for the precomputed tip-tip likelihood vector */
+    unsigned int addressbits = partition->log2_maxstates + 
+                               partition->log2_maxstates +
+                               partition->log2_states +
+                               partition->log2_rates;
+    
+    /* for AVX we do not need to reallocate ttlookup as it has fixed size */
+    if ((partition->states == 4) && (partition->attributes & PLL_ATTRIB_ARCH_AVX))
+      return PLL_SUCCESS;
+
+    free(partition->ttlookup);
+    partition->ttlookup = pll_aligned_alloc((1 << addressbits) * 
+                                            sizeof(double),
+                                            partition->alignment);
+    if (!partition->ttlookup)
+    {
+      pll_errno = PLL_ERROR_INIT_CHARMAP;
+      snprintf (pll_errmsg, 200,
+                "Cannot allocate space for storing precomputed tip-tip CLVs.");
+      return PLL_FAILURE;
+    }
+  }
+
+  return PLL_SUCCESS;
+}
+
 /* create a bijective mapping from states to the range <1,maxstates> where
    maxstates is the maximum number of states (including ambiguities). It is 
    neeed to index the precomputed conditional likelihoods for each pair of
@@ -138,15 +269,17 @@ PLL_EXPORT void pll_aligned_free(void * ptr)
    the precomputated CLV for a charmapped pair i and j, at index:
    
    (i << ceil(log(maxstate)) + j) << log(states) << log(rates) */
-static int create_charmap(pll_partition_t * partition)
+static int create_charmap(pll_partition_t * partition, const unsigned int * usermap)
 {
   unsigned int i,j,m = 0;
-  char k = 0;
+  unsigned char k = 0;
   unsigned int map[PLL_ASCII_SIZE];
   
-  memcpy(map, partition->map, PLL_ASCII_SIZE * sizeof(unsigned int));
+  //memcpy(map, partition->map, PLL_ASCII_SIZE * sizeof(unsigned int));
+  memcpy(map, usermap, PLL_ASCII_SIZE * sizeof(unsigned int));
 
-  if (!(partition->charmap = (char *)calloc(PLL_ASCII_SIZE,sizeof(char))))
+  if (!(partition->charmap = (unsigned char *)calloc(PLL_ASCII_SIZE,
+                                                     sizeof(unsigned char))))
   {
     pll_errno = PLL_ERROR_INIT_CHARMAP;
     snprintf (pll_errmsg, 200,
@@ -154,7 +287,7 @@ static int create_charmap(pll_partition_t * partition)
     return PLL_FAILURE;
   }
 
-  if (!(partition->tipmap= (unsigned int *)calloc(PLL_ASCII_SIZE,
+  if (!(partition->tipmap = (unsigned int *)calloc(PLL_ASCII_SIZE,
                                                    sizeof(unsigned int))))
   {
     pll_errno = PLL_ERROR_INIT_CHARMAP;
@@ -164,6 +297,8 @@ static int create_charmap(pll_partition_t * partition)
   }
 
 
+  /* create charmap (remapped table of ASCII characters to range 0,|states|)
+     and tipmap which is a (1,|states|) -> state */
   for (i = 0; i < PLL_ASCII_SIZE; ++i)
   {
     if (map[i])
@@ -171,7 +306,7 @@ static int create_charmap(pll_partition_t * partition)
       if (map[i] > m) m = map[i];
 
       partition->charmap[i] = k;
-      partition->tipmap[(int)k] = map[i];
+      partition->tipmap[(unsigned int)k] = map[i];
       for (j = i+1; j < PLL_ASCII_SIZE; ++j)
       {
         if (map[i] == map[j])
@@ -184,6 +319,9 @@ static int create_charmap(pll_partition_t * partition)
     }
   }
 
+  /* For all state settings for which remapping will not be done, we need to
+     increment maxstates by one to account for a fictive state 0 which will
+     never be used */
   if (partition->states == 4) k = m+1;
 
   /* set maximum number of states (including ambiguities), its logarithm,
@@ -199,8 +337,9 @@ static int create_charmap(pll_partition_t * partition)
                              partition->log2_states +
                              partition->log2_rates;
 
-  /* dedicated 4x4 function */
-  if (partition->states == 4 && (partition->attributes & PLL_ATTRIB_ARCH_AVX))
+  /* dedicated 4x4 function  - if AVX is not used we can allocate less space
+     in case not all 16 possible ambiguities are present */
+  if ((partition->states == 4) && (partition->attributes & PLL_ATTRIB_ARCH_AVX))
   {
     partition->ttlookup = pll_aligned_alloc(1024 * partition->rate_cats *
                                             sizeof(double),
@@ -228,7 +367,8 @@ static int create_charmap(pll_partition_t * partition)
   }
 
   /* allocate tip character arrays */
-  partition->tipchars= (char **)calloc(partition->tips, sizeof(char *));
+  partition->tipchars = (unsigned char **)calloc(partition->tips,
+                                                 sizeof(unsigned char *));
   if (!partition->tipchars)
   {
     pll_errno = PLL_ERROR_INIT_CHARMAP;
@@ -239,7 +379,8 @@ static int create_charmap(pll_partition_t * partition)
 
   for (i = 0; i < partition->tips; ++i)
   {
-    partition->tipchars[i] = (char *)malloc(partition->sites * sizeof(char));
+    partition->tipchars[i] = (unsigned char *)malloc(partition->sites *
+                                                     sizeof(unsigned char));
     if (!partition->tipchars[i])
     {
       pll_errno = PLL_ERROR_INIT_CHARMAP;
@@ -260,7 +401,6 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                                                   unsigned int prob_matrices,
                                                   unsigned int rate_cats,
                                                   unsigned int scale_buffers,
-                                                  const unsigned int * map,
                                                   unsigned int attributes)
 {
   unsigned int i;
@@ -327,18 +467,6 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   partition->tipchars = NULL;
   partition->charmap = NULL;
   partition->tipmap = NULL;
-
-  partition->map = map;
-
-  /* create character map for tip-tip precomputations */
-  if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
-  {
-    if (!create_charmap(partition))
-    {
-      dealloc_partition_data(partition);
-      return PLL_FAILURE;
-    }
-  }
 
   /* allocate structures */
 
@@ -607,11 +735,10 @@ static int set_tipchars_4x4(pll_partition_t * partition,
     }
 
     /* store states as the remapped characters from charmap */
-    partition->tipchars[tip_index][i] = (char)c;
+    partition->tipchars[tip_index][i] = (unsigned char)c;
   }
 
-  /* tipmap is never used in the 4x4 case */
-  memcpy(partition->tipmap, map, PLL_ASCII_SIZE*sizeof(unsigned int));
+  /* tipmap is never used in the 4x4 case except create and update_charmap */
 
   return PLL_SUCCESS;
 }
@@ -637,6 +764,7 @@ static int set_tipchars(pll_partition_t * partition,
     /* store states as the remapped characters from charmap */
     partition->tipchars[tip_index][i] = partition->charmap[(int)(sequence[i])];
   }
+
   return PLL_SUCCESS;
 }
 
@@ -688,6 +816,20 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
 
   if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
   {
+    /* create (or update) character map for tip-tip precomputations */
+    if (partition->tipchars)
+    {
+      update_charmap(partition,map);
+    }
+    else
+    {
+      if (!create_charmap(partition,map))
+      {
+        dealloc_partition_data(partition);
+        return PLL_FAILURE;
+      }
+    }
+
     if (partition->states == 4)
       rc = set_tipchars_4x4(partition, tip_index, map, sequence);
     else
@@ -700,11 +842,19 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
 }
 
 //TODO: <DOC> We should account for padding before calling this function
-PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
-                                unsigned int tip_index,
-                                const double * clv)
+PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
+                               unsigned int tip_index,
+                               const double * clv)
 {
   unsigned int i,j;
+
+  if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
+  {
+    snprintf(pll_errmsg, 200,
+             "Cannot use pll_set_tip_clv with PLL_ATTRIB_PATTERN_TIP.");
+    return PLL_FAILURE;
+  }
+
   double * tipclv = partition->clv[tip_index];
 
   for (i = 0; i < partition->sites; ++i)
@@ -716,6 +866,8 @@ PLL_EXPORT void pll_set_tip_clv(pll_partition_t * partition,
     }
     clv += partition->states_padded;
   }
+
+  return PLL_SUCCESS;
 }
 
 PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,

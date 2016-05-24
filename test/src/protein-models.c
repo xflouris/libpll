@@ -91,7 +91,6 @@ int main(int argc, char * argv[])
                                    8,            /* probability matrices */
                                    N_RATE_CATS,       /* rate categories */
                                    1,
-                                   pll_map_aa,
                                    attributes
                                    );
   

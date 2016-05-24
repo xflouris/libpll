@@ -37,7 +37,6 @@ int main(int argc, char * argv[])
                                    5,       /* How many probability matrices should we allocate */
                                    4,       /* Number of rate categories */
                                    2,       /* How many scale buffers do we want */
-                                   pll_map_nt,
                                    PLL_ATTRIB_PATTERN_TIP | PLL_ATTRIB_ARCH_CPU);        /* various attributes */
   
   /* initialize an array of two different branch lengths */

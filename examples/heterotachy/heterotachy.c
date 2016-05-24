@@ -68,7 +68,6 @@ int main(int argc, char * argv[])
                                    5,             /* number of p-matrices */
                                    4,             /* number of rate categories */
                                    2,             /* number of scale buffers */
-                                   pll_map_nt,
                                    PLL_ATTRIB_ARCH_CPU);
 
   pll_set_tip_states(partition, 0, pll_map_nt, "WAAAAB");

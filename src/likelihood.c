@@ -291,7 +291,7 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
   unsigned int * parent_scaler;
 
   /* child is the tip sequence, gets its tipchar */
-  char * tipchar = partition->tipchars[child_clv_index];
+  unsigned char * tipchar = partition->tipchars[child_clv_index];
   unsigned int * tipmap= partition->tipmap;
   unsigned int cstate;
 
@@ -374,7 +374,7 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
         for (j = 0; j < states; ++j)
         {
           termb = 0;
-          cstate = tipmap[(int)(*tipchar)];
+          cstate = tipmap[(unsigned int)(*tipchar)];
           for (k = 0; k < states; ++k)
           {
             if (cstate & 1)
