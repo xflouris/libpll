@@ -28,7 +28,7 @@
 #include <x86intrin.h>
 
 #define LIB_NAME "libpll"
-#define LIB_VERSION "v0.0.1"
+#define LIB_VERSION "v0.1.0"
 
 /* platform specific */
 
