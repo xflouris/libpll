@@ -77,6 +77,13 @@
 #define PLL_ATTRIB_ARCH_MASK         0xF
 
 #define PLL_ATTRIB_PATTERN_TIP    1 << 4
+#define PLL_ATTRIB_ASC_BIAS       1 << 5
+
+/* ascertainment correction type */
+
+#define PLL_ASC_BIAS_LEWIS        0
+#define PLL_ASC_BIAS_FELSENSTEIN  1
+#define PLL_ASC_BIAS_STAMATAKIS   2
 
 /* error codes */
 
@@ -304,8 +311,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
 
 PLL_EXPORT void pll_partition_destroy(pll_partition_t * partition);
 
-PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition, 
-                                  unsigned int tip_index, 
+PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
+                                  unsigned int tip_index,
                                   const unsigned int * map,
                                   const char * sequence);
 
@@ -316,6 +323,9 @@ PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
 PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
                                         const unsigned int * pattern_weights);
 
+PLL_EXPORT void pll_set_asc_state_weights(pll_partition_t * partition,
+                                          const unsigned int * state_weights);
+
 /* functions in list.c */
 
 PLL_EXPORT int pll_dlist_append(pll_dlist_t ** dlist, void * data);
@@ -324,11 +334,11 @@ PLL_EXPORT int pll_dlist_prepend(pll_dlist_t ** dlist, void * data);
 
 /* functions in models.c */
 
-PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition, 
+PLL_EXPORT void pll_set_subst_params(pll_partition_t * partition,
                                      unsigned int params_index,
                                      const double * params);
 
-PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition, 
+PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition,
                                     unsigned int params_index,
                                     const double * frequencies);
 
@@ -341,10 +351,10 @@ PLL_EXPORT void pll_set_category_weights(pll_partition_t * partition,
 PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
                                  unsigned int params_index);
 
-PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition, 
-                                         const unsigned int * params_index, 
-                                         const unsigned int * matrix_indices, 
-                                         const double * branch_lengths, 
+PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
+                                         const unsigned int * params_index,
+                                         const unsigned int * matrix_indices,
+                                         const double * branch_lengths,
                                          unsigned int count);
 
 PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition);
@@ -369,6 +379,12 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
                                                  const unsigned int * freqs_index,
                                                  double * persite_lnl);
 
+PLL_EXPORT double pll_compute_root_loglikelihood_asc(pll_partition_t * partition,
+                                                 unsigned int clv_index,
+                                                 int scaler_index,
+                                                 const unsigned int * freqs_index,
+                                                 int asc_bias_type);
+
 PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  unsigned int parent_clv_index,
                                                  int parent_scaler_index,
@@ -377,6 +393,15 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  unsigned int matrix_index,
                                                  const unsigned int * freqs_index,
                                                  double * persite_lnl);
+
+PLL_EXPORT double pll_compute_edge_loglikelihood_asc(pll_partition_t * partition,
+                                                 unsigned int parent_clv_index,
+                                                 int parent_scaler_index,
+                                                 unsigned int child_clv_index,
+                                                 int child_scaler_index,
+                                                 unsigned int matrix_index,
+                                                 const unsigned int * freqs_index,
+                                                 int asc_bias_type);
 
 PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
                                       unsigned int parent_clv_index,
@@ -518,7 +543,7 @@ PLL_EXPORT void pll_core_create_lookup(unsigned int states,
                                        unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
-                                           unsigned int sites,                                   
+                                           unsigned int sites,
                                            unsigned int rate_cats,
                                            double * parent_clv,
                                            unsigned int * parent_scaler,
@@ -530,7 +555,7 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
                                            unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
-                                           unsigned int sites,                                   
+                                           unsigned int sites,
                                            unsigned int rate_cats,
                                            double * parent_clv,
                                            unsigned int * parent_scaler,
@@ -568,7 +593,7 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4(unsigned int sites,
                                                const unsigned char * right_tipchars,
                                                const double * lookup);
 
-PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,                                   
+PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
                                                unsigned int rate_cats,
                                                double * parent_clv,
                                                unsigned int * parent_scaler,
@@ -652,7 +677,7 @@ PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
                                                unsigned int tipstates_count);
 
 PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
-                                               unsigned int sites,                                   
+                                               unsigned int sites,
                                                unsigned int rate_cats,
                                                double * parent_clv,
                                                unsigned int * parent_scaler,

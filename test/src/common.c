@@ -6,7 +6,7 @@
 unsigned int get_attributes(int argc, char **argv)
 {
   int i;
-  unsigned int attributes = PLL_ATTRIB_ARCH_CPU;
+  unsigned int attributes = PLL_ATTRIB_ARCH_CPU | PLL_ATTRIB_ASC_BIAS;
 
   for (i=1; i<argc; ++i)
   {

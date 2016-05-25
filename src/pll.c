@@ -115,10 +115,10 @@ PLL_EXPORT void * pll_aligned_alloc(size_t size, size_t alignment)
 #if (defined(__WIN32__) || defined(__WIN64__))
   mem = _aligned_malloc(size, alignment);
 #else
-  if (posix_memalign(&mem, alignment, size)) 
+  if (posix_memalign(&mem, alignment, size))
     mem = NULL;
 #endif
-  
+
   return mem;
 }
 
@@ -136,7 +136,7 @@ static int update_charmap(pll_partition_t * partition, const unsigned int * map)
   unsigned int i,j,k = 0;
   unsigned int new_states_count = 0;
   unsigned int mapcopy[PLL_ASCII_SIZE];
-  
+
   memcpy(mapcopy, map, PLL_ASCII_SIZE * sizeof(unsigned int));
 
   /* find maximum value in charmap table */
@@ -237,17 +237,17 @@ static int update_charmap(pll_partition_t * partition, const unsigned int * map)
     partition->log2_rates = (unsigned int)ceil(log2(partition->rate_cats));
 
     /* allocate space for the precomputed tip-tip likelihood vector */
-    unsigned int addressbits = partition->log2_maxstates + 
+    unsigned int addressbits = partition->log2_maxstates +
                                partition->log2_maxstates +
                                partition->log2_states +
                                partition->log2_rates;
-    
+
     /* for AVX we do not need to reallocate ttlookup as it has fixed size */
     if ((partition->states == 4) && (partition->attributes & PLL_ATTRIB_ARCH_AVX))
       return PLL_SUCCESS;
 
     free(partition->ttlookup);
-    partition->ttlookup = pll_aligned_alloc((1 << addressbits) * 
+    partition->ttlookup = pll_aligned_alloc((1 << addressbits) *
                                             sizeof(double),
                                             partition->alignment);
     if (!partition->ttlookup)
@@ -263,18 +263,23 @@ static int update_charmap(pll_partition_t * partition, const unsigned int * map)
 }
 
 /* create a bijective mapping from states to the range <1,maxstates> where
-   maxstates is the maximum number of states (including ambiguities). It is 
+   maxstates is the maximum number of states (including ambiguities). It is
    neeed to index the precomputed conditional likelihoods for each pair of
    states. The sequences are then encoded using this charmap, and we store
    the precomputated CLV for a charmapped pair i and j, at index:
-   
+
    (i << ceil(log(maxstate)) + j) << log(states) << log(rates) */
 static int create_charmap(pll_partition_t * partition, const unsigned int * usermap)
 {
   unsigned int i,j,m = 0;
   unsigned char k = 0;
   unsigned int map[PLL_ASCII_SIZE];
-  
+
+  /* If ascertainment bias correction attribute is set, CLVs will be allocated
+     with additional sites for each state */
+  unsigned int sites_alloc = (partition->attributes & PLL_ATTRIB_ASC_BIAS) ?
+                  partition->sites + partition->states : partition->sites;
+
   //memcpy(map, partition->map, PLL_ASCII_SIZE * sizeof(unsigned int));
   memcpy(map, usermap, PLL_ASCII_SIZE * sizeof(unsigned int));
 
@@ -332,7 +337,7 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
   partition->log2_rates = (unsigned int)ceil(log2(partition->rate_cats));
 
   /* allocate space for the precomputed tip-tip likelihood vector */
-  unsigned int addressbits = partition->log2_maxstates + 
+  unsigned int addressbits = partition->log2_maxstates +
                              partition->log2_maxstates +
                              partition->log2_states +
                              partition->log2_rates;
@@ -354,7 +359,7 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
   }
   else
   {
-    partition->ttlookup = pll_aligned_alloc((1 << addressbits) * 
+    partition->ttlookup = pll_aligned_alloc((1 << addressbits) *
                                             sizeof(double),
                                             partition->alignment);
     if (!partition->ttlookup)
@@ -379,7 +384,7 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
 
   for (i = 0; i < partition->tips; ++i)
   {
-    partition->tipchars[i] = (unsigned char *)malloc(partition->sites *
+    partition->tipchars[i] = (unsigned char *)malloc(sites_alloc *
                                                      sizeof(unsigned char));
     if (!partition->tipchars[i])
     {
@@ -468,6 +473,11 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   partition->charmap = NULL;
   partition->tipmap = NULL;
 
+  /* If ascertainment bias correction attribute is set, CLVs will be allocated
+     with additional sites for each state */
+  unsigned int sites_alloc = (partition->attributes & PLL_ATTRIB_ASC_BIAS) ?
+                  sites + states : sites;
+
   /* allocate structures */
 
   /* eigen_decomp_valid */
@@ -479,7 +489,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     return PLL_FAILURE;
   }
   /* clv */
-  partition->clv = (double **)calloc(partition->tips + partition->clv_buffers, 
+  partition->clv = (double **)calloc(partition->tips + partition->clv_buffers,
                                      sizeof(double *));
   if (!partition->clv)
   {
@@ -494,8 +504,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
 
   for (i = start; i < partition->tips + partition->clv_buffers; ++i)
   {
-    partition->clv[i] = pll_aligned_alloc(partition->sites * states_padded *
-                                             rate_cats * sizeof(double),
+    partition->clv[i] = pll_aligned_alloc(sites_alloc * states_padded *
+                                          rate_cats * sizeof(double),
                                           partition->alignment);
     if (!partition->clv[i])
     {
@@ -506,7 +516,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
        states with vectorized code */
     memset(partition->clv[i],
            0,
-           partition->sites*states_padded*rate_cats*sizeof(double));
+           (size_t)sites_alloc*states_padded*rate_cats*sizeof(double));
   }
 
   /* pmatrix */
@@ -680,7 +690,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
 
   /* site weights */
-  partition->pattern_weights = (unsigned int *)malloc(partition->sites *
+  partition->pattern_weights = (unsigned int *)malloc(sites_alloc *
                                                       sizeof(unsigned int));
   if (!partition->pattern_weights)
   {
@@ -688,7 +698,9 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     return PLL_FAILURE;
   }
   for (i = 0; i < partition->sites; ++i) partition->pattern_weights[i] = 1;
-  
+  /* additional positions if asc_bias is set are initialized to zero */
+  for (i = sites; i < sites_alloc; ++i) partition->pattern_weights[i] = 0;
+
   /* scale_buffer */
   partition->scale_buffer = (unsigned int **)calloc(partition->scale_buffers,
                                                     sizeof(unsigned int *));
@@ -699,7 +711,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->scale_buffers; ++i)
   {
-    partition->scale_buffer[i] = (unsigned int *)calloc(partition->sites,
+    partition->scale_buffer[i] = (unsigned int *)calloc(sites_alloc,
                                                         sizeof(unsigned int));
     if (!partition->scale_buffer[i])
     {
@@ -738,6 +750,16 @@ static int set_tipchars_4x4(pll_partition_t * partition,
     partition->tipchars[tip_index][i] = (unsigned char)c;
   }
 
+  /* if asc_bias is set, we initialize the additional positions */
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  {
+    for (i = 0; i < partition->states; ++i)
+    {
+      partition->tipchars[tip_index][partition->sites + i] =
+        (unsigned char)1<<i;
+    }
+  }
+
   /* tipmap is never used in the 4x4 case except create and update_charmap */
 
   return PLL_SUCCESS;
@@ -763,6 +785,16 @@ static int set_tipchars(pll_partition_t * partition,
 
     /* store states as the remapped characters from charmap */
     partition->tipchars[tip_index][i] = partition->charmap[(int)(sequence[i])];
+  }
+
+  /* if asc_bias is set, we initialize the additional positions */
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  {
+    for (i = 0; i < partition->states; ++i)
+    {
+      partition->tipchars[tip_index][partition->sites + i] =
+        partition->charmap[i];
+    }
   }
 
   return PLL_SUCCESS;
@@ -804,10 +836,32 @@ static int set_tipclv(pll_partition_t * partition,
       tipclv += partition->states_padded;
     }
   }
+
+  /* if asc_bias is set, we initialize the additional positions */
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  {
+    for (i = 0; i < partition->states; ++i)
+    {
+      for (j = 0; j < partition->states; ++j)
+      {
+        tipclv[j] = j==i;
+      }
+
+      /* fill in the entries for the other gamma values */
+      tipclv += partition->states_padded;
+      for (j = 0; j < partition->rate_cats - 1; ++j)
+      {
+        memcpy(tipclv, tipclv - partition->states_padded,
+               partition->states * sizeof(double));
+        tipclv += partition->states_padded;
+      }
+    }
+  }
+
   return PLL_SUCCESS;
 }
 
-PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition, 
+PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
                                   unsigned int tip_index,
                                   const unsigned int * map,
                                   const char * sequence)
@@ -846,7 +900,7 @@ PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
                                unsigned int tip_index,
                                const double * clv)
 {
-  unsigned int i,j;
+  unsigned int i,j,k;
 
   if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
   {
@@ -867,13 +921,38 @@ PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
     clv += partition->states_padded;
   }
 
+  /* if asc_bias is set, we initialize the additional positions */
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  {
+    for (i = 0; i < partition->states; ++i)
+    {
+      for (j = 0; j < partition->rate_cats; ++j)
+      {
+        for (k = 0; k < partition->states; ++k)
+        {
+          tipclv[k] = k==i?1.0:0.0;
+        }
+        tipclv += partition->states_padded;
+      }
+    }
+  }
+
   return PLL_SUCCESS;
 }
 
 PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
                                         const unsigned int * pattern_weights)
 {
-  memcpy(partition->pattern_weights, 
+  memcpy(partition->pattern_weights,
          pattern_weights,
          sizeof(unsigned int)*partition->sites);
+}
+
+PLL_EXPORT void pll_set_asc_state_weights(pll_partition_t * partition,
+                                          const unsigned int * state_weights)
+{
+  assert(partition->attributes & PLL_ATTRIB_ASC_BIAS);
+  memcpy(partition->pattern_weights + partition->sites,
+         state_weights,
+         sizeof(unsigned int)*partition->states);
 }

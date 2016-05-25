@@ -28,6 +28,11 @@ static void case_tiptip(pll_partition_t * partition,
   const double * right_matrix = partition->pmatrix[op->child2_matrix_index];
   double * parent_clv = partition->clv[op->parent_clv_index];
   unsigned int * parent_scaler;
+  unsigned int sites = partition->sites;
+
+  /* ascertaiment bias correction */
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+    sites += partition->states;
 
   /* get parent scaler */
   if (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE)
@@ -44,11 +49,11 @@ static void case_tiptip(pll_partition_t * partition,
                          partition->tipmap,
                          partition->maxstates,
                          partition->attributes);
-                         
+
 
   /* and update CLV at inner node */
   pll_core_update_partial_tt(partition->states,
-                             partition->sites,
+                             sites,
                              partition->rate_cats,
                              parent_clv,
                              parent_scaler,
@@ -70,6 +75,11 @@ static void case_tipinner(pll_partition_t * partition,
   unsigned int inner_matrix_index;
   unsigned int * right_scaler;
   unsigned int * parent_scaler;
+  unsigned int sites = partition->sites;
+
+  /* ascertaiment bias correction */
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+    sites += partition->states;
 
   /* get parent scaler */
   if (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE)
@@ -102,7 +112,7 @@ static void case_tipinner(pll_partition_t * partition,
   }
 
   pll_core_update_partial_ti(partition->states,
-                             partition->sites,
+                             sites,
                              partition->rate_cats,
                              parent_clv,
                              parent_scaler,
@@ -126,6 +136,11 @@ static void case_innerinner(pll_partition_t * partition,
   unsigned int * parent_scaler;
   unsigned int * left_scaler;
   unsigned int * right_scaler;
+  unsigned int sites = partition->sites;
+
+  /* ascertaiment bias correction */
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+    sites += partition->states;
 
   /* get parent scaler */
   if (op->parent_scaler_index == PLL_SCALE_BUFFER_NONE)
@@ -145,7 +160,7 @@ static void case_innerinner(pll_partition_t * partition,
     right_scaler = NULL;
 
   pll_core_update_partial_ii(partition->states,
-                             partition->sites,
+                             sites,
                              partition->rate_cats,
                              parent_clv,
                              parent_scaler,
@@ -166,7 +181,7 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
   const pll_operation_t * op;
 
   for (i = 0; i < count; ++i)
-  { 
+  {
     op = &(operations[i]);
 
     if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
@@ -258,12 +273,43 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
     /* store per-site log-likelihood */
     if (persite_lnl)
       persite_lnl[m++] = site_lk;
-    
+
     logl += site_lk;
 
   }
 
   return logl;
+}
+
+PLL_EXPORT double pll_compute_root_loglikelihood_asc(pll_partition_t * partition,
+                                                 unsigned int clv_index,
+                                                 int scaler_index,
+                                                 const unsigned int * freqs_index,
+                                                 int asc_bias_type)
+{
+  /* for ascertainment bias correction lnL is computed in 2 parts. */
+  /* first, the lnL for variant sites */
+  double logl_variant = pll_compute_root_loglikelihood(partition,
+                                                       clv_index,
+                                                       scaler_index,
+                                                       freqs_index,
+                                                       NULL);
+  /* next, the lnL correction */
+  double logl_correction = 0;
+  switch (asc_bias_type)
+  {
+    case PLL_ASC_BIAS_LEWIS:
+      break;
+    case PLL_ASC_BIAS_STAMATAKIS:
+      break;
+    case PLL_ASC_BIAS_FELSENSTEIN:
+      break;
+    default:
+      assert(0);
+  }
+  assert(0);
+
+  return logl_variant + logl_correction;
 }
 
 static double edge_loglikelihood_tipinner(pll_partition_t * partition,
@@ -325,11 +371,11 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
           terma_r += clvp[j] * freqs[j] * termb;
           pmatrix += states_padded;
         }
-      
+
         /* account for invariant sites */
         if (prop_invar > 0)
         {
-          inv_site_lk = (partition->invariant[n] == -1) ? 
+          inv_site_lk = (partition->invariant[n] == -1) ?
                             0 : freqs[partition->invariant[n]];
 
           terma += weights[i] * (terma_r * (1 - prop_invar) +
@@ -342,7 +388,7 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
 
         clvp += states_padded;
       }
-    
+
       /* count number of scaling factors to acount for */
       scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
 
@@ -388,7 +434,7 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
         /* account for invariant sites */
         if (prop_invar > 0)
         {
-          inv_site_lk = (partition->invariant[n] == -1) ? 
+          inv_site_lk = (partition->invariant[n] == -1) ?
                             0 : freqs[partition->invariant[n]];
           terma += weights[i] * (terma_r * (1 - prop_invar) +
                        inv_site_lk * prop_invar);
@@ -414,7 +460,7 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
         persite_lnl[m++] = site_lk;
 
       logl += site_lk;
-    
+
       tipchar++;
     }
   }
@@ -482,7 +528,7 @@ static double edge_loglikelihood(pll_partition_t * partition,
       /* account for invariant sites */
       if (prop_invar > 0)
       {
-        inv_site_lk = (partition->invariant[n] == -1) ? 
+        inv_site_lk = (partition->invariant[n] == -1) ?
                           0 : freqs[partition->invariant[n]];
         terma += weights[i] * (terma_r * (1 - prop_invar) +
                  inv_site_lk * prop_invar);
@@ -530,11 +576,11 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
     if ((parent_clv_index < partition->tips) ||
         (child_clv_index < partition->tips))
       return edge_loglikelihood_tipinner(partition,
-                                        (parent_clv_index < partition->tips) ? 
+                                        (parent_clv_index < partition->tips) ?
                                             child_clv_index : parent_clv_index,
-                                        (parent_clv_index < partition->tips) ? 
+                                        (parent_clv_index < partition->tips) ?
                                             child_scaler_index : parent_scaler_index,
-                                        (parent_clv_index < partition->tips) ? 
+                                        (parent_clv_index < partition->tips) ?
                                             parent_clv_index : child_clv_index,
                                         matrix_index,
                                         freqs_index,
@@ -548,7 +594,44 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                             matrix_index,
                             freqs_index,
                             persite_lnl);
-  return logl; 
+  return logl;
+}
+
+PLL_EXPORT double pll_compute_edge_loglikelihood_asc(pll_partition_t * partition,
+                                                 unsigned int parent_clv_index,
+                                                 int parent_scaler_index,
+                                                 unsigned int child_clv_index,
+                                                 int child_scaler_index,
+                                                 unsigned int matrix_index,
+                                                 const unsigned int * freqs_index,
+                                                 int asc_bias_type)
+{
+  /* for ascertainment bias correction lnL is computed in 2 parts. */
+  /* first, the lnL for variant sites */
+  double logl_variant = pll_compute_edge_loglikelihood(partition,
+                                                       parent_clv_index,
+                                                       parent_scaler_index,
+                                                       child_clv_index,
+                                                       child_scaler_index,
+                                                       matrix_index,
+                                                       freqs_index,
+                                                      NULL);
+  /* next, the lnL correction */
+  double logl_correction = 0;
+  switch (asc_bias_type)
+  {
+    case PLL_ASC_BIAS_LEWIS:
+      break;
+    case PLL_ASC_BIAS_STAMATAKIS:
+      break;
+    case PLL_ASC_BIAS_FELSENSTEIN:
+      break;
+    default:
+      assert(0);
+  }
+  assert(0);
+
+  return logl_variant + logl_correction;
 }
 
 static int sumtable_tipinner(pll_partition_t * partition,
@@ -566,6 +649,11 @@ static int sumtable_tipinner(pll_partition_t * partition,
       partition->rate_cats * sizeof(double *));
   double ** freqs = (double **) malloc (
       partition->rate_cats * sizeof(double *));
+  unsigned int sites = partition->sites;
+
+  /* ascertaiment bias correction */
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+    sites += partition->states;
 
   for (i = 0; i < partition->rate_cats; ++i)
   {
@@ -587,7 +675,7 @@ static int sumtable_tipinner(pll_partition_t * partition,
   }
 
   retval = pll_core_update_sumtable_ti(partition->states,
-                                       partition->sites,
+                                       sites,
                                        partition->rate_cats,
                                        partition->clv[inner_clv_index],
                                        partition->tipchars[tip_clv_index],
@@ -619,6 +707,11 @@ static int sumtable_innerinner(pll_partition_t * partition,
       partition->rate_cats * sizeof(double *));
   double ** freqs = (double **) malloc (
       partition->rate_cats * sizeof(double *));
+  unsigned int sites = partition->sites;
+
+  /* ascertaiment bias correction */
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+    sites += partition->states;
 
   for (i = 0; i < partition->rate_cats; ++i)
   {
@@ -629,7 +722,7 @@ static int sumtable_innerinner(pll_partition_t * partition,
 
   retval =
   pll_core_update_sumtable_ii(partition->states,
-                              partition->sites,
+                              sites,
                               partition->rate_cats,
                               partition->clv[parent_clv_index],
                               partition->clv[child_clv_index],
