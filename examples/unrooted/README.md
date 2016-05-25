@@ -19,7 +19,6 @@ partition = pll_create_partition(4,
                                  5, 
                                  4, 
                                  2, 
-                                 pll_map_nt,
                                  PLL_ATTRIB_ARCH_AVX);
 ```
 
