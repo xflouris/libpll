@@ -84,6 +84,7 @@
 #define PLL_ASC_BIAS_LEWIS        0
 #define PLL_ASC_BIAS_FELSENSTEIN  1
 #define PLL_ASC_BIAS_STAMATAKIS   2
+#define PLL_ASC_BIAS_COUNT        3
 
 /* error codes */
 
@@ -104,6 +105,7 @@
 #define PLL_ERROR_ALPHA                  101
 #define PLL_ERROR_PINV                   102
 #define PLL_ERROR_MIXTURE                103
+#define PLL_ERROR_ASC_BIAS               104
 
 /* utree specific */
 
@@ -158,6 +160,9 @@ typedef struct pll_partition
   unsigned char * charmap;
   double * ttlookup;
   unsigned int * tipmap;
+
+  /* ascertainment bias correction */
+  int asc_bias_type;
 
 } pll_partition_t;
 
@@ -323,6 +328,9 @@ PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
 PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
                                         const unsigned int * pattern_weights);
 
+PLL_EXPORT int pll_set_asc_bias_type(pll_partition_t * partition,
+                                    int asc_bias_type);
+
 PLL_EXPORT void pll_set_asc_state_weights(pll_partition_t * partition,
                                           const unsigned int * state_weights);
 
@@ -379,12 +387,6 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
                                                  const unsigned int * freqs_index,
                                                  double * persite_lnl);
 
-PLL_EXPORT double pll_compute_root_loglikelihood_asc(pll_partition_t * partition,
-                                                 unsigned int clv_index,
-                                                 int scaler_index,
-                                                 const unsigned int * freqs_index,
-                                                 int asc_bias_type);
-
 PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  unsigned int parent_clv_index,
                                                  int parent_scaler_index,
@@ -393,15 +395,6 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  unsigned int matrix_index,
                                                  const unsigned int * freqs_index,
                                                  double * persite_lnl);
-
-PLL_EXPORT double pll_compute_edge_loglikelihood_asc(pll_partition_t * partition,
-                                                 unsigned int parent_clv_index,
-                                                 int parent_scaler_index,
-                                                 unsigned int child_clv_index,
-                                                 int child_scaler_index,
-                                                 unsigned int matrix_index,
-                                                 const unsigned int * freqs_index,
-                                                 int asc_bias_type);
 
 PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
                                       unsigned int parent_clv_index,

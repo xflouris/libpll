@@ -212,6 +212,30 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
   }
 }
 
+static double compute_asc_bias_correction(double logl_base,
+                                          unsigned int sites,
+                                          double sum_w,
+                                          int asc_bias_type)
+{
+  double logl_correction = 0.0;
+  switch (asc_bias_type)
+  {
+    case PLL_ASC_BIAS_LEWIS:
+      logl_correction = sites*log(1 - logl_base);
+      break;
+    case PLL_ASC_BIAS_STAMATAKIS:
+      /* no need to add anything here */
+      logl_correction = logl_base;
+      break;
+    case PLL_ASC_BIAS_FELSENSTEIN:
+      logl_correction = sum_w * log(logl_base);
+      break;
+    default:
+      assert(0);
+  }
+  return logl_correction;
+}
+
 PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
                                                  unsigned int clv_index,
                                                  int scaler_index,
@@ -278,38 +302,61 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
 
   }
 
-  return logl;
-}
-
-PLL_EXPORT double pll_compute_root_loglikelihood_asc(pll_partition_t * partition,
-                                                 unsigned int clv_index,
-                                                 int scaler_index,
-                                                 const unsigned int * freqs_index,
-                                                 int asc_bias_type)
-{
-  /* for ascertainment bias correction lnL is computed in 2 parts. */
-  /* first, the lnL for variant sites */
-  double logl_variant = pll_compute_root_loglikelihood(partition,
-                                                       clv_index,
-                                                       scaler_index,
-                                                       freqs_index,
-                                                       NULL);
-  /* next, the lnL correction */
-  double logl_correction = 0;
-  switch (asc_bias_type)
+  /* ascertainment bias correction */
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
   {
-    case PLL_ASC_BIAS_LEWIS:
-      break;
-    case PLL_ASC_BIAS_STAMATAKIS:
-      break;
-    case PLL_ASC_BIAS_FELSENSTEIN:
-      break;
-    default:
-      assert(0);
-  }
-  assert(0);
+    assert(prop_invar == 0);
+    double logl_correction = 0;
+    unsigned int sum_w = 0;
+    unsigned int scale_factors;
 
-  return logl_variant + logl_correction;
+    for (i = 0; i < partition->states; ++i)
+    {
+      /* 1. compute per-site logl for each state */
+      term = 0;
+      for (j = 0; j < rates; ++j)
+      {
+        freqs = partition->frequencies[freqs_index[j]];
+        prop_invar = partition->prop_invar[freqs_index[j]];
+        term_r = 0;
+        for (k = 0; k < states; ++k)
+        {
+          term_r += clv[k] * freqs[k];
+        }
+        term += term_r * weights[j];
+        clv += states_padded;
+      }
+
+      /* count number of scaling factors to acount for */
+      scale_factors = scaler?scaler[partition->sites + i]:0;
+
+      sum_w += partition->pattern_weights[partition->sites + i];
+      if (partition->asc_bias_type == PLL_ASC_BIAS_STAMATAKIS)
+      {
+        /* 2a. site_lk is the lnl weighted by the number of occurences */
+        site_lk = log(term) * partition->pattern_weights[partition->sites + i];
+        if (scale_factors)
+          site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+      }
+      else
+      {
+        /* 2b. site_lk is the actual likelihood */
+          site_lk = term * pow(PLL_SCALE_THRESHOLD, scale_factors);
+      }
+
+      /* logl_correction is the sum of weighted log likelihoods if
+         asc_bias_type = Stamatakis, or the sum of likelihoods otherwise */
+      logl_correction += site_lk;
+    }
+
+    /* 3. apply correction to the lnl score */
+    logl += compute_asc_bias_correction(logl_correction,
+                                        partition->sites,
+                                        sum_w,
+                                        partition->asc_bias_type);
+  }
+
+  return logl;
 }
 
 static double edge_loglikelihood_tipinner(pll_partition_t * partition,
@@ -465,6 +512,69 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
     }
   }
 
+  /* ascertainment bias correction */
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  {
+    assert(prop_invar == 0);
+    double logl_correction = 0;
+    unsigned int sum_w = 0;
+
+    /* 1. compute per-site logl for each state */
+    for (n = 0; n < partition->states; ++n)
+    {
+      pmatrix = partition->pmatrix[matrix_index];
+      terma = 0;
+      for (i = 0; i < partition->rate_cats; ++i)
+      {
+        freqs = partition->frequencies[freqs_index[i]];
+        terma_r = 0;
+        for (j = 0; j < states; ++j)
+        {
+          termb = 0;
+          cstate = tipmap[(unsigned int)(*tipchar)];
+          for (k = 0; k < states; ++k)
+          {
+            if (cstate & 1)
+              termb += pmatrix[k];
+            cstate >>= 1;
+          }
+          terma_r += clvp[j] * freqs[j] * termb;
+          pmatrix += states_padded;
+        }
+
+        terma += terma_r * weights[i];
+        clvp += states_padded;
+      }
+
+      /* count number of scaling factors to acount for */
+      scale_factors = (parent_scaler) ? parent_scaler[partition->sites + n] : 0;
+
+      sum_w += partition->pattern_weights[partition->sites + n];
+      if (partition->asc_bias_type == PLL_ASC_BIAS_STAMATAKIS)
+      {
+        /* 2a. site_lk is the lnl weighted by the number of occurences */
+        site_lk = log(terma) * partition->pattern_weights[partition->sites + n];
+        if (scale_factors)
+          site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+      }
+      else
+      {
+        /* 2b. site_lk is the actual likelihood */
+        site_lk = terma * pow(PLL_SCALE_THRESHOLD, scale_factors);
+      }
+
+      /* logl_correction is the sum of weighted log likelihoods if
+         asc_bias_type = Stamatakis, or the sum of likelihoods otherwise */
+      logl_correction += site_lk;
+    }
+
+    /* 3. apply correction to the lnl score */
+    logl += compute_asc_bias_correction(logl_correction,
+                                        partition->sites,
+                                        sum_w,
+                                        partition->asc_bias_type);
+  }
+
   return logl;
 }
 
@@ -558,6 +668,68 @@ static double edge_loglikelihood(pll_partition_t * partition,
     logl += site_lk;
   }
 
+  /* ascertainment bias correction */
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  {
+    assert(prop_invar == 0);
+    double logl_correction = 0;
+    unsigned int sum_w = 0;
+
+    /* 1. compute per-site logl for each state */
+    for (n = 0; n < partition->states; ++n)
+    {
+      pmatrix = partition->pmatrix[matrix_index];
+      terma = 0;
+      for (i = 0; i < partition->rate_cats; ++i)
+      {
+        freqs = partition->frequencies[freqs_index[i]];
+        terma_r = 0;
+        for (j = 0; j < states; ++j)
+        {
+          termb = 0;
+          for (k = 0; k < states; ++k)
+          {
+            termb += pmatrix[k] * clvc[k];
+          }
+          terma_r += clvp[j] * freqs[j] * termb;
+          pmatrix += states_padded;
+        }
+
+        terma += terma_r * weights[i];
+        clvp += states_padded;
+        clvc += states_padded;
+      }
+
+      /* count number of scaling factors to acount for */
+      scale_factors = (parent_scaler) ? parent_scaler[partition->sites + n] : 0;
+      scale_factors += (child_scaler) ? child_scaler[partition->sites + n] : 0;
+
+      sum_w += partition->pattern_weights[partition->sites + n];
+      if (partition->asc_bias_type == PLL_ASC_BIAS_STAMATAKIS)
+      {
+        /* 2a. site_lk is the lnl weighted by the number of occurences */
+        site_lk = log(terma) * partition->pattern_weights[partition->sites + n];
+        if (scale_factors)
+          site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+      }
+      else
+      {
+        /* 2b. site_lk is the actual likelihood */
+        site_lk = terma * pow(PLL_SCALE_THRESHOLD, scale_factors);
+      }
+
+      /* logl_correction is the sum of weighted log likelihoods if
+         asc_bias_type = Stamatakis, or the sum of likelihoods otherwise */
+      logl_correction += site_lk;
+    }
+
+    /* 3. apply correction to the lnl score */
+    logl += compute_asc_bias_correction(logl_correction,
+                                        partition->sites,
+                                        sum_w,
+                                        partition->asc_bias_type);
+  }
+
   return logl;
 }
 
@@ -594,44 +766,8 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                             matrix_index,
                             freqs_index,
                             persite_lnl);
+
   return logl;
-}
-
-PLL_EXPORT double pll_compute_edge_loglikelihood_asc(pll_partition_t * partition,
-                                                 unsigned int parent_clv_index,
-                                                 int parent_scaler_index,
-                                                 unsigned int child_clv_index,
-                                                 int child_scaler_index,
-                                                 unsigned int matrix_index,
-                                                 const unsigned int * freqs_index,
-                                                 int asc_bias_type)
-{
-  /* for ascertainment bias correction lnL is computed in 2 parts. */
-  /* first, the lnL for variant sites */
-  double logl_variant = pll_compute_edge_loglikelihood(partition,
-                                                       parent_clv_index,
-                                                       parent_scaler_index,
-                                                       child_clv_index,
-                                                       child_scaler_index,
-                                                       matrix_index,
-                                                       freqs_index,
-                                                      NULL);
-  /* next, the lnL correction */
-  double logl_correction = 0;
-  switch (asc_bias_type)
-  {
-    case PLL_ASC_BIAS_LEWIS:
-      break;
-    case PLL_ASC_BIAS_STAMATAKIS:
-      break;
-    case PLL_ASC_BIAS_FELSENSTEIN:
-      break;
-    default:
-      assert(0);
-  }
-  assert(0);
-
-  return logl_variant + logl_correction;
 }
 
 static int sumtable_tipinner(pll_partition_t * partition,

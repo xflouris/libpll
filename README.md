@@ -71,6 +71,8 @@ Below is a list of available functions in the current version.
 * `void pll_set_pattern_weights(pll_partition_t * partition, const unsigned int * pattern_weights);`
 * `int pll_update_invariant_sites_proportion(pll_partition_t * partition, unsigned int params_index, double prop_invar);`
 * `int pll_update_invariant_sites(pll_partition_t * partition);`
+* `int pll_set_asc_bias_type(pll_partition_t * partition, int asc_bias_type);`
+* `void pll_set_asc_state_weights(pll_partition_t * partition, const unsigned int * state_weights);`
 
 ### Likelihood computation
 
@@ -203,7 +205,7 @@ However, mistakes may happen. All bug reports are highly appreciated.
 
 ## Contributing to libpll
 
-Please read the section [Contributing to `libpll`](https://github.com/xflouris/libpll/wiki#contributing-to-libpll) 
+Please read the section [Contributing to `libpll`](https://github.com/xflouris/libpll/wiki#contributing-to-libpll)
 of the [wiki](https://github.com/xflouris/libpll/wiki).
 
 ## References

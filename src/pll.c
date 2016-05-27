@@ -478,6 +478,9 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   unsigned int sites_alloc = (partition->attributes & PLL_ATTRIB_ASC_BIAS) ?
                   sites + states : sites;
 
+  /* asc bias correction is set to Lewis by default */
+  partition->asc_bias_type = PLL_ASC_BIAS_LEWIS;
+
   /* allocate structures */
 
   /* eigen_decomp_valid */
@@ -946,6 +949,23 @@ PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
   memcpy(partition->pattern_weights,
          pattern_weights,
          sizeof(unsigned int)*partition->sites);
+}
+
+PLL_EXPORT int pll_set_asc_bias_type(pll_partition_t * partition,
+                                     int asc_bias_type)
+{
+  if(asc_bias_type >= 0 && asc_bias_type < PLL_ASC_BIAS_COUNT)
+  {
+      partition->asc_bias_type = asc_bias_type;
+  }
+  else
+  {
+    pll_errno = PLL_ERROR_ASC_BIAS;
+    snprintf(pll_errmsg, 200, "Illegal ascertainment bias algorithm \"%d\"",
+                              asc_bias_type);
+    return PLL_FAILURE;
+  }
+  return PLL_SUCCESS;
 }
 
 PLL_EXPORT void pll_set_asc_state_weights(pll_partition_t * partition,
