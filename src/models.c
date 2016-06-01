@@ -450,29 +450,36 @@ PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition
 PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
 {
   unsigned int i,j,k;
-  double * tipclv;
-  int * invariant;
   unsigned int state;
-  unsigned int states    = partition->states;
-  unsigned int sites     = partition->sites;
-  unsigned int tips      = partition->tips;
+  unsigned int states = partition->states;
+  unsigned int states_padded = partition->states_padded;
+  unsigned int sites = partition->sites;
+  unsigned int tips = partition->tips;
   unsigned int rate_cats = partition->rate_cats;
   unsigned int gap_state = 0;
+  int * invariant;
+  double * tipclv;
 
+  /* gap state has always all bits set to one */
   for (i = 0; i < states; ++i)
   {
     gap_state <<= 1;
     gap_state |= 1;
   }
 
+  /* allocate array (on first call) denoting the frequency index for invariant
+     sites, or -1 for variant sites */
   if (!partition->invariant)
   {
     partition->invariant = (int *)malloc(sites * sizeof(int));
   }
   invariant = partition->invariant;
 
+  /* initialize all elements to zero */
   memset(partition->invariant, 0, sites*sizeof(int));
 
+  /* depending on the attribute flag, fill each element of the invariant array
+     with the bitwise OR of all states in the corresponding site */
   if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
   {
     if (states == 4)
@@ -498,6 +505,8 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
   }
   else
   {
+    unsigned int span_padded = rate_cats * states_padded;
+
     for (i = 0; i < tips; ++i)
     {
       tipclv = partition->clv[i];
@@ -510,7 +519,7 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
         }
         if (state < gap_state)
           invariant[j] |= state;
-        tipclv += (rate_cats * states);
+        tipclv += span_padded;
       }
     }
   }
