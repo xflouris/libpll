@@ -54,7 +54,6 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4(unsigned int sites,
                                                const double * lookup)
 {
   unsigned int j,k,n;
-  unsigned int log2_rates = (unsigned int)ceil(log2(rate_cats));
   unsigned int states = 4;
   unsigned int span = states * rate_cats;
   const double * offset;
@@ -68,7 +67,7 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4(unsigned int sites,
     k = (unsigned int)(right_tipchars[n]);
 
     offset = lookup;
-    offset += (( j << 4) + k) << (2+log2_rates);
+    offset += ((j << 4) + k)*span;
 
     memcpy(parent_clv, offset, span*sizeof(double));
 
@@ -118,9 +117,7 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
   #endif
 
   unsigned int span = states * rate_cats;
-  unsigned int log2_rates = (unsigned int)ceil(log2(rate_cats));
   unsigned int log2_maxstates = (unsigned int)ceil(log2(tipmap_size));
-  unsigned int log2_states = (unsigned int)ceil(log2(states));
 
   if (parent_scaler)
     memset(parent_scaler, 0, sizeof(unsigned int) * sites);
@@ -131,7 +128,7 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
     k = (unsigned int)(right_tipchars[n]);
 
     offset = lookup;
-    offset += ((j << log2_maxstates) + k) << (log2_states+log2_rates);
+    offset += ((j << log2_maxstates) + k)*span;
 
     memcpy(parent_clv, offset, span*sizeof(double));
 
@@ -378,7 +375,6 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
   if (parent_scaler)
     fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
 
-
   /* compute CLV */
   for (n = 0; n < sites; ++n)
   {
@@ -524,8 +520,7 @@ PLL_EXPORT void pll_core_create_lookup(unsigned int states,
   unsigned int maxstates = tipmap_size;
 
   unsigned int log2_maxstates = (unsigned int)ceil(log2(maxstates));
-  unsigned int log2_states = (unsigned int)ceil(log2(states));
-  unsigned int log2_rates = (unsigned int)ceil(log2(rate_cats));
+  unsigned int span = states*rate_cats;
 
   /* precompute first the entries that contain only one 1 */
   double termj = 0;
@@ -547,7 +542,7 @@ PLL_EXPORT void pll_core_create_lookup(unsigned int states,
 
       /* find offset of state-pair in the precomputation table */
       lh_statepair = lookup;
-      lh_statepair += ((j << log2_maxstates) + k) << (log2_states+log2_rates);
+      lh_statepair += ((j << log2_maxstates) + k)*span;
 
       /* precompute the likelihood for each state and each rate */
       for (n = 0; n < rate_cats; ++n)

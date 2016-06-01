@@ -232,23 +232,19 @@ static int update_charmap(pll_partition_t * partition, const unsigned int * map)
     }
     else
       partition->maxstates += new_states_count;
-    partition->log2_maxstates = (unsigned int)ceil(log2(partition->maxstates));
-    partition->log2_states = (unsigned int)ceil(log2(partition->states));
-    partition->log2_rates = (unsigned int)ceil(log2(partition->rate_cats));
+
+    unsigned int l2_maxstates = (unsigned int)ceil(log2(partition->maxstates));
 
     /* allocate space for the precomputed tip-tip likelihood vector */
-    unsigned int addressbits = partition->log2_maxstates +
-                               partition->log2_maxstates +
-                               partition->log2_states +
-                               partition->log2_rates;
+    size_t alloc_size = (1 << (2 * l2_maxstates)) * 
+                        (partition->states_padded * partition->rate_cats);
 
     /* for AVX we do not need to reallocate ttlookup as it has fixed size */
     if ((partition->states == 4) && (partition->attributes & PLL_ATTRIB_ARCH_AVX))
       return PLL_SUCCESS;
 
     free(partition->ttlookup);
-    partition->ttlookup = pll_aligned_alloc((1 << addressbits) *
-                                            sizeof(double),
+    partition->ttlookup = pll_aligned_alloc(alloc_size * sizeof(double),
                                             partition->alignment);
     if (!partition->ttlookup)
     {
@@ -332,15 +328,12 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
   /* set maximum number of states (including ambiguities), its logarithm,
      and the logarithm of states */
   partition->maxstates = (unsigned int)k;
-  partition->log2_maxstates = (unsigned int)ceil(log2(partition->maxstates));
-  partition->log2_states = (unsigned int)ceil(log2(partition->states));
-  partition->log2_rates = (unsigned int)ceil(log2(partition->rate_cats));
+
+  unsigned int l2_maxstates = (unsigned int)ceil(log2(partition->maxstates));
 
   /* allocate space for the precomputed tip-tip likelihood vector */
-  unsigned int addressbits = partition->log2_maxstates +
-                             partition->log2_maxstates +
-                             partition->log2_states +
-                             partition->log2_rates;
+  size_t alloc_size = (1 << (2 * l2_maxstates)) * 
+                      (partition->states_padded * partition->rate_cats);
 
   /* dedicated 4x4 function  - if AVX is not used we can allocate less space
      in case not all 16 possible ambiguities are present */
@@ -359,8 +352,7 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
   }
   else
   {
-    partition->ttlookup = pll_aligned_alloc((1 << addressbits) *
-                                            sizeof(double),
+    partition->ttlookup = pll_aligned_alloc(alloc_size * sizeof(double),
                                             partition->alignment);
     if (!partition->ttlookup)
     {

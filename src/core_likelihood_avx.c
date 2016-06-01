@@ -68,8 +68,7 @@ PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
   unsigned int index = 0;
 
   unsigned int log2_maxstates = (unsigned int)ceil(log2(maxstates));
-  unsigned int log2_states_padded = (unsigned int)ceil(log2(states_padded));
-  unsigned int log2_rates = (unsigned int)ceil(log2(rate_cats));
+  unsigned int span_padded = states_padded*rate_cats;
 
   /* precompute first the entries that contain only one 1 */
   double termj = 0;
@@ -90,7 +89,7 @@ PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
 
       /* find offset of state-pair in the precomputation table */
       lookup = ttlookup;
-      lookup += ((j << log2_maxstates) + k) << (log2_states_padded+log2_rates);
+      lookup += ((j << log2_maxstates) + k)*span_padded;
 
       /* precompute the likelihood for each state and each rate */
       for (n = 0; n < rate_cats; ++n)
@@ -122,6 +121,11 @@ PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
           kmat += states_padded;
           lookup[index++] = termj*termk;
         }
+        /* this is to avoid valgrind warnings on accessing uninitialized memory
+           when using AVX and states are not a multiple of 4 */
+        if (states_padded-states)
+          memset(lookup+index, 0, (states_padded-states)*sizeof(double));
+
         lookup += states_padded;
       }
     }
@@ -375,10 +379,8 @@ PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
                                                unsigned int tipstates_count)
 {
   unsigned int j,k,n;
-  unsigned int log2_rates = (unsigned int)ceil(log2(rate_cats));
   unsigned int log2_maxstates = (unsigned int)ceil(log2(tipstates_count));
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
-  unsigned int log2_states_padded = (unsigned int)ceil(log2(states_padded));
   unsigned int span_padded = states_padded * rate_cats;
   const double * offset;
 
@@ -403,7 +405,7 @@ PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
     k = (unsigned int)(right_tipchars[n]);
 
     offset = lookup;
-    offset += ((j << log2_maxstates) + k) << (log2_states_padded+log2_rates);
+    offset += ((j << log2_maxstates) + k)*span_padded;
 
     memcpy(parent_clv, offset, span_padded*sizeof(double));
 
@@ -420,9 +422,8 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4_avx(unsigned int sites,
                                                    const double * lookup)
 {
   unsigned int j,k,n;
-  unsigned int log2_rates = (unsigned int)ceil(log2(rate_cats));
   unsigned int states = 4;
-  unsigned int span = states * rate_cats;
+  unsigned int span = states*rate_cats;
   const double * offset;
 
   if (parent_scaler)
@@ -434,7 +435,7 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4_avx(unsigned int sites,
     k = (unsigned int)(right_tipchars[n]);
 
     offset = lookup;
-    offset += (( j << 4) + k) << (2+log2_rates);
+    offset += ((j << 4) + k)*span;
 
     memcpy(parent_clv, offset, span*sizeof(double));
 
@@ -476,7 +477,6 @@ PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
   }
 
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
-  unsigned int span = states * rate_cats;
   unsigned int span_padded = states_padded * rate_cats;
 
   if (parent_scaler)
@@ -519,7 +519,7 @@ PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
     if (scaling)
     {
       parent_clv -= span_padded;
-      for (i = 0; i < span; ++i)
+      for (i = 0; i < span_padded; ++i)
         parent_clv[i] *= PLL_SCALE_FACTOR;
       parent_clv += span_padded;
       parent_scaler[n] += 1;

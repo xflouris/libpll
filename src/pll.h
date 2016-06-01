@@ -153,9 +153,6 @@ typedef struct pll_partition
 
   /* tip-tip precomputation data */
   unsigned int maxstates;
-  unsigned int log2_maxstates;
-  unsigned int log2_states;
-  unsigned int log2_rates;
   unsigned char ** tipchars;
   unsigned char * charmap;
   double * ttlookup;
