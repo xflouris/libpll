@@ -70,21 +70,20 @@
 /* attribute flags */
 
 #define PLL_ATTRIB_ARCH_CPU            0
-#define PLL_ATTRIB_ARCH_SSE       1 << 0
-#define PLL_ATTRIB_ARCH_AVX       1 << 1
-#define PLL_ATTRIB_ARCH_AVX2      1 << 2
-#define PLL_ATTRIB_ARCH_AVX512    1 << 3
+#define PLL_ATTRIB_ARCH_SSE       (1 << 0)
+#define PLL_ATTRIB_ARCH_AVX       (1 << 1)
+#define PLL_ATTRIB_ARCH_AVX2      (1 << 2)
+#define PLL_ATTRIB_ARCH_AVX512    (1 << 3)
 #define PLL_ATTRIB_ARCH_MASK         0xF
 
 #define PLL_ATTRIB_PATTERN_TIP    1 << 4
-#define PLL_ATTRIB_ASC_BIAS       1 << 5
 
-/* ascertainment correction type */
-
-#define PLL_ASC_BIAS_LEWIS        0
-#define PLL_ASC_BIAS_FELSENSTEIN  1
-#define PLL_ASC_BIAS_STAMATAKIS   2
-#define PLL_ASC_BIAS_COUNT        3
+/* ascertainment correction */
+#define PLL_ATTRIB_ASC_BIAS_LEWIS        (1 << 5)
+#define PLL_ATTRIB_ASC_BIAS_FELSENSTEIN  (2 << 5)
+#define PLL_ATTRIB_ASC_BIAS_STAMATAKIS   (3 << 5)
+#define PLL_ATTRIB_ASC_BIAS_MASK         (7 << 5)
+#define PLL_ATTRIB_ASC_BIAS_FLAG         (1 << 8)
 
 /* error codes */
 
@@ -109,11 +108,11 @@
 
 /* utree specific */
 
-#define PLL_UTREE_SHOW_LABEL             1 << 0
-#define PLL_UTREE_SHOW_BRANCH_LENGTH     1 << 1
-#define PLL_UTREE_SHOW_CLV_INDEX         1 << 2
-#define PLL_UTREE_SHOW_SCALER_INDEX      1 << 3
-#define PLL_UTREE_SHOW_PMATRIX_INDEX     1 << 4
+#define PLL_UTREE_SHOW_LABEL             (1 << 0)
+#define PLL_UTREE_SHOW_BRANCH_LENGTH     (1 << 1)
+#define PLL_UTREE_SHOW_CLV_INDEX         (1 << 2)
+#define PLL_UTREE_SHOW_SCALER_INDEX      (1 << 3)
+#define PLL_UTREE_SHOW_PMATRIX_INDEX     (1 << 4)
 
 /* structures and data types */
 
@@ -123,6 +122,7 @@ typedef struct pll_partition
   unsigned int clv_buffers;
   unsigned int states;
   unsigned int sites;
+  unsigned int pattern_weight_sum;
   unsigned int rate_matrices;
   unsigned int prob_matrices;
   unsigned int rate_cats;
@@ -159,8 +159,7 @@ typedef struct pll_partition
   unsigned int * tipmap;
 
   /* ascertainment bias correction */
-  int asc_bias_type;
-
+  int asc_bias_alloc;
 } pll_partition_t;
 
 

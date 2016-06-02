@@ -12,11 +12,6 @@
 
 static void fatal(const char * format, ...) __attribute__ ((noreturn));
 
-static int cb_full_traversal(pll_rtree_t * node)
-{
-  return 1;
-}
-
 typedef struct
 {
   int clv_valid;
@@ -226,7 +221,7 @@ int main(int argc, char * argv[])
        inner node */
 
     if (!pll_rtree_traverse(tree,
-                            cb_full_traversal,
+                            cb_rfull_traversal,
                             travbuffer,
                             &traversal_size))
       fatal("Function pll_rtree_traverse() root node as parameter");

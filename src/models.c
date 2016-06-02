@@ -426,11 +426,30 @@ PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition
                                                      unsigned int params_index,
                                                      double prop_invar)
 {
+
+  /* check that there is no ascertainment bias correction */
+  if (prop_invar != 0.0 && (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK))
+  {
+    pll_errno = PLL_ERROR_PINV;
+    snprintf(pll_errmsg, 200,
+      "Invariant sites are not compatible with asc bias correction");
+    return PLL_FAILURE;
+  }
+
+  /* validate new invariant sites proportion */
   if (prop_invar < 0 || prop_invar >= 1)
   {
     pll_errno = PLL_ERROR_PINV;
     snprintf(pll_errmsg, 200,
         "Invalid proportion of invariant sites (%f)", prop_invar);
+    return PLL_FAILURE;
+  }
+
+  if (params_index > partition->rate_matrices)
+  {
+    pll_errno = PLL_ERROR_PINV;
+    snprintf(pll_errmsg, 200,
+        "Invalid params index (%d)", params_index);
     return PLL_FAILURE;
   }
 

@@ -29,4 +29,15 @@
 unsigned int get_attributes(int argc, char **argv);
 void skip_test();
 
+pll_partition_t * parse_msa(const char * filename,
+                            unsigned int taxa_count,
+                            unsigned int states,
+                            unsigned int rate_cats,
+                            unsigned int rate_matrices,
+                            pll_utree_t * tree,
+                            unsigned int attributes);
+
+int cb_full_traversal(pll_utree_t * node);
+int cb_rfull_traversal(pll_rtree_t * node);
+
 #endif /* COMMON_H_ */

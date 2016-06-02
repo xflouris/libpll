@@ -32,16 +32,16 @@ static void fill_parent_scaler(unsigned int sites,
     memset(parent_scaler, 0, sizeof(unsigned int) * sites);
   else if (left_scaler && right_scaler)
   {
-    memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * sites); 
+    memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * sites);
     for (i = 0; i < sites; ++i)
       parent_scaler[i] += right_scaler[i];
   }
   else
   {
     if (left_scaler)
-      memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * sites); 
+      memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * sites);
     else
-      memcpy(parent_scaler, right_scaler, sizeof(unsigned int) * sites); 
+      memcpy(parent_scaler, right_scaler, sizeof(unsigned int) * sites);
   }
 }
 
@@ -76,7 +76,7 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4(unsigned int sites,
 }
 
 PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
-                                           unsigned int sites,                                   
+                                           unsigned int sites,
                                            unsigned int rate_cats,
                                            double * parent_clv,
                                            unsigned int * parent_scaler,
@@ -136,7 +136,7 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
   }
 }
 
-PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,                                   
+PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
                                                unsigned int rate_cats,
                                                double * parent_clv,
                                                unsigned int * parent_scaler,
@@ -220,7 +220,7 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
 }
 
 PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
-                                           unsigned int sites,                                   
+                                           unsigned int sites,
                                            unsigned int rate_cats,
                                            double * parent_clv,
                                            unsigned int * parent_scaler,
@@ -380,7 +380,6 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
   {
     lmat = left_matrix;
     rmat = right_matrix;
-    
     scaling = (parent_scaler) ? 1 : 0;
 
     for (k = 0; k < rate_cats; ++k)
@@ -781,6 +780,58 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
   return PLL_SUCCESS;
 }
 
+static void core_site_likelihood_derivatives(unsigned int states,
+                                             unsigned int states_padded,
+                                             unsigned int rate_cats,
+                                             const double * rate_weights,
+                                             const int * invariant,
+                                             const double * prop_invar,
+                                             double ** freqs,
+                                             const double * sumtable,
+                                             const double * diagptable,
+                                             double * site_lk)
+{
+  unsigned int i,j;
+  double inv_site_lk = 0.0;
+  double cat_sitelk[3];
+  const double *sum = sumtable;
+  const double * diagp = diagptable;
+  const double * t_freqs;
+  double t_prop_invar;
+
+  site_lk[0] = site_lk[1] = site_lk[2] = 0;
+  for (i = 0; i < rate_cats; ++i)
+  {
+    t_freqs = freqs[i];
+
+    cat_sitelk[0] = cat_sitelk[1] = cat_sitelk[2] = 0;
+    for (j = 0; j < states; ++j)
+    {
+      cat_sitelk[0] += sum[j] * diagp[0];
+      cat_sitelk[1] += sum[j] * diagp[1];
+      cat_sitelk[2] += sum[j] * diagp[2];
+      diagp += 3;
+    }
+
+    /* account for invariant sites */
+    t_prop_invar = prop_invar[i];
+    if (t_prop_invar > 0)
+    {
+      inv_site_lk =
+          (invariant[0] == -1) ? 0 : t_freqs[invariant[0]] * t_prop_invar;
+      cat_sitelk[0] = cat_sitelk[0] * (1. - t_prop_invar) + inv_site_lk;
+      cat_sitelk[1] = cat_sitelk[1] * (1. - t_prop_invar);
+      cat_sitelk[2] = cat_sitelk[2] * (1. - t_prop_invar);
+    }
+
+    site_lk[0] += cat_sitelk[0] * rate_weights[i];
+    site_lk[1] += cat_sitelk[1] * rate_weights[i];
+    site_lk[2] += cat_sitelk[2] * rate_weights[i];
+
+    sum += states_padded;
+  }
+}
+
 PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
                                                   unsigned int sites,
                                                   unsigned int rate_cats,
@@ -800,24 +851,23 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
                                                   unsigned int attrib)
 {
   unsigned int n, i, j;
+  unsigned int ef_sites;
   double site_lk[3];
-  double inv_site_lk;
   double logLK = 0.0;
 
   const double * sum;
   double deriv1, deriv2;
-  double cat_sitelk0, cat_sitelk1, cat_sitelk2;
 
   const double * t_eigenvals;
-  const double * t_freqs;
-  double t_prop_invar;
   double t_branch_length;
   unsigned int scale_factors;
 
   double *diagptable, *diagp;
+  const int * invariant_ptr;
   double ki;
 
   unsigned int states_padded = states;
+  unsigned int pattern_weight_sum = 0;
 
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
@@ -827,6 +877,17 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
 #endif
 #ifdef HAVE_SSE
 #endif
+
+  /* For Stamatakis correction, the likelihood derivatives are computed in
+     the usual way for the additional per-state sites. */
+  if ((attrib & PLL_ATTRIB_ASC_BIAS_MASK) == PLL_ATTRIB_ASC_BIAS_STAMATAKIS)
+  {
+    ef_sites = sites + states;
+  }
+  else
+  {
+    ef_sites = sites;
+  }
 
   *d_f = 0.0;
   *dd_f = 0.0;
@@ -856,42 +917,21 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
   }
 
   sum = sumtable;
-  for (n = 0; n < sites; ++n)
+  invariant_ptr = invariant;
+  for (n = 0; n < ef_sites; ++n)
   {
-    inv_site_lk = 0.0;
-    site_lk[0] = site_lk[1] = site_lk[2] = 0;
-    diagp = diagptable;
-    for (i = 0; i < rate_cats; ++i)
-    {
-      t_freqs = freqs[i];
-
-      ki = rates[i];
-      cat_sitelk0 = cat_sitelk1 = cat_sitelk2 = 0;
-      for (j = 0; j < states; ++j)
-      {
-        cat_sitelk0 += sum[j] * diagp[0];
-        cat_sitelk1 += sum[j] * diagp[1];
-        cat_sitelk2 += sum[j] * diagp[2];
-        diagp += 3;
-      }
-
-      /* account for invariant sites */
-      t_prop_invar = prop_invar[i];
-      if (t_prop_invar > 0)
-      {
-        inv_site_lk =
-            (invariant[n] == -1) ? 0 : t_freqs[invariant[n]] * t_prop_invar;
-        cat_sitelk0 = cat_sitelk0 * (1. - t_prop_invar) + inv_site_lk;
-        cat_sitelk1 = cat_sitelk1 * (1. - t_prop_invar);
-        cat_sitelk2 = cat_sitelk2 * (1. - t_prop_invar);
-      }
-
-      site_lk[0] += cat_sitelk0 * rate_weights[i];
-      site_lk[1] += cat_sitelk1 * rate_weights[i];
-      site_lk[2] += cat_sitelk2 * rate_weights[i];
-
-      sum += states_padded;
-    }
+    core_site_likelihood_derivatives(states,
+                                     states_padded,
+                                     rate_cats,
+                                     rate_weights,
+                                     invariant_ptr,
+                                     prop_invar,
+                                     freqs,
+                                     sum,
+                                     diagptable,
+                                     site_lk);
+    invariant_ptr++;
+    sum += rate_cats * states_padded;
 
     scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
     scale_factors += (child_scaler) ? child_scaler[n] : 0;
@@ -907,6 +947,79 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
     deriv2 = (deriv1 * deriv1 - (site_lk[2] / site_lk[0]));
     *d_f += pattern_weights[n] * deriv1;
     *dd_f += pattern_weights[n] * deriv2;
+    pattern_weight_sum += pattern_weights[n];
+  }
+
+  /* account for ascertainment bias correction */
+  if (attrib & PLL_ATTRIB_ASC_BIAS_MASK)
+  {
+    double asc_Lk[3] = {0.0, 0.0, 0.0};
+    double ext_asc_Lk[3] = {0.0, 0.0, 0.0};
+    unsigned int sum_w_inv = 0;
+    double asc_scaling;
+    int asc_bias_type = attrib & PLL_ATTRIB_ASC_BIAS_MASK;
+
+    if (asc_bias_type != PLL_ATTRIB_ASC_BIAS_STAMATAKIS)
+    {
+      for (n=0; n<states; ++n)
+      {
+        /* compute the site LK derivatives for the additional per-state sites */
+        core_site_likelihood_derivatives(states,
+                                         states_padded,
+                                         rate_cats,
+                                         rate_weights,
+                                         0, /* prop invar disallowed */
+                                         prop_invar,
+                                         freqs,
+                                         sum,
+                                         diagptable,
+                                         site_lk);
+        sum += rate_cats * states_padded;
+
+        scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
+        scale_factors += (child_scaler) ? child_scaler[n] : 0;
+        asc_scaling = pow(PLL_SCALE_THRESHOLD, (double)scale_factors);
+
+        /* g(x) := derivatives of f(x) * log(f(x))
+           goldman corrections 2 and 3 where f(x) is the likelihood function
+           Li * log(Li) */
+        ext_asc_Lk[0] += site_lk[0] * log(site_lk[0]);
+        /* Li' * (log(Li) + 1) */
+        ext_asc_Lk[1] += site_lk[1] * (log(site_lk[0]) + 1.0);
+        /* (Li'' * (log(Li) + 1)) + (Li')^2 / Li */
+        ext_asc_Lk[2] += (site_lk[2] * (log(site_lk[0]) + 1.0)) +
+                         (site_lk[1]*site_lk[1]/site_lk[0]);
+
+        /* sum over likelihood and 1st and 2nd derivative / apply scaling */
+        asc_Lk[0] += site_lk[0] * asc_scaling;
+        asc_Lk[1] += site_lk[1] * asc_scaling;
+        asc_Lk[2] += site_lk[2] * asc_scaling;
+
+        sum_w_inv += pattern_weights[sites + n];
+      }
+
+      switch(asc_bias_type)
+      {
+        case PLL_ATTRIB_ASC_BIAS_LEWIS:
+          /* derivatives of log(1.0 - (sum Li(s) over states 's')) */
+      		*d_f  -= pattern_weight_sum * (asc_Lk[1] / (asc_Lk[0] - 1.0));
+      		*dd_f -= pattern_weight_sum *
+                     (((asc_Lk[0] - 1.0) * asc_Lk[2] - asc_Lk[1] * asc_Lk[1]) /
+                     ((asc_Lk[0] - 1.0) * (asc_Lk[0] - 1.0)));
+          break;
+        case PLL_ATTRIB_ASC_BIAS_FELSENSTEIN:
+          /* derivatives of log(sum Li(s) over states 's') */
+      		*d_f  += sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
+      		*dd_f += sum_w_inv *
+                     (((asc_Lk[2] * asc_Lk[0]) - asc_Lk[1] * asc_Lk[1]) /
+                     (asc_Lk[0] * asc_Lk[0]));
+        break;
+        default:
+          pll_errno = PLL_ERROR_ASC_BIAS;
+          snprintf(pll_errmsg, 200, "Illegal ascertainment bias algorithm");
+          return -INFINITY;
+      }
+    }
   }
 
   free (diagptable);

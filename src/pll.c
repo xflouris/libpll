@@ -236,7 +236,7 @@ static int update_charmap(pll_partition_t * partition, const unsigned int * map)
     unsigned int l2_maxstates = (unsigned int)ceil(log2(partition->maxstates));
 
     /* allocate space for the precomputed tip-tip likelihood vector */
-    size_t alloc_size = (1 << (2 * l2_maxstates)) * 
+    size_t alloc_size = (1 << (2 * l2_maxstates)) *
                         (partition->states_padded * partition->rate_cats);
 
     /* for AVX we do not need to reallocate ttlookup as it has fixed size */
@@ -273,7 +273,7 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
 
   /* If ascertainment bias correction attribute is set, CLVs will be allocated
      with additional sites for each state */
-  unsigned int sites_alloc = (partition->attributes & PLL_ATTRIB_ASC_BIAS) ?
+  unsigned int sites_alloc = (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK) ?
                   partition->sites + partition->states : partition->sites;
 
   //memcpy(map, partition->map, PLL_ASCII_SIZE * sizeof(unsigned int));
@@ -332,7 +332,7 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
   unsigned int l2_maxstates = (unsigned int)ceil(log2(partition->maxstates));
 
   /* allocate space for the precomputed tip-tip likelihood vector */
-  size_t alloc_size = (1 << (2 * l2_maxstates)) * 
+  size_t alloc_size = (1 << (2 * l2_maxstates)) *
                       (partition->states_padded * partition->rate_cats);
 
   /* dedicated 4x4 function  - if AVX is not used we can allocate less space
@@ -439,6 +439,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   partition->clv_buffers = clv_buffers;
   partition->states = states;
   partition->sites = sites;
+  partition->pattern_weight_sum = sites;
 
   partition->rate_matrices = rate_matrices;
   partition->prob_matrices = prob_matrices;
@@ -467,11 +468,11 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
 
   /* If ascertainment bias correction attribute is set, CLVs will be allocated
      with additional sites for each state */
-  unsigned int sites_alloc = (partition->attributes & PLL_ATTRIB_ASC_BIAS) ?
+  unsigned int sites_alloc =
+                  (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK) ?
                   sites + states : sites;
-
-  /* asc bias correction is set to Lewis by default */
-  partition->asc_bias_type = PLL_ASC_BIAS_LEWIS;
+  partition->asc_bias_alloc =
+                  (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK) > 0;
 
   /* allocate structures */
 
@@ -746,7 +747,7 @@ static int set_tipchars_4x4(pll_partition_t * partition,
   }
 
   /* if asc_bias is set, we initialize the additional positions */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
   {
     for (i = 0; i < partition->states; ++i)
     {
@@ -783,7 +784,7 @@ static int set_tipchars(pll_partition_t * partition,
   }
 
   /* if asc_bias is set, we initialize the additional positions */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
   {
     for (i = 0; i < partition->states; ++i)
     {
@@ -833,7 +834,7 @@ static int set_tipclv(pll_partition_t * partition,
   }
 
   /* if asc_bias is set, we initialize the additional positions */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
   {
     for (i = 0; i < partition->states; ++i)
     {
@@ -917,7 +918,7 @@ PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
   }
 
   /* if asc_bias is set, we initialize the additional positions */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
   {
     for (i = 0; i < partition->states; ++i)
     {
@@ -938,32 +939,67 @@ PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
 PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
                                         const unsigned int * pattern_weights)
 {
+  unsigned int i;
   memcpy(partition->pattern_weights,
          pattern_weights,
          sizeof(unsigned int)*partition->sites);
+
+  /* recompute the sum of weights */
+  partition->pattern_weight_sum = 0;
+  for (i=0; i<partition->sites; ++i)
+    partition->pattern_weight_sum += pattern_weights[i];
 }
 
 PLL_EXPORT int pll_set_asc_bias_type(pll_partition_t * partition,
                                      int asc_bias_type)
 {
-  if(asc_bias_type >= 0 && asc_bias_type < PLL_ASC_BIAS_COUNT)
+  unsigned int i;
+  int prop_invar = 0;
+  int asc_bias_attr = asc_bias_type & PLL_ATTRIB_ASC_BIAS_MASK;
+
+  /* If the partition was created **without** ascertainment bias correction,
+     CLVs do not have space allocated for the invariant states, and setting
+     ascertaiment bias will likely produce a segfault later. */
+  if (!partition->asc_bias_alloc)
   {
-      partition->asc_bias_type = asc_bias_type;
+    pll_errno = PLL_ERROR_ASC_BIAS;
+    snprintf(pll_errmsg, 200, "Partition was not created with ASC BIAS support");
+    return PLL_FAILURE;
   }
-  else
+
+  /* check that there is no proportion of invariant sites */
+  for (i=0; i<partition->rate_matrices; ++i)
+    prop_invar |= (partition->prop_invar[i] > 0);
+  if (asc_bias_type != 0 && prop_invar)
+  {
+    pll_errno = PLL_ERROR_PINV;
+    snprintf(pll_errmsg, 200,
+      "Invariant sites are not compatible with asc bias correction");
+    return PLL_FAILURE;
+  }
+
+  /* check that asc_bias_type is either 0 or a valid type */
+  if (asc_bias_attr != asc_bias_type)
   {
     pll_errno = PLL_ERROR_ASC_BIAS;
     snprintf(pll_errmsg, 200, "Illegal ascertainment bias algorithm \"%d\"",
                               asc_bias_type);
     return PLL_FAILURE;
   }
+
+  /* reset current ascertainment bias type (if any) */
+  partition->attributes &= ~PLL_ATTRIB_ASC_BIAS_MASK;
+
+  /* set new ascertainment bias type */
+  partition->attributes |= asc_bias_attr;
+
   return PLL_SUCCESS;
 }
 
 PLL_EXPORT void pll_set_asc_state_weights(pll_partition_t * partition,
                                           const unsigned int * state_weights)
 {
-  assert(partition->attributes & PLL_ATTRIB_ASC_BIAS);
+  assert(partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK);
   memcpy(partition->pattern_weights + partition->sites,
          state_weights,
          sizeof(unsigned int)*partition->states);

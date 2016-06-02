@@ -11,7 +11,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
  - Added basic PHYLIP parsing
  - Functions for obtaining first/second derivatives to approximate LH function
  - Trimming of line-feed/carriage-return when reading FASTA files
- - Ascertainment bias correction (Lewis, Felsenstein and Stamatakis algorithms) for edge and root likelihood computation
 
 ### Changed
  - Selection of a specific rate matrix selection for each rate category

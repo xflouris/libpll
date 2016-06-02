@@ -22,6 +22,8 @@ CFLAGS = -g -O3 -Wall
 CLIBS = -lpll -lm
 
 CFILES = src/alpha-cats.c \
+				 src/asc-bias.c \
+         src/derivatives.c \
          src/fasta-dna.c \
          src/fasta-prot.c \
          src/rooted.c \
@@ -40,7 +42,8 @@ DEPFILES = worms16s.fas \
 					 small.fas small.tree small.rooted.tree \
 					 246x4465.fas 246x4465.tree \
 					 ribosomal_l5_pf00673.fas \
-					 medium.fas medium.tree
+					 medium.fas medium.tree \
+					 2000.fas 2000.tree
 REQFILES = $(patsubst %, $(DATADIR)/%, $(DEPFILES))
 ASSETS = https://raw.githubusercontent.com/xflouris/assets/master/libpll
 

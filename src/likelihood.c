@@ -31,7 +31,7 @@ static void case_tiptip(pll_partition_t * partition,
   unsigned int sites = partition->sites;
 
   /* ascertaiment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
     sites += partition->states;
 
   /* get parent scaler */
@@ -78,7 +78,7 @@ static void case_tipinner(pll_partition_t * partition,
   unsigned int sites = partition->sites;
 
   /* ascertaiment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
     sites += partition->states;
 
   /* get parent scaler */
@@ -139,7 +139,7 @@ static void case_innerinner(pll_partition_t * partition,
   unsigned int sites = partition->sites;
 
   /* ascertaiment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
     sites += partition->states;
 
   /* get parent scaler */
@@ -183,7 +183,6 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
   for (i = 0; i < count; ++i)
   {
     op = &(operations[i]);
-
     if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
     {
       if ((op->child1_clv_index < partition->tips) &&
@@ -213,25 +212,27 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
 }
 
 static double compute_asc_bias_correction(double logl_base,
-                                          unsigned int sites,
-                                          double sum_w,
+                                          unsigned int sum_w,
+                                          unsigned int sum_w_inv,
                                           int asc_bias_type)
 {
   double logl_correction = 0.0;
   switch (asc_bias_type)
   {
-    case PLL_ASC_BIAS_LEWIS:
-      logl_correction = sites*log(1 - logl_base);
+    case PLL_ATTRIB_ASC_BIAS_LEWIS:
+      logl_correction = sum_w*log(1 - logl_base);
       break;
-    case PLL_ASC_BIAS_STAMATAKIS:
+    case PLL_ATTRIB_ASC_BIAS_STAMATAKIS:
       /* no need to add anything here */
       logl_correction = logl_base;
       break;
-    case PLL_ASC_BIAS_FELSENSTEIN:
-      logl_correction = sum_w * log(logl_base);
+    case PLL_ATTRIB_ASC_BIAS_FELSENSTEIN:
+      logl_correction = sum_w_inv * log(logl_base);
       break;
     default:
-      assert(0);
+      pll_errno = PLL_ERROR_ASC_BIAS;
+      snprintf(pll_errmsg, 200, "Illegal ascertainment bias algorithm");
+      return -INFINITY;
   }
   return logl_correction;
 }
@@ -303,12 +304,13 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
   }
 
   /* ascertainment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
   {
     assert(prop_invar == 0);
     double logl_correction = 0;
-    unsigned int sum_w = 0;
+    unsigned int sum_w_inv = 0;
     unsigned int scale_factors;
+    int asc_bias_type = partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK;
 
     for (i = 0; i < partition->states; ++i)
     {
@@ -330,8 +332,8 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
       /* count number of scaling factors to acount for */
       scale_factors = scaler?scaler[partition->sites + i]:0;
 
-      sum_w += partition->pattern_weights[partition->sites + i];
-      if (partition->asc_bias_type == PLL_ASC_BIAS_STAMATAKIS)
+      sum_w_inv += partition->pattern_weights[partition->sites + i];
+      if (asc_bias_type == PLL_ATTRIB_ASC_BIAS_STAMATAKIS)
       {
         /* 2a. site_lk is the lnl weighted by the number of occurences */
         site_lk = log(term) * partition->pattern_weights[partition->sites + i];
@@ -351,9 +353,9 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
 
     /* 3. apply correction to the lnl score */
     logl += compute_asc_bias_correction(logl_correction,
-                                        partition->sites,
-                                        sum_w,
-                                        partition->asc_bias_type);
+                                        partition->pattern_weight_sum,
+                                        sum_w_inv,
+                                        asc_bias_type);
   }
 
   return logl;
@@ -513,11 +515,12 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
   }
 
   /* ascertainment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
   {
     assert(prop_invar == 0);
     double logl_correction = 0;
-    unsigned int sum_w = 0;
+    unsigned int sum_w_inv = 0;
+    int asc_bias_type = partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK;
 
     /* 1. compute per-site logl for each state */
     for (n = 0; n < partition->states; ++n)
@@ -549,8 +552,8 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
       /* count number of scaling factors to acount for */
       scale_factors = (parent_scaler) ? parent_scaler[partition->sites + n] : 0;
 
-      sum_w += partition->pattern_weights[partition->sites + n];
-      if (partition->asc_bias_type == PLL_ASC_BIAS_STAMATAKIS)
+      sum_w_inv += partition->pattern_weights[partition->sites + n];
+      if (asc_bias_type == PLL_ATTRIB_ASC_BIAS_STAMATAKIS)
       {
         /* 2a. site_lk is the lnl weighted by the number of occurences */
         site_lk = log(terma) * partition->pattern_weights[partition->sites + n];
@@ -570,9 +573,9 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
 
     /* 3. apply correction to the lnl score */
     logl += compute_asc_bias_correction(logl_correction,
-                                        partition->sites,
-                                        sum_w,
-                                        partition->asc_bias_type);
+                                        partition->pattern_weight_sum,
+                                        sum_w_inv,
+                                        asc_bias_type);
   }
 
   return logl;
@@ -669,11 +672,12 @@ static double edge_loglikelihood(pll_partition_t * partition,
   }
 
   /* ascertainment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
   {
     assert(prop_invar == 0);
     double logl_correction = 0;
-    unsigned int sum_w = 0;
+    unsigned int sum_w_inv = 0;
+    int asc_bias_type = partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK;
 
     /* 1. compute per-site logl for each state */
     for (n = 0; n < partition->states; ++n)
@@ -704,8 +708,8 @@ static double edge_loglikelihood(pll_partition_t * partition,
       scale_factors = (parent_scaler) ? parent_scaler[partition->sites + n] : 0;
       scale_factors += (child_scaler) ? child_scaler[partition->sites + n] : 0;
 
-      sum_w += partition->pattern_weights[partition->sites + n];
-      if (partition->asc_bias_type == PLL_ASC_BIAS_STAMATAKIS)
+      sum_w_inv += partition->pattern_weights[partition->sites + n];
+      if (asc_bias_type == PLL_ATTRIB_ASC_BIAS_STAMATAKIS)
       {
         /* 2a. site_lk is the lnl weighted by the number of occurences */
         site_lk = log(terma) * partition->pattern_weights[partition->sites + n];
@@ -725,9 +729,9 @@ static double edge_loglikelihood(pll_partition_t * partition,
 
     /* 3. apply correction to the lnl score */
     logl += compute_asc_bias_correction(logl_correction,
-                                        partition->sites,
-                                        sum_w,
-                                        partition->asc_bias_type);
+                                        partition->pattern_weight_sum,
+                                        sum_w_inv,
+                                        asc_bias_type);
   }
 
   return logl;
@@ -788,7 +792,7 @@ static int sumtable_tipinner(pll_partition_t * partition,
   unsigned int sites = partition->sites;
 
   /* ascertaiment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
     sites += partition->states;
 
   for (i = 0; i < partition->rate_cats; ++i)
@@ -846,7 +850,7 @@ static int sumtable_innerinner(pll_partition_t * partition,
   unsigned int sites = partition->sites;
 
   /* ascertaiment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS)
+  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
     sites += partition->states;
 
   for (i = 0; i < partition->rate_cats; ++i)
