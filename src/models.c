@@ -466,6 +466,150 @@ PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition
   return PLL_SUCCESS;
 }
 
+PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
+                                                  unsigned int * state_inv_count)
+{
+  unsigned int i,j,k;
+  int * invariant = partition->invariant;
+  unsigned int invariant_count = 0;
+  unsigned int tips = partition->tips;
+  unsigned int sites = partition->sites;
+  unsigned int states = partition->states;
+  unsigned int gap_state = 0;
+  unsigned int state;
+  double * tipclv;
+  int inv_site;
+
+  /* gap state has always all bits set to one */
+  for (i = 0; i < states; ++i)
+  {
+    gap_state <<= 1;
+    gap_state |= 1;
+  }
+
+  if (state_inv_count)
+    memset(state_inv_count, 0, states*sizeof(unsigned int));
+    
+  if (invariant)
+  {
+    /* count the invariant sites for each state */
+    for (i=0; i<sites; ++i)
+    {
+      if (invariant[i] > -1)
+      {
+        state = invariant[i];
+        /* since the invariant sites array is generated in the library,
+           it should not contain invalid values */
+        assert (state < states);
+
+        /* increase the counter and per-state count */
+        invariant_count++;
+        if (state_inv_count)
+          state_inv_count[state]++;
+      }
+    }
+  }
+  else
+  {
+    if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
+    {
+      if (states == 4)
+      {
+        for (j = 0; j < sites; ++j)
+        {
+          state = (unsigned int)(partition->tipchars[0][j]);
+          if (state >= gap_state || __builtin_popcount(state) > 1)
+            continue;
+          inv_site = 1;
+          for (i = 1; i < tips; ++i)
+          {
+            if ((unsigned int)(partition->tipchars[i][j]) != state)
+            {
+              inv_site = 0;
+              break;
+            }
+          }
+          if (inv_site)
+          {
+            invariant_count++;
+            if (state_inv_count)
+              state_inv_count[__builtin_ctz(state)]++;
+          }
+        }
+      }
+      else
+      {
+        for (j = 0; j < sites; ++j)
+        {
+          state = partition->tipmap[(int)(partition->tipchars[0][j])];
+          if (state >= gap_state || __builtin_popcount(state) > 1)
+            continue;
+          inv_site = 1;
+          for (i = 1; i < tips; ++i)
+          {
+            if (partition->tipmap[(int)(partition->tipchars[i][j])] != state)
+            {
+              inv_site = 0;
+              break;
+            }
+          }
+          if (inv_site)
+          {
+            invariant_count++;
+            if (state_inv_count)
+              state_inv_count[__builtin_ctz(state)]++;
+          }
+        }
+      }
+    }
+    else
+    {
+      /* warning: note that this operation traverses the clvs by columns, and
+         hence it may be slow. If PLL_ATTRIB_PATTERN_TIP is not set, I suggest
+         to call pll_update_invariant_sites() before calling this function in
+         order to populate partition->invariant beforehand. It can be freed
+         afterwards. */
+      unsigned int span_padded = partition->rate_cats * partition->states_padded;
+
+      for (j = 0; j < sites; ++j)
+      {
+        unsigned int clv_shift = j*span_padded;
+        tipclv = partition->clv[0] + clv_shift;
+        state = 0;
+        for (k = 0; k < states; ++k)
+        {
+          state |= ((unsigned int)tipclv[k] << k);
+        }
+        if (__builtin_popcount(state) > 1)
+          continue;
+        inv_site = 1;
+        for (i = 0; i < tips; ++i)
+        {
+          unsigned int cur_state = 0;
+          tipclv = partition->clv[i] + clv_shift;
+          for (k = 0; k < states; ++k)
+          {
+            cur_state |= ((unsigned int)tipclv[k] << k);
+          }
+          if (cur_state != state)
+          {
+            inv_site = 0;
+            break;
+          }
+        }
+        if (inv_site)
+        {
+          invariant_count++;
+          if (state_inv_count)
+            state_inv_count[__builtin_ctz(state)]++;
+        }
+      }
+    }
+  }
+
+  return invariant_count;
+}
+
 PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
 {
   unsigned int i,j,k;
@@ -490,7 +634,13 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
      sites, or -1 for variant sites */
   if (!partition->invariant)
   {
-    partition->invariant = (int *)malloc(sites * sizeof(int));
+    if (!(partition->invariant = (int *)malloc(sites * sizeof(int))))
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200,
+          "Cannot allocate charmap for invariant sites array.");
+      return PLL_FAILURE;
+    }
   }
   invariant = partition->invariant;
 

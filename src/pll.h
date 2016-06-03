@@ -76,7 +76,7 @@
 #define PLL_ATTRIB_ARCH_AVX512    (1 << 3)
 #define PLL_ATTRIB_ARCH_MASK         0xF
 
-#define PLL_ATTRIB_PATTERN_TIP    1 << 4
+#define PLL_ATTRIB_PATTERN_TIP    (1 << 4)
 
 /* ascertainment correction */
 #define PLL_ATTRIB_ASC_BIAS_LEWIS        (1 << 5)
@@ -360,6 +360,9 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
                                          const unsigned int * matrix_indices,
                                          const double * branch_lengths,
                                          unsigned int count);
+
+PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
+                                                  unsigned int * state_inv_count);
 
 PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition);
 
