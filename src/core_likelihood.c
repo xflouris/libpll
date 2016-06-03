@@ -954,7 +954,6 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
   if (attrib & PLL_ATTRIB_ASC_BIAS_MASK)
   {
     double asc_Lk[3] = {0.0, 0.0, 0.0};
-    double ext_asc_Lk[3] = {0.0, 0.0, 0.0};
     unsigned int sum_w_inv = 0;
     double asc_scaling;
     int asc_bias_type = attrib & PLL_ATTRIB_ASC_BIAS_MASK;
@@ -980,16 +979,6 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
         scale_factors += (child_scaler) ? child_scaler[n] : 0;
         asc_scaling = pow(PLL_SCALE_THRESHOLD, (double)scale_factors);
 
-        /* g(x) := derivatives of f(x) * log(f(x))
-           goldman corrections 2 and 3 where f(x) is the likelihood function
-           Li * log(Li) */
-        ext_asc_Lk[0] += site_lk[0] * log(site_lk[0]);
-        /* Li' * (log(Li) + 1) */
-        ext_asc_Lk[1] += site_lk[1] * (log(site_lk[0]) + 1.0);
-        /* (Li'' * (log(Li) + 1)) + (Li')^2 / Li */
-        ext_asc_Lk[2] += (site_lk[2] * (log(site_lk[0]) + 1.0)) +
-                         (site_lk[1]*site_lk[1]/site_lk[0]);
-
         /* sum over likelihood and 1st and 2nd derivative / apply scaling */
         asc_Lk[0] += site_lk[0] * asc_scaling;
         asc_Lk[1] += site_lk[1] * asc_scaling;
@@ -1001,6 +990,9 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
       switch(asc_bias_type)
       {
         case PLL_ATTRIB_ASC_BIAS_LEWIS:
+          /* correct log-likelihood */
+          logLK -= pattern_weight_sum * log(1.0 - asc_Lk[0]);
+
           /* derivatives of log(1.0 - (sum Li(s) over states 's')) */
       		*d_f  -= pattern_weight_sum * (asc_Lk[1] / (asc_Lk[0] - 1.0));
       		*dd_f -= pattern_weight_sum *
@@ -1008,6 +1000,9 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
                      ((asc_Lk[0] - 1.0) * (asc_Lk[0] - 1.0)));
           break;
         case PLL_ATTRIB_ASC_BIAS_FELSENSTEIN:
+          /* correct log-likelihood */
+          logLK += sum_w_inv * log(asc_Lk[0]);
+
           /* derivatives of log(sum Li(s) over states 's') */
       		*d_f  += sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
       		*dd_f += sum_w_inv *

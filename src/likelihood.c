@@ -220,7 +220,7 @@ static double compute_asc_bias_correction(double logl_base,
   switch (asc_bias_type)
   {
     case PLL_ATTRIB_ASC_BIAS_LEWIS:
-      logl_correction = sum_w*log(1 - logl_base);
+      logl_correction = -(sum_w*log(1 - logl_base));
       break;
     case PLL_ATTRIB_ASC_BIAS_STAMATAKIS:
       /* no need to add anything here */

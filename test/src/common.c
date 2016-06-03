@@ -136,7 +136,7 @@ pll_partition_t * parse_msa(const char * filename,
 
     if (!found)
     {
-      printf("Sequence with header %s does not appear in the tree", hdr);
+      printf("Sequence with header %s does not appear in the tree", headers[i]);
       return NULL;
     }
 
