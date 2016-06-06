@@ -52,3 +52,15 @@ This examples covers the following:
 
 * obtaining the rate categories from a discretized gamma distribution by providing the alpha shape parameter,
 * evaluating the log-likelihood at an edge of the unroted tree.
+
+## [`newton`](https://github.com/xflouris/libpll/tree/master/examples/newton)
+
+This example shows how to evaluate the log-likelihood at an edge of an 
+[unrooted binary tree](http://en.wikipedia.org/wiki/Unrooted_binary_tree) tree,
+and how to optimize the length of a given branch using [Newton's method](https://en.wikipedia.org/wiki/Newton's_method).
+
+This examples covers the following:
+
+* obtaining the rate categories from a discretized gamma distribution by providing the alpha shape parameter,
+* evaluating the log-likelihood at an edge of the unroted tree.
+* optimizing the length of a given branch using Newton's method.
