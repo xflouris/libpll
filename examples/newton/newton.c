@@ -75,13 +75,13 @@ static double newton(pll_partition_t * partition,
                                                          &d2);
 
     printf("Branch length: %f log-L: %f Derivative: %f\n", len, opt_logl, d1);
-    
+
     /* if the derivative is zero it means we reached a maximum and hence stop
        the computation */
     if (fabs(d1) < EPSILON) break;
 
     /* Newton's method for finding the optimum of a function. The iteration to
-       reach the optimum is 
+       reach the optimum is
 
        x_{i+1} = x_i - f'(x_i) / f''(x_i)
 
@@ -89,7 +89,7 @@ static double newton(pll_partition_t * partition,
        the second derivative of the likelihood function */
     len -= d1/d2;
   }
-  
+
   /* deallocate sumtable */
   pll_aligned_free(sumtable);
 
@@ -114,14 +114,14 @@ int main(int argc, char * argv[])
                                    RATES,   /* Number of rate categories */
                                    2,       /* How many scale buffers do we want */
                                    PLL_ATTRIB_ARCH_CPU);        /* do not use vectorizations */
-  
+
   /* initialize an array of two different branch lengths */
   double branch_lengths[5] = { 0.2, 0.4, 0.3, 0.5, 0.6};
 
   /* initialize an array of frequencies */
   double frequencies[4] = { 0.17, 0.19, 0.25, 0.39 };
 
-  /* To be used together with branch_lengths to map branch lengths to 
+  /* To be used together with branch_lengths to map branch lengths to
      probability matrices */
   unsigned int matrix_indices[5] = { 0, 1, 2, 3, 4};
 
