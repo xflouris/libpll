@@ -173,7 +173,7 @@ int main(int argc, char * argv[])
 
   /* create an operations array for specifying the traversal
      descriptor when computing the CLVs */
-  operations = (pll_operation_t *)malloc(4 * sizeof(pll_operation_t));
+  operations = (pll_operation_t *)malloc(2 * sizeof(pll_operation_t));
 
   operations[0].parent_clv_index    = 4;
   operations[0].child1_clv_index    = 0;
@@ -193,8 +193,8 @@ int main(int argc, char * argv[])
   operations[1].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
   operations[1].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
-  /* use the operations array to compute 4 CLVs. Operations will be carried out
-     starting from operation 0 to 3 */
+  /* use the operations array to compute 2 CLVs. Operations will be carried out
+     going from operation 0 to 1 */
   pll_update_partials(partition, operations, 2);
 
   /* print out the CLVs at tip and inner nodes*/
