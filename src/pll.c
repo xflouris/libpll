@@ -273,8 +273,8 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
 
   /* If ascertainment bias correction attribute is set, CLVs will be allocated
      with additional sites for each state */
-  unsigned int sites_alloc = (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK) ?
-                  partition->sites + partition->states : partition->sites;
+  unsigned int sites_alloc = partition->asc_bias_alloc ?
+                   partition->sites + partition->states : partition->sites;
 
   //memcpy(map, partition->map, PLL_ASCII_SIZE * sizeof(unsigned int));
   memcpy(map, usermap, PLL_ASCII_SIZE * sizeof(unsigned int));
@@ -401,6 +401,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                                                   unsigned int attributes)
 {
   unsigned int i;
+  unsigned int sites_alloc;
 
   /* make sure that multiple ARCH were not specified */
   if (__builtin_popcount(attributes & PLL_ATTRIB_ARCH_MASK) > 1)
@@ -468,11 +469,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
 
   /* If ascertainment bias correction attribute is set, CLVs will be allocated
      with additional sites for each state */
-  unsigned int sites_alloc =
-                  (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK) ?
-                  sites + states : sites;
   partition->asc_bias_alloc =
-                  (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK) > 0;
+               (partition->attributes &
+                 (PLL_ATTRIB_ASC_BIAS_MASK | PLL_ATTRIB_ASC_BIAS_FLAG)) > 0;
+  sites_alloc = partition->asc_bias_alloc ? sites + states : sites;
 
   /* allocate structures */
 
@@ -747,7 +747,7 @@ static int set_tipchars_4x4(pll_partition_t * partition,
   }
 
   /* if asc_bias is set, we initialize the additional positions */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (partition->asc_bias_alloc)
   {
     for (i = 0; i < partition->states; ++i)
     {
@@ -784,7 +784,7 @@ static int set_tipchars(pll_partition_t * partition,
   }
 
   /* if asc_bias is set, we initialize the additional positions */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (partition->asc_bias_alloc)
   {
     for (i = 0; i < partition->states; ++i)
     {
@@ -834,7 +834,7 @@ static int set_tipclv(pll_partition_t * partition,
   }
 
   /* if asc_bias is set, we initialize the additional positions */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (partition->asc_bias_alloc)
   {
     for (i = 0; i < partition->states; ++i)
     {
@@ -918,7 +918,7 @@ PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
   }
 
   /* if asc_bias is set, we initialize the additional positions */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (partition->asc_bias_alloc)
   {
     for (i = 0; i < partition->states; ++i)
     {
@@ -999,7 +999,7 @@ PLL_EXPORT int pll_set_asc_bias_type(pll_partition_t * partition,
 PLL_EXPORT void pll_set_asc_state_weights(pll_partition_t * partition,
                                           const unsigned int * state_weights)
 {
-  assert(partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK);
+  assert(partition->asc_bias_alloc);
   memcpy(partition->pattern_weights + partition->sites,
          state_weights,
          sizeof(unsigned int)*partition->states);

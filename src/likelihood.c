@@ -31,7 +31,7 @@ static void case_tiptip(pll_partition_t * partition,
   unsigned int sites = partition->sites;
 
   /* ascertaiment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (partition->asc_bias_alloc)
     sites += partition->states;
 
   /* get parent scaler */
@@ -78,7 +78,7 @@ static void case_tipinner(pll_partition_t * partition,
   unsigned int sites = partition->sites;
 
   /* ascertaiment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (partition->asc_bias_alloc)
     sites += partition->states;
 
   /* get parent scaler */
@@ -139,7 +139,7 @@ static void case_innerinner(pll_partition_t * partition,
   unsigned int sites = partition->sites;
 
   /* ascertaiment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (partition->asc_bias_alloc)
     sites += partition->states;
 
   /* get parent scaler */
@@ -533,15 +533,7 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
         terma_r = 0;
         for (j = 0; j < states; ++j)
         {
-          termb = 0;
-          cstate = tipmap[(unsigned int)(*tipchar)];
-          for (k = 0; k < states; ++k)
-          {
-            if (cstate & 1)
-              termb += pmatrix[k];
-            cstate >>= 1;
-          }
-          terma_r += clvp[j] * freqs[j] * termb;
+          terma_r += clvp[j] * freqs[j] * pmatrix[j];
           pmatrix += states_padded;
         }
 
@@ -792,7 +784,7 @@ static int sumtable_tipinner(pll_partition_t * partition,
   unsigned int sites = partition->sites;
 
   /* ascertaiment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (partition->asc_bias_alloc)
     sites += partition->states;
 
   for (i = 0; i < partition->rate_cats; ++i)
@@ -850,7 +842,7 @@ static int sumtable_innerinner(pll_partition_t * partition,
   unsigned int sites = partition->sites;
 
   /* ascertaiment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (partition->asc_bias_alloc)
     sites += partition->states;
 
   for (i = 0; i < partition->rate_cats; ++i)
