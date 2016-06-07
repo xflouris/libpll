@@ -21,7 +21,7 @@
 
 #include "pll.h"
 
-static int indend_space = 4;
+static int indent_space = 4;
 
 static void print_node_info(pll_utree_t * tree, int options)
 {
@@ -52,7 +52,7 @@ static char * xstrdup(const char * s)
 }
 
 static void print_tree_recurse(pll_utree_t * tree, 
-                               int indend_level, 
+                               int indent_level, 
                                int * active_node_order,
                                int options)
 {
@@ -60,61 +60,61 @@ static void print_tree_recurse(pll_utree_t * tree,
 
   if (!tree) return;
 
-  for (i = 0; i < indend_level; ++i)
+  for (i = 0; i < indent_level; ++i)
   {
     if (active_node_order[i])
       printf("|");
     else
       printf(" ");
 
-    for (j = 0; j < indend_space-1; ++j)
+    for (j = 0; j < indent_space-1; ++j)
       printf(" ");
   }
   printf("\n");
 
-  for (i = 0; i < indend_level-1; ++i)
+  for (i = 0; i < indent_level-1; ++i)
   {
     if (active_node_order[i])
       printf("|");
     else
       printf(" ");
 
-    for (j = 0; j < indend_space-1; ++j)
+    for (j = 0; j < indent_space-1; ++j)
       printf(" ");
   }
 
   printf("+");
-  for (j = 0; j < indend_space-1; ++j)
+  for (j = 0; j < indent_space-1; ++j)
     printf ("-");
   if (tree->next) printf("+");
 
   print_node_info(tree, options);
 
-  if (active_node_order[indend_level-1] == 2) 
-    active_node_order[indend_level-1] = 0;
+  if (active_node_order[indent_level-1] == 2) 
+    active_node_order[indent_level-1] = 0;
 
   if (tree->next)
   {
-    active_node_order[indend_level] = 1;
+    active_node_order[indent_level] = 1;
     print_tree_recurse(tree->next->back,
-                       indend_level+1,
+                       indent_level+1,
                        active_node_order,
                        options);
-    active_node_order[indend_level] = 2;
+    active_node_order[indent_level] = 2;
     print_tree_recurse(tree->next->next->back, 
-                       indend_level+1,
+                       indent_level+1,
                        active_node_order,
                        options);
   }
 
 }
 
-static unsigned int tree_indend_level(pll_utree_t * tree, unsigned int indend)
+static unsigned int tree_indent_level(pll_utree_t * tree, unsigned int indent)
 {
-  if (!tree->next) return indend+1;
+  if (!tree->next) return indent+1;
 
-  unsigned int a = tree_indend_level(tree->next->back,       indend+1);
-  unsigned int b = tree_indend_level(tree->next->next->back, indend+1);
+  unsigned int a = tree_indent_level(tree->next->back,       indent+1);
+  unsigned int b = tree_indent_level(tree->next->next->back, indent+1);
 
   return (a > b ? a : b);
 }
@@ -125,11 +125,11 @@ PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options)
 
   if (!tree->next) tree=tree->back;
   
-  a = tree_indend_level(tree->back,1);
-  b = tree_indend_level(tree,0);
-  unsigned int max_indend_level = (a > b ? a : b);
+  a = tree_indent_level(tree->back,1);
+  b = tree_indent_level(tree,0);
+  unsigned int max_indent_level = (a > b ? a : b);
 
-  int * active_node_order = (int *)malloc((max_indend_level+1) * sizeof(int));
+  int * active_node_order = (int *)malloc((max_indent_level+1) * sizeof(int));
   active_node_order[0] = 1;
   active_node_order[1] = 1;
 
