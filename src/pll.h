@@ -211,7 +211,7 @@ typedef struct pll_fasta
   long stripped[256];
 } pll_fasta_t;
 
-/* Simple unrooted tree structure for parsing newick */
+/* Simple unrooted and rooted tree structure for parsing newick */
 
 typedef struct pll_utree
 {
@@ -239,6 +239,20 @@ typedef struct pll_rtree
 
   void * data;
 } pll_rtree_t;
+
+/* structures for handling topological rearrangement move rollbacks */
+
+typedef struct pll_utree_rb_spr_s
+{
+  pll_utree_t * p;
+  pll_utree_t * r;
+  pll_utree_t * rb;
+  pll_utree_t * pnb;
+  pll_utree_t * pnnb;
+  double r_len;
+  double pnb_len;
+  double pnnb_len;
+} pll_utree_rb_spr_t;
 
 /* common data */
 
@@ -773,6 +787,18 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
                                                      const unsigned int * map,
                                                      int count,
                                                      int * length);
+
+/* functions in tree_moves.c */
+
+PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
+                             pll_utree_t * r,
+                             pll_utree_rb_spr_t * rb);
+
+PLL_EXPORT void pll_utree_spr_rollback(pll_utree_rb_spr_t * rb);
+
+PLL_EXPORT int pll_utree_spr_safe(pll_utree_t * p,
+                                  pll_utree_t * r,
+                                  pll_utree_rb_spr_t * rb);
 
 #ifdef __cplusplus
 } /* extern "C" */
