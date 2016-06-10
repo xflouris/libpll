@@ -294,8 +294,8 @@ int main(int argc, char * argv[])
     found = hsearch(query,FIND);
 
     if (!found)
-      fatal("Sequence with header %s does not appear in the tree", hdr);
-        
+      fatal("Sequence with header %s does not appear in the tree", headers[i]);
+
     unsigned int tip_clv_index = *((unsigned int *)(found->data));
 
     pll_set_tip_states(partition, tip_clv_index, pll_map_nt, seqdata[i]);
