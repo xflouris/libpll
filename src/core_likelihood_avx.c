@@ -154,7 +154,7 @@ PLL_EXPORT void pll_core_create_lookup_4x4_avx(unsigned int rate_cats,
     {
       jmat = left_matrix;
       kmat = right_matrix;
-    
+
       jmask = _mm256_set_epi64x(
                  ((j >> 3) & 1) ? ~0 : 0,
                  ((j >> 2) & 1) ? ~0 : 0,
@@ -445,7 +445,7 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4_avx(unsigned int sites,
 
 /* not vectorized for a general number of states */
 PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
-                                               unsigned int sites,                                   
+                                               unsigned int sites,
                                                unsigned int rate_cats,
                                                double * parent_clv,
                                                unsigned int * parent_scaler,
@@ -540,7 +540,7 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
   unsigned int states = 4;
   unsigned int scaling;
   unsigned int i,k,n;
-  
+
   const double * lmat;
   const double * rmat;
 
@@ -560,7 +560,7 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
     rmat = right_matrix;
 
     scaling = (parent_scaler) ? 1 : 0;
-    
+
     lstate = left_tipchar[n];
 
     mask = _mm256_set_epi64x(
@@ -797,7 +797,7 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
         xmm1 = _mm256_add_pd(xmm2,xmm3);
 
         xmm2 = _mm256_permute2f128_pd(xmm0,xmm1, _MM_SHUFFLE(0,2,0,1));
-        
+
         xmm3 = _mm256_blend_pd(xmm0,xmm1,12);
 
         __m256d v_terma_sum = _mm256_add_pd(xmm2,xmm3);
@@ -814,7 +814,7 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
         xmm1 = _mm256_add_pd(xmm2,xmm3);
 
         xmm2 = _mm256_permute2f128_pd(xmm0,xmm1, _MM_SHUFFLE(0,2,0,1));
-        
+
         xmm3 = _mm256_blend_pd(xmm0,xmm1,12);
 
         __m256d v_termb_sum = _mm256_add_pd(xmm2,xmm3);

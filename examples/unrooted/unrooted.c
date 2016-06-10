@@ -38,14 +38,14 @@ int main(int argc, char * argv[])
                                    4,       /* Number of rate categories */
                                    2,       /* How many scale buffers do we want */
                                    PLL_ATTRIB_PATTERN_TIP | PLL_ATTRIB_ARCH_CPU);        /* various attributes */
-  
+
   /* initialize an array of two different branch lengths */
   double branch_lengths[5] = { 0.2, 0.4, 0.3, 0.5, 0.6};
 
   /* initialize an array of frequencies */
   double frequencies[4] = { 0.17, 0.19, 0.25, 0.39 };
 
-  /* To be used together with branch_lengths to map branch lengths to 
+  /* To be used together with branch_lengths to map branch lengths to
      probability matrices */
   unsigned int matrix_indices[5] = { 0, 1, 2, 3, 4};
 
@@ -153,11 +153,11 @@ int main(int argc, char * argv[])
      partition with information about which sites are invariant */
   pll_update_invariant_sites(partition);
 
-  /* Now let's set the log-likelihood proportion that 
+  /* Now let's set the log-likelihood proportion that
      invariant sites affect to 0.5 */
   pll_update_invariant_sites_proportion(partition, 0, 0.5);
 
-  /* we need to update the probability matrices after stating that we want 
+  /* we need to update the probability matrices after stating that we want
      to use invariant sites */
   pll_update_prob_matrices(partition,
                            params_indices,
@@ -177,7 +177,7 @@ int main(int argc, char * argv[])
                                         4,
                                         params_indices,
                                         NULL);
-  
+
   printf("Log-L (Inv+Gamma 0.5): %f\n", logl);
 
   /* Let's assume now we want to use a proportion of 0.75 for invariants. Since
@@ -189,7 +189,7 @@ int main(int argc, char * argv[])
                            matrix_indices,
                            branch_lengths,
                            5);
-  
+
   /* recompute the CLVs using the same traversal */
   pll_update_partials(partition, operations, 2);
 

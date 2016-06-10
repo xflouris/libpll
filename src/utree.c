@@ -51,8 +51,8 @@ static char * xstrdup(const char * s)
   return strcpy(p,s);
 }
 
-static void print_tree_recurse(pll_utree_t * tree, 
-                               int indent_level, 
+static void print_tree_recurse(pll_utree_t * tree,
+                               int indent_level,
                                int * active_node_order,
                                int options)
 {
@@ -90,7 +90,7 @@ static void print_tree_recurse(pll_utree_t * tree,
 
   print_node_info(tree, options);
 
-  if (active_node_order[indent_level-1] == 2) 
+  if (active_node_order[indent_level-1] == 2)
     active_node_order[indent_level-1] = 0;
 
   if (tree->next)
@@ -101,7 +101,7 @@ static void print_tree_recurse(pll_utree_t * tree,
                        active_node_order,
                        options);
     active_node_order[indent_level] = 2;
-    print_tree_recurse(tree->next->next->back, 
+    print_tree_recurse(tree->next->next->back,
                        indent_level+1,
                        active_node_order,
                        options);
@@ -124,7 +124,7 @@ PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options)
   unsigned int a, b;
 
   if (!tree->next) tree=tree->back;
-  
+
   a = tree_indent_level(tree->back,1);
   b = tree_indent_level(tree,0);
   unsigned int max_indent_level = (a > b ? a : b);
@@ -315,7 +315,7 @@ PLL_EXPORT int pll_utree_traverse(pll_utree_t * root,
   if (!root->next) return PLL_FAILURE;
 
   /* we will traverse an unrooted tree in the following way
-      
+
               2
             /
       1  --*

@@ -42,7 +42,7 @@ pll_utree_t * load_tree_unrooted(const char * filename,
 
   if (!(rtree = pll_rtree_parse_newick(filename, tip_count)))
   {
-    if (!(utree = pll_utree_parse_newick(filename, tip_count))) 
+    if (!(utree = pll_utree_parse_newick(filename, tip_count)))
     {
       fprintf(stderr, "%s\n", pll_errmsg);
       return NULL;

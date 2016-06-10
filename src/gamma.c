@@ -26,7 +26,7 @@
 
 static double IncompleteGamma (double x, double alpha, double ln_gamma_alpha)
 {
-/* returns the incomplete gamma ratio I(x,alpha) where x is the upper 
+/* returns the incomplete gamma ratio I(x,alpha) where x is the upper
            limit of the integration and alpha is the shape parameter.
    returns (-1) if in error
    ln_gamma_alpha = ln(Gamma(alpha)), is almost redundant.
@@ -45,8 +45,8 @@ static double IncompleteGamma (double x, double alpha, double ln_gamma_alpha)
    if (x==0) return (0);
    if (x<0 || p<=0) return (-1);
 
-   
-   factor=exp(p*log(x)-x-g);   
+
+   factor=exp(p*log(x)-x-g);
    if (x>1 && x>=p) goto l30;
    /* (1) series expansion */
    gin=1;  term=1;  rn=p;
@@ -57,45 +57,45 @@ static double IncompleteGamma (double x, double alpha, double ln_gamma_alpha)
    if (term > accurate) goto l20;
    gin*=factor/p;
    goto l50;
- l30:  
+ l30:
    /* (2) continued fraction */
    a=1-p;   b=a+x+1;  term=0;
    pn[0]=1;  pn[1]=x;  pn[2]=x+1;  pn[3]=x*b;
-   gin=pn[2]/pn[3];   
- l32:  
-   a++;  
-   b+=2;  
-   term++;   
+   gin=pn[2]/pn[3];
+ l32:
+   a++;
+   b+=2;
+   term++;
    an=a*term;
-   for (i=0; i<2; i++) 
+   for (i=0; i<2; i++)
      pn[i+4]=b*pn[i+2]-an*pn[i];
    if (pn[5] == 0) goto l35;
-   rn=pn[4]/pn[5];   
-   dif=fabs(gin-rn);  
+   rn=pn[4]/pn[5];
+   dif=fabs(gin-rn);
    if (dif>accurate) goto l34;
    if (dif<=accurate*rn) goto l42;
- l34:   
+ l34:
    gin=rn;
- l35: 
-   for (i=0; i<4; i++) 
+ l35:
+   for (i=0; i<4; i++)
      pn[i]=pn[i+2];
-   if (fabs(pn[4]) < overflow)            
-     goto l32;        
-   
-   for (i=0; i<4; i++) 
+   if (fabs(pn[4]) < overflow)
+     goto l32;
+
+   for (i=0; i<4; i++)
      pn[i]/=overflow;
 
-   
+
    goto l32;
- l42:  
+ l42:
    gin=1-factor*gin;
 
- l50: 
+ l50:
    return (gin);
 }
 static double LnGamma (double alpha)
 {
-/* returns ln(gamma(alpha)) for alpha>0, accurate to 10 decimal places.  
+/* returns ln(gamma(alpha)) for alpha>0, accurate to 10 decimal places.
    Stirling's formula is used for the central polynomial part of the procedure.
    Pike MC & Hill ID (1966) Algorithm 291: Logarithm of the gamma function.
    Communications of the Association for Computing Machinery, 9:684
@@ -104,28 +104,28 @@ static double LnGamma (double alpha)
 
   x = alpha;
   f = 0.0;
-  
-  if ( x < 7.0) 
+
+  if ( x < 7.0)
      {
-       f = 1.0;  
+       f = 1.0;
        z = alpha - 1.0;
-      
-       while ((z = z + 1.0) < 7.0)  
-         {        
+
+       while ((z = z + 1.0) < 7.0)
+         {
            f *= z;
          }
-       x = z;   
-     
+       x = z;
+
        assert(f != 0.0);
-        
+
        f=-log(f);
      }
-   
+
    z = 1/(x*x);
-   
-   result = f + (x-0.5)*log(x) - x + .918938533204673 
+
+   result = f + (x-0.5)*log(x) - x + .918938533204673
           + (((-.000595238095238*z+.000793650793651)*z-.002777777777778)*z
-               +.083333333333333)/x;  
+               +.083333333333333)/x;
 
    return result;
 }
@@ -140,7 +140,7 @@ static double PointNormal (double prob)
    Newer methods:
      Wichura MJ (1988) Algorithm AS 241: the percentage points of the
        normal distribution.  37: 477-484.
-     Beasley JD & Springer SG  (1977).  Algorithm AS 111: the percentage 
+     Beasley JD & Springer SG  (1977).  Algorithm AS 111: the percentage
        points of the normal distribution.  26: 118-121.
 
 */
@@ -152,7 +152,7 @@ static double PointNormal (double prob)
    p1 = (p<0.5 ? p : 1-p);
    if (p1<1e-20) return (-9999);
 
-   y = sqrt (log(1/(p1*p1)));   
+   y = sqrt (log(1/(p1*p1)));
    z = y + ((((y*a4+a3)*y+a2)*y+a1)*y+a0) / ((((y*b4+b3)*y+b2)*y+b1)*y+b0);
    return (p<0.5 ? -z : z);
 }
@@ -162,17 +162,17 @@ static double PointChi2 (double prob, double v)
 /* returns z so that Prob{x<z}=prob where x is Chi2 distributed with df=v
    returns -1 if in error.   0.000002<prob<0.999998
    RATNEST FORTRAN by
-       Best DJ & Roberts DE (1975) The percentage points of the 
+       Best DJ & Roberts DE (1975) The percentage points of the
        Chi2 distribution.  Applied Statistics 24: 385-388.  (AS91)
    Converted into C by Ziheng Yang, Oct. 1993.
 */
    double e=.5e-6, aa=.6931471805, p=prob, g;
    double xx, c, ch, a=0,q=0,p1=0,p2=0,t=0,x=0,b=0,s1,s2,s3,s4,s5,s6;
-  
+
    if (p<.000002 || p>.999998 || v<=0) return (-1);
-  
+
    g = LnGamma(v/2);
-   
+
    xx=v/2;   c=xx-1;
    if (v >= -1.24*log(p)) goto l1;
 
@@ -188,21 +188,21 @@ l2:
    ch-=(1-exp(a+g+.5*ch+c*aa)*p2/p1)/t;
    if (fabs(q/ch-1)-.01 <= 0) goto l4;
    else                       goto l2;
-  
-l3:    
+
+l3:
    x=PointNormal (p);
    p1=0.222222/v;   ch=v*pow((x*sqrt(p1)+1-p1), 3.0);
    if (ch>2.2*v+6)  ch=-2*(log(1-p)-c*log(.5*ch)+g);
 l4:
-   q=ch;   p1=.5*ch;   
-   if ((t=IncompleteGamma (p1, xx, g))< 0.0) 
+   q=ch;   p1=.5*ch;
+   if ((t=IncompleteGamma (p1, xx, g))< 0.0)
      {
-       printf ("IncompleteGamma \n");      
+       printf ("IncompleteGamma \n");
        return (-1);
      }
-  
+
    p2=p-t;
-   t=p2*exp(xx*aa+g+p1-c*log(ch));   
+   t=p2*exp(xx*aa+g+p1-c*log(ch));
    b=t/ch;  a=0.5*t-b*c;
 
    s1=(210+a*(140+a*(105+a*(84+a*(70+60*a))))) / 420;
@@ -217,16 +217,16 @@ l4:
    return (ch);
 }
 
-PLL_EXPORT int pll_compute_gamma_cats(double alpha, 
-                                      unsigned int categories, 
+PLL_EXPORT int pll_compute_gamma_cats(double alpha,
+                                      unsigned int categories,
                                       double * output_rates)
 {
   unsigned int i;
 
-  double 
-    factor = alpha / alpha * categories, 
-    lnga1, 
-    alfa = alpha, 
+  double
+    factor = alpha / alpha * categories,
+    lnga1,
+    alfa = alpha,
     beta = alpha,
     *gammaProbs;
 
@@ -234,7 +234,7 @@ PLL_EXPORT int pll_compute_gamma_cats(double alpha,
   /* numerical instability caused by very small rate[0] values */
   /* induced by low alpha values around 0.01 */
 
-  if (alpha < ALPHA_MIN || categories < 1) 
+  if (alpha < ALPHA_MIN || categories < 1)
   {
     pll_errno = PLL_ERROR_ALPHA;
     snprintf(pll_errmsg, 200, "Invalid alpha value (%f)", alpha);
@@ -263,7 +263,7 @@ PLL_EXPORT int pll_compute_gamma_cats(double alpha,
 
     for (i= 1; i < categories - 1; i++)
       output_rates[i] = (gammaProbs[i] - gammaProbs[i - 1]) * factor;
-  
+
     free(gammaProbs);
   }
 

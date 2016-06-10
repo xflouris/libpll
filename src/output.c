@@ -23,8 +23,8 @@
 
 static void unscale(double * prob, unsigned int times);
 
-PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition, 
-                                 unsigned int index, 
+PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition,
+                                 unsigned int index,
                                  unsigned int float_precision)
 {
   unsigned int i,j,k;

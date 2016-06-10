@@ -10,17 +10,17 @@ different rate matrices, which are applied on different branches of the tree.
 ## Explanation of the example
 
 The example is based on the unrooted tree example. Here are explained the
-features related to heterotachous models. 
+features related to heterotachous models.
 
 ```C
-partition = pll_partition_create(4, 
-                                 2, 
-                                 4, 
+partition = pll_partition_create(4,
+                                 2,
+                                 4,
                                  6,
-                                 rmatrix_count, 
-                                 5, 
-                                 4, 
-                                 1, 
+                                 rmatrix_count,
+                                 5,
+                                 4,
+                                 1,
                                  PLL_ATTRIB_ARCH_SSE);
 ```
 
@@ -29,7 +29,7 @@ frequencies) has to be defined when calling the function
 `pll_partition_create`. It might happen that these number changes through time,
 for example if we want to optimize the number of per-branch models. In that
 case, here specify the **maximum** number of different models we would like to
-store. 
+store.
 
 For a more detailed explanation of the function arguments refer to the [API Reference](https://github.com/xflouris/libpll/wiki/API-Reference#pll_partition_create).
 
@@ -53,7 +53,7 @@ this assignment with the following three arrays
 ```
 
 and the custom function `update_pmatrices`
- 
+
 ```C
 static void update_pmatrix_het(pll_partition_t * partition,
                                unsigned int * matrix_indices,

@@ -41,78 +41,78 @@ static double * encode_tacg(const char * seq)
 
       case 'a':
       case 'A':
-       enc[j+0] = 0; 
-       enc[j+1] = 1; 
-       enc[j+2] = 0; 
-       enc[j+3] = 0; 
+       enc[j+0] = 0;
+       enc[j+1] = 1;
+       enc[j+2] = 0;
+       enc[j+3] = 0;
        break;
-      
+
       case 'c':
       case 'C':
-       enc[j+0] = 0; 
-       enc[j+1] = 0; 
-       enc[j+2] = 1; 
-       enc[j+3] = 0; 
+       enc[j+0] = 0;
+       enc[j+1] = 0;
+       enc[j+2] = 1;
+       enc[j+3] = 0;
        break;
-        
+
       case 'g':
       case 'G':
-       enc[j+0] = 0; 
-       enc[j+1] = 0; 
-       enc[j+2] = 0; 
-       enc[j+3] = 1; 
+       enc[j+0] = 0;
+       enc[j+1] = 0;
+       enc[j+2] = 0;
+       enc[j+3] = 1;
        break;
 
       case 't':
       case 'T':
       case 'u':
       case 'U':
-       enc[j+0] = 1; 
-       enc[j+1] = 0; 
-       enc[j+2] = 0; 
-       enc[j+3] = 0; 
+       enc[j+0] = 1;
+       enc[j+1] = 0;
+       enc[j+2] = 0;
+       enc[j+3] = 0;
        break;
-      
+
       /* now degenerates */
 
       case 'B':  /* T,C,G */
       case 'b':
-       enc[j+0] = 1; 
-       enc[j+1] = 0; 
-       enc[j+2] = 1; 
-       enc[j+3] = 1; 
+       enc[j+0] = 1;
+       enc[j+1] = 0;
+       enc[j+2] = 1;
+       enc[j+3] = 1;
        break;
-        
+
       case 'D': /* T,A,G */
       case 'd':
-       enc[j+0] = 1; 
-       enc[j+1] = 1; 
-       enc[j+2] = 0; 
-       enc[j+3] = 1; 
+       enc[j+0] = 1;
+       enc[j+1] = 1;
+       enc[j+2] = 0;
+       enc[j+3] = 1;
        break;
-        
+
       case 'H': /* T,A,C */
       case 'h':
-       enc[j+0] = 1; 
-       enc[j+1] = 1; 
-       enc[j+2] = 1; 
-       enc[j+3] = 0; 
+       enc[j+0] = 1;
+       enc[j+1] = 1;
+       enc[j+2] = 1;
+       enc[j+3] = 0;
        break;
 
       case 'K': /* T,G */
       case 'k':
-       enc[j+0] = 1; 
-       enc[j+1] = 0; 
-       enc[j+2] = 0; 
-       enc[j+3] = 1; 
+       enc[j+0] = 1;
+       enc[j+1] = 0;
+       enc[j+2] = 0;
+       enc[j+3] = 1;
        break;
 
       case 'M': /* A,C */
       case 'm':
-       enc[j+0] = 0; 
-       enc[j+1] = 1; 
-       enc[j+2] = 1; 
-       enc[j+3] = 0; 
+       enc[j+0] = 0;
+       enc[j+1] = 1;
+       enc[j+2] = 1;
+       enc[j+3] = 0;
        break;
 
       case 'n': /* T,A,C,G */
@@ -123,52 +123,52 @@ static double * encode_tacg(const char * seq)
       case 'X':
       case '-':
       case '?':
-       enc[j+0] = 1; 
-       enc[j+1] = 1; 
-       enc[j+2] = 1; 
-       enc[j+3] = 1; 
+       enc[j+0] = 1;
+       enc[j+1] = 1;
+       enc[j+2] = 1;
+       enc[j+3] = 1;
        break;
 
       case 'R': /* A,G */
       case 'r':
-       enc[j+0] = 0; 
-       enc[j+1] = 1; 
-       enc[j+2] = 0; 
-       enc[j+3] = 1; 
+       enc[j+0] = 0;
+       enc[j+1] = 1;
+       enc[j+2] = 0;
+       enc[j+3] = 1;
        break;
 
       case 'S': /* C,G */
       case 's':
-       enc[j+0] = 0; 
-       enc[j+1] = 0; 
-       enc[j+2] = 1; 
-       enc[j+3] = 1; 
+       enc[j+0] = 0;
+       enc[j+1] = 0;
+       enc[j+2] = 1;
+       enc[j+3] = 1;
        break;
 
       case 'V': /* A,C,G */
       case 'v':
-       enc[j+0] = 0; 
-       enc[j+1] = 1; 
-       enc[j+2] = 1; 
-       enc[j+3] = 1; 
+       enc[j+0] = 0;
+       enc[j+1] = 1;
+       enc[j+2] = 1;
+       enc[j+3] = 1;
        break;
 
       case 'W': /* T,A */
       case 'w':
-       enc[j+0] = 1; 
-       enc[j+1] = 1; 
-       enc[j+2] = 0; 
-       enc[j+3] = 0; 
+       enc[j+0] = 1;
+       enc[j+1] = 1;
+       enc[j+2] = 0;
+       enc[j+3] = 0;
        break;
 
       case 'Y': /* T,C */
       case 'y':
-       enc[j+0] = 1; 
-       enc[j+1] = 0; 
-       enc[j+2] = 1; 
-       enc[j+3] = 0; 
+       enc[j+0] = 1;
+       enc[j+1] = 0;
+       enc[j+2] = 1;
+       enc[j+3] = 0;
        break;
-      
+
       default:
         fprintf(stderr,"Invalid base or I probably forgot it\n");
         assert(0);
@@ -194,7 +194,7 @@ int main(int argc, char * argv[])
                                    4,       /* Number of rate categories */
                                    4,       /* How many scale buffers do we want */
                                    PLL_ATTRIB_ARCH_CPU);        /* various attributes */
-  
+
   /* initialize an array of two different branch lengths */
   double branch_lengths[5] = { 0.36, 0.722, 0.985, 0.718, 1.44};
 
@@ -203,7 +203,7 @@ int main(int argc, char * argv[])
      the T,A,C,G order */
   double frequencies[4] = { 0.39, 0.17, 0.19, 0.25 };
 
-  /* To be used together with branch_lengths to map branch lengths to 
+  /* To be used together with branch_lengths to map branch lengths to
      probability matrices */
   unsigned int matrix_indices[5] = { 0, 1, 2, 3, 4};
 
@@ -211,9 +211,9 @@ int main(int argc, char * argv[])
   double subst_params[6] = {1,1,1,1,1,1};
 
   /* discretized category rates from a gamma distribution with alpha shape 1 */
-  double rate_cats[4] = {0.13695378267140107,  
-                         0.47675185617665189,  
-                         0.99999999997958422,  
+  double rate_cats[4] = {0.13695378267140107,
+                         0.47675185617665189,
+                         0.99999999997958422,
                          2.38629436117236260};
 
   /* set frequencies */
@@ -339,11 +339,11 @@ int main(int argc, char * argv[])
      partition with information about which sites are invariant */
   pll_update_invariant_sites(partition);
 
-  /* Now let's set the log-likelihood proportion that 
+  /* Now let's set the log-likelihood proportion that
      invariant sites affect to 0.5 */
   pll_update_invariant_sites_proportion(partition, 0, 0.5);
 
-  /* we need to update the probability matrices after stating that we want 
+  /* we need to update the probability matrices after stating that we want
      to use invariant sites */
   pll_update_prob_matrices(partition,
                            params_indices,
@@ -356,7 +356,7 @@ int main(int argc, char * argv[])
 
   /* re-evaluate the log-likelihood */
   logl = pll_compute_root_loglikelihood(partition,8,3,params_indices,NULL);
-  
+
   printf("Log-L (Inv+Gamma 0.5): %f\n", logl);
 
   /* Let's assume now we want to use a proportion of 0.75 for invariants. Since
@@ -368,7 +368,7 @@ int main(int argc, char * argv[])
                            matrix_indices,
                            branch_lengths,
                            5);
-  
+
   /* recompute the CLVs using the same traversal */
   pll_update_partials(partition, operations, 4);
 

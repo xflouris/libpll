@@ -39,7 +39,7 @@ PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root)
 }
 
 
-static void pll_rtree_error(pll_rtree_t * tree, const char * s) 
+static void pll_rtree_error(pll_rtree_t * tree, const char * s)
 {
   snprintf(pll_errmsg, 200, "%s.\n", s);
 }
@@ -61,7 +61,7 @@ static void pll_rtree_error(pll_rtree_t * tree, const char * s)
 %token OPAR
 %token CPAR
 %token COMMA
-%token COLON SEMICOLON 
+%token COLON SEMICOLON
 %token<s> STRING
 %token<d> NUMBER
 %type<s> label optional_label
@@ -108,7 +108,7 @@ subtree: OPAR subtree COMMA subtree CPAR optional_label optional_length
   free($2);
 };
 
- 
+
 optional_label:  {$$ = NULL;} | label  {$$ = $1;};
 optional_length: {$$ = NULL;} | COLON number {$$ = $2;};
 label: STRING    {$$=$1;} | NUMBER {$$=$1;};
@@ -168,7 +168,7 @@ static void assign_indices(pll_rtree_t * root, unsigned int tip_count)
   root->scaler_index = inner_scaler_index;
 
   /* root gets any number for pmatrix since it will never be used */
-  root->pmatrix_index = 0; 
+  root->pmatrix_index = 0;
 }
 
 PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
@@ -197,7 +197,7 @@ PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
     pll_rtree_lex_destroy();
     return PLL_FAILURE;
   }
-  
+
   if (pll_rtree_in) fclose(pll_rtree_in);
 
   pll_rtree_lex_destroy();

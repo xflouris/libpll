@@ -139,7 +139,7 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
                                                      int * length)
 {
   int i,j;
-  char * memptr; 
+  char * memptr;
   char ** column;
   unsigned int * weight;
 
@@ -184,7 +184,7 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
               "Cannot allocate space for matrix columns.");
     return NULL;
   }
-  
+
   /* allocate memory for the alignment */
   memptr = column[0] = (char *)malloc((size_t)((*length)+1) *
                                       (size_t)count *
@@ -233,7 +233,7 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
   weight[ref] = 1;
 
   /* find all unique columns and set their weights */
-  for (i = 1; i < *length; ++i) 
+  for (i = 1; i < *length; ++i)
   {
     if (strcmp(column[i],column[i-1]))
     {
@@ -276,7 +276,7 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
 
   /* update length */
   *length = compressed_length;
-  
+
   /* decode sequences using inv_charmap */
   encode(sequence,inv_charmap,count);
 

@@ -5,7 +5,7 @@
 This example shows how to evaluate the log-likelihood of a rooted tree by
 creating a custom post-order traversal that drives the likelihood computation.
 It also demonstrates how to account for invariant sites when computing the
-likelihood. 
+likelihood.
 
 The example covers the following:
 
@@ -24,7 +24,7 @@ The example covers the following:
 
 ## [`newick-fasta-unrooted`](https://github.com/xflouris/libpll/tree/master/examples/newick-fasta-unrooted)
 
-This example shows how to evaluate the log-likelihood of an 
+This example shows how to evaluate the log-likelihood of an
 [unrooted binary tree](http://en.wikipedia.org/wiki/Unrooted_binary_tree) tree
 which is loadded from a [newick](http://en.wikipedia.org/wiki/Newick_format)
 file using the `libpll` newick parser. The alignment is loaded from a FASTA
@@ -45,7 +45,7 @@ The example covers the following:
 
 ## [`unrooted`](https://github.com/xflouris/libpll/tree/master/examples/unrooted)
 
-This example shows how to evaluate the log-likelihood at an edge of an 
+This example shows how to evaluate the log-likelihood at an edge of an
 [unrooted binary tree](http://en.wikipedia.org/wiki/Unrooted_binary_tree) tree.
 
 This examples covers the following:
@@ -55,7 +55,7 @@ This examples covers the following:
 
 ## [`newton`](https://github.com/xflouris/libpll/tree/master/examples/newton)
 
-This example shows how to evaluate the log-likelihood at an edge of an 
+This example shows how to evaluate the log-likelihood at an edge of an
 [unrooted binary tree](http://en.wikipedia.org/wiki/Unrooted_binary_tree) tree,
 and how to optimize the length of a given branch using [Newton's method](https://en.wikipedia.org/wiki/Newton's_method).
 
