@@ -11,23 +11,23 @@ likelihood computation.
 The program first instantiates a partition using the function call
 
 ```C
-partition = pll_create_partition(5, 
-                                 4, 
-                                 4, 
+partition = pll_create_partition(5,
+                                 4,
+                                 4,
                                  6,
-                                 1, 
-                                 8, 
-                                 4, 
-                                 1, 
+                                 1,
+                                 8,
+                                 4,
+                                 1,
                                  PLL_ATTRIB_ARCH_SSE);
 ```
 
 The parameters of the function (in the order passed) indicate
-* the number of tip sequences that will be used for this partition, 
-* the extra number of Conditional Likelihood Vectors (CLVs) that should be allocated apart from those created for the tip sequences (typically, number of tips minus one for rooted trees), 
+* the number of tip sequences that will be used for this partition,
+* the extra number of Conditional Likelihood Vectors (CLVs) that should be allocated apart from those created for the tip sequences (typically, number of tips minus one for rooted trees),
 * number of states in the dataset (for instance 4 for nucleotide datasets, 20 for aminoacid datasets),
 * the length of the alignment, i.e. the number of sites at the tip sequences,
-* how many different substitution models (or eigen decompositions) we want to have at one time, 
+* how many different substitution models (or eigen decompositions) we want to have at one time,
 * the number of probability matrices that should be allocated (typically 2 times the number of tip sequences minus 2),
 * number of discrete rate categories (rate heterogeneity),
 * number of scale buffers to be allocated,
@@ -35,7 +35,7 @@ The parameters of the function (in the order passed) indicate
 
 For a more detailed explanation of the function arguments refer to the [API Reference](https://github.com/xflouris/libpll/wiki/API-Reference#pll_create_partition).
 
-Model parameters are set with the function calls 
+Model parameters are set with the function calls
 
 [`pll_set_frequencies(partition, 0, frequencies);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_frequencies)
 
@@ -44,7 +44,7 @@ Model parameters are set with the function calls
 `pll_set_category_rates(partition, rate_cats);`
 
 
-The CLVs at tips are set by calling, for example, 
+The CLVs at tips are set by calling, for example,
 
 [`pll_set_tip_states(partition, 0, pll_map_nt, "WAAAAB");`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_tip_states)
 
@@ -64,10 +64,10 @@ in the tree by calling the function
 ```C
 unsigned int params_indices[4] = {0,0,0,0};
 
-pll_update_prob_matrices(partition, 
-                         params_indices, 
-                         matrix_indices, 
-                         branch_lengths, 
+pll_update_prob_matrices(partition,
+                         params_indices,
+                         matrix_indices,
+                         branch_lengths,
                          5);
 ```
 which computes the probability matrices at indices `matrix_indices` from the
@@ -107,8 +107,8 @@ Now we can use the created `pll_operation_t` structure to compute the CLVs by
 calling
 
 ```C
-pll_update_partials(partition, 
-                    operations, 
+pll_update_partials(partition,
+                    operations,
                     4);
 ```
 

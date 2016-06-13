@@ -74,7 +74,7 @@ int main(int argc, char * argv[])
   pll_set_tip_states(partition, 1, pll_map_nt, "CACACD");
   pll_set_tip_states(partition, 2, pll_map_nt, "AGGACA");
   pll_set_tip_states(partition, 3, pll_map_nt, "CGTAGT");
-  
+
   double branch_lengths[5] = { 0.2, 0.4, 0.3, 0.5, 0.6};
 
   /* 3 sets of frequencies */
@@ -84,7 +84,7 @@ int main(int argc, char * argv[])
                                { 0.17, 0.19, 0.25, 0.39 }
                              };
 
-  /* matrix indices and assignments. The plan is to create the first two 
+  /* matrix indices and assignments. The plan is to create the first two
      transition probability matrices (p-matrices) using the first rate matrix,
      p-matrices 3 and 4 using the second rate matrix, and p-matrix 5 using
      the third rate matrix */
@@ -174,14 +174,14 @@ int main(int argc, char * argv[])
                                                5,1, /* child */
                                                4,   /* P-matrix */
                                                freqs_indices,   /* frequencies */
-                                               NULL); 
+                                               NULL);
 
   printf("Log-L: %f\n", logl);
 
   pll_update_invariant_sites(partition);
   pll_update_invariant_sites_proportion(partition, 0, 0.5);
 
-  /* we need to update the probability matrices after stating that we want 
+  /* we need to update the probability matrices after stating that we want
      to use invariant sites */
   update_pmatrices(partition,
                    matrix_indices,
@@ -191,7 +191,7 @@ int main(int argc, char * argv[])
 
   pll_update_partials(partition, operations, 2);
   logl = pll_compute_edge_loglikelihood(partition,4,0,5,1,4,freqs_indices, NULL);
-  
+
   printf("Log-L (Inv+Gamma 0.5): %f\n", logl);
 
   pll_update_invariant_sites_proportion(partition, 0, 0.75);
@@ -201,7 +201,7 @@ int main(int argc, char * argv[])
                    matrix_start,
                    matrix_count,
                    branch_lengths);
-  
+
   pll_update_partials(partition, operations, 2);
   logl = pll_compute_edge_loglikelihood(partition,4,0,5,1,4,freqs_indices, NULL);
 

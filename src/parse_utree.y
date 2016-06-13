@@ -68,7 +68,7 @@ PLL_EXPORT void pll_utree_destroy(pll_utree_t * root)
   free(root);
 }
 
-static void pll_utree_error(pll_utree_t * tree, const char * s) 
+static void pll_utree_error(pll_utree_t * tree, const char * s)
 {
   snprintf(pll_errmsg, 200, "%s.\n", s);
 }
@@ -89,7 +89,7 @@ static void pll_utree_error(pll_utree_t * tree, const char * s)
 %token OPAR
 %token CPAR
 %token COMMA
-%token COLON SEMICOLON 
+%token COLON SEMICOLON
 %token<s> STRING
 %token<d> NUMBER
 %type<s> label optional_label
@@ -162,7 +162,7 @@ subtree: OPAR subtree COMMA subtree CPAR optional_label optional_length
   free($2);
 };
 
- 
+
 optional_label:  { $$ = NULL;} | label  {$$ = $1;};
 optional_length: { $$ = NULL;} | COLON number {$$ = $2;};
 label: STRING    { $$=$1;} | NUMBER {$$=$1;};
@@ -271,13 +271,13 @@ PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
     pll_utree_lex_destroy();
     return PLL_FAILURE;
   }
-  
+
   if (pll_utree_in) fclose(pll_utree_in);
 
   pll_utree_lex_destroy();
 
   *tip_count = tip_cnt;
-  
+
   /* initialize clv and scaler indices */
   pll_utree_reset_template_indices(tree, tip_cnt);
 

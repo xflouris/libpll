@@ -33,7 +33,7 @@ static char * xstrchrnul(char * s, int c)
   char * r = strchr(s,c);
   if (r)
     return r;
-  
+
   return (char *)s + strlen(s);
 }
 
@@ -121,13 +121,13 @@ PLL_EXPORT void pll_fasta_close(pll_fasta_t * fd)
 }
 
 PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
-                                 long * head_len, char ** seq, 
+                                 long * head_len, char ** seq,
                                  long * seq_len, long * seqno)
 {
   void * mem;
   long head_alloc = MEMCHUNK;
   long seq_alloc = MEMCHUNK;
-  
+
   *head_len = 0;
   *seq_len = 0;
 
@@ -294,7 +294,7 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
       return PLL_SUCCESS;
     }
 
-  
+
   snprintf(pll_errmsg, 200, "End of file\n");
   pll_errno = PLL_ERROR_FILE_EOF;
   free(*head);

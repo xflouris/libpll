@@ -12,23 +12,23 @@ branch length of the tree.
 The program first instantiates a partition using the function call
 
 ```C
-partition = pll_create_partition(4, 
-                                 2, 
-                                 4, 
-                                 6, 
-                                 1, 
-                                 5, 
-                                 4, 
-                                 2, 
+partition = pll_create_partition(4,
+                                 2,
+                                 4,
+                                 6,
+                                 1,
+                                 5,
+                                 4,
+                                 2,
                                  PLL_ATTRIB_ARCH_CPU);
 ```
 
 The parameters of the function (in the order passed) indicate
-* the number of tip sequences that will be used for this partition (4), 
-* the extra number of Conditional Likelihood Vectors (CLVs) that should be allocated apart from those created for the tip sequences (typically, number of tips minus two for unrooted trees) (2), 
+* the number of tip sequences that will be used for this partition (4),
+* the extra number of Conditional Likelihood Vectors (CLVs) that should be allocated apart from those created for the tip sequences (typically, number of tips minus two for unrooted trees) (2),
 * number of states in the dataset (for instance 4 for nucleotide datasets, 20 for aminoacid datasets) (4),
 * the length of the alignment, i.e. the number of sites at the tip sequences (6),
-* how many different substitution models we want to have at one time (1), 
+* how many different substitution models we want to have at one time (1),
 * the number of probability matrices that should be allocated (typically 2 times the number of tip sequences minus 3 for unrooted trees) (5) ,
 * number of discrete rate categories (rate heterogeneity) (4),
 * number of scale buffers to be allocated (2),
@@ -36,7 +36,7 @@ The parameters of the function (in the order passed) indicate
 
 For a more detailed explanation of the function arguments refer to the [API Reference](https://github.com/xflouris/libpll/wiki/API-Reference#pll_create_partition).
 
-Model parameters are set with the function calls 
+Model parameters are set with the function calls
 
 [`pll_set_frequencies(partition, 0, frequencies);`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_frequencies)
 
@@ -45,7 +45,7 @@ Model parameters are set with the function calls
 `pll_set_category_rates(partition, rate_cats);`
 
 
-The CLVs at tips are set by calling, for example, 
+The CLVs at tips are set by calling, for example,
 
 [`pll_set_tip_states(partition, 0, pll_map_nt, "WAAAAB");`](https://github.com/xflouris/libpll/wiki/API-Reference#void-pll_set_tip_states)
 
@@ -65,10 +65,10 @@ length in the tree by calling the function
 ```C
 unsigned int params_indices[4] = {0,0,0,0};
 
-pll_update_prob_matrices(partition, 
-                         0, 
-                         matrix_indices, 
-                         branch_lengths, 
+pll_update_prob_matrices(partition,
+                         0,
+                         matrix_indices,
+                         branch_lengths,
                          5);
 ```
 which computes the probability matrices at indices `matrix_indices` from the

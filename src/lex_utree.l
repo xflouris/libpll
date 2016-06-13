@@ -98,6 +98,6 @@ static char * append(size_t * dstlen, const char * src, size_t srclen)
 [^ \'\",\(\):;\[\]\t\n\r][^ \t\n\r\)\(\[\]\,:;]* {pll_utree_lval.s = xstrndup(pll_utree_text, pll_utree_leng); return STRING;}
 [ \t\n\r]                                        ;
 .                                                {snprintf(pll_errmsg, 200, "Syntax error (%c)\n", pll_utree_text[0]);
-                                                  pll_errno = PLL_ERROR_NEWICK_SYNTAX; 
+                                                  pll_errno = PLL_ERROR_NEWICK_SYNTAX;
                                                   return PLL_FAILURE;}
 %%

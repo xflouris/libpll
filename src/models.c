@@ -489,7 +489,7 @@ PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
 
   if (state_inv_count)
     memset(state_inv_count, 0, states*sizeof(unsigned int));
-    
+
   if (invariant)
   {
     /* count the invariant sites for each state */

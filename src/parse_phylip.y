@@ -36,7 +36,7 @@ struct sequence_s
   char * sequence;
 };
 
-void pll_phylip_error(pll_msa_t ** msa, const char * s) 
+void pll_phylip_error(pll_msa_t ** msa, const char * s)
 {
   fprintf(stderr, "%s.\n", s);
 }
@@ -216,7 +216,7 @@ PLL_EXPORT pll_msa_t * pll_phylip_parse_msa(const char * filename,
     pll_phylip_lex_destroy();
     return PLL_FAILURE;
   }
-  
+
   if (pll_phylip_in) fclose(pll_phylip_in);
 
   pll_phylip_lex_destroy();

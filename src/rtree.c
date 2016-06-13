@@ -38,8 +38,8 @@ static void print_node_info(pll_rtree_t * tree, int options)
   printf("\n");
 }
 
-static void print_tree_recurse(pll_rtree_t * tree, 
-                               int indent_level, 
+static void print_tree_recurse(pll_rtree_t * tree,
+                               int indent_level,
                                int * active_node_order,
                                int options)
 {
@@ -77,7 +77,7 @@ static void print_tree_recurse(pll_rtree_t * tree,
 
   print_node_info(tree, options);
 
-  if (active_node_order[indent_level-1] == 2) 
+  if (active_node_order[indent_level-1] == 2)
     active_node_order[indent_level-1] = 0;
 
   active_node_order[indent_level] = 1;
@@ -105,7 +105,7 @@ static unsigned int tree_indent_level(pll_rtree_t * tree, unsigned int indent)
 
 void pll_rtree_show_ascii(pll_rtree_t * tree, int options)
 {
-  
+
   unsigned int indent_max = tree_indent_level(tree,0);
 
   int * active_node_order = (int *)malloc((indent_max+1) * sizeof(int));
@@ -275,7 +275,7 @@ int pll_rtree_traverse(pll_rtree_t * root,
   if (!root->left) return PLL_FAILURE;
 
   /* we will traverse an unrooted tree in the following way
-      
+
            root
             /\
            /  \

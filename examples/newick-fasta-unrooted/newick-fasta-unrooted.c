@@ -40,7 +40,7 @@ static int cb_full_traversal(pll_utree_t * node)
   return 1;
 }
 
-static void set_missing_branch_length_recursive(pll_utree_t * tree, 
+static void set_missing_branch_length_recursive(pll_utree_t * tree,
                                                 double length)
 {
   if (tree)
@@ -102,8 +102,8 @@ int main(int argc, char * argv[])
   pll_utree_t * tree = pll_utree_parse_newick(argv[1], &tip_nodes_count);
   if (!tree)
     fatal("Tree must be an unrooted binary tree");
-  
-  /* fix all missing branch lengths (i.e. those that did not appear in the 
+
+  /* fix all missing branch lengths (i.e. those that did not appear in the
      newick) to 0.000001 */
   set_missing_branch_length(tree, 0.000001);
 
@@ -140,7 +140,7 @@ int main(int argc, char * argv[])
   hcreate(tip_nodes_count);
 
   /* populate a libc hash table with tree tip labels */
-  unsigned int * data = (unsigned int *)malloc(tip_nodes_count * 
+  unsigned int * data = (unsigned int *)malloc(tip_nodes_count *
                                                sizeof(unsigned int));
   for (i = 0; i < tip_nodes_count; ++i)
   {
@@ -195,18 +195,18 @@ int main(int argc, char * argv[])
   if (i != tip_nodes_count)
     fatal("Some taxa are missing from FASTA file");
 
-  /* create the PLL partition instance 
+  /* create the PLL partition instance
 
   tip_nodes_count : the number of tip sequences we want to have
   inner_nodes_count : the number of CLV buffers to be allocated for inner nodes
   STATES : the number of states that our data have
-  1 : number of different substitution models (or eigen decomposition) 
+  1 : number of different substitution models (or eigen decomposition)
       to use concurrently (i.e. 4 for LG4)
   branch_count: number of probability matrices to be allocated
   RATE_CATS : number of rate categories we will use
   inner_nodes_count : how many scale buffers to use
   PLL_ATTRIB_ARCH_SSE : list of flags for hardware acceleration (not yet implemented)
-  
+
   */
 
   partition = pll_partition_create(tip_nodes_count,
@@ -306,7 +306,7 @@ int main(int argc, char * argv[])
                               &matrix_count,
                               &ops_count);
 
-                              
+
   printf ("Traversal size: %d\n", traversal_size);
   printf ("Operations: %d\n", ops_count);
   printf ("Probability Matrices: %d\n", matrix_count);
@@ -315,10 +315,10 @@ int main(int argc, char * argv[])
      matrix (i ranges from 0 to matrix_count - 1) is generated using branch
      length branch_lengths[i] and can be refered to with index
      matrix_indices[i] */
-  pll_update_prob_matrices(partition, 
+  pll_update_prob_matrices(partition,
                            params_indices,
-                           matrix_indices, 
-                           branch_lengths, 
+                           matrix_indices,
+                           branch_lengths,
                            matrix_count);
 
   /* Uncomment to output the probability matrices (for each branch and each rate
@@ -329,7 +329,7 @@ int main(int argc, char * argv[])
     pll_show_pmatrix(partition, i,17);
     printf ("\n");
   }
-  
+
   */
 
   /* use the operations array to compute all ops_count inner CLVs. Operations
@@ -361,7 +361,7 @@ int main(int argc, char * argv[])
                                                params_indices,
                                                NULL);
   printf("Log-L: %f\n", logl);
-  
+
   /* destroy all structures allocated for the concrete PLL partition instance */
   pll_partition_destroy(partition);
 

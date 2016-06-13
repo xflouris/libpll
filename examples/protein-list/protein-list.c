@@ -105,7 +105,7 @@ static int cb_full_traversal(pll_utree_t * node)
   return 1;
 }
 
-static void set_missing_branch_length_recursive(pll_utree_t * tree, 
+static void set_missing_branch_length_recursive(pll_utree_t * tree,
                                                 double length)
 {
   if (tree)
@@ -164,12 +164,12 @@ int main(int argc, char * argv[])
   /* parse the unrooted binary tree in newick format, and store the number
      of tip nodes in tip_nodes_count */
   pll_utree_t * tree = pll_utree_parse_newick(argv[1], &tip_nodes_count);
-  
-  /* fix all missing branch lengths (i.e. those that did not appear in the 
+
+  /* fix all missing branch lengths (i.e. those that did not appear in the
      newick) to 0.000001 */
   set_missing_branch_length(tree, 0.000001);
 
-  
+
   /* compute and show node count information */
   inner_nodes_count = tip_nodes_count - 2;
   nodes_count = inner_nodes_count + tip_nodes_count;
@@ -195,7 +195,7 @@ int main(int argc, char * argv[])
   */
 
   /*  obtain an array of pointers to tip nodes */
-  pll_utree_t ** tipnodes = (pll_utree_t  **)calloc(tip_nodes_count, 
+  pll_utree_t ** tipnodes = (pll_utree_t  **)calloc(tip_nodes_count,
                                                     sizeof(pll_utree_t *));
   pll_utree_query_tipnodes(tree, tipnodes);
 
@@ -203,7 +203,7 @@ int main(int argc, char * argv[])
   hcreate(tip_nodes_count);
 
   /* populate a libc hash table with tree tip labels */
-  unsigned int * data = (unsigned int *)malloc(tip_nodes_count * 
+  unsigned int * data = (unsigned int *)malloc(tip_nodes_count *
                                                sizeof(unsigned int));
   for (i = 0; i < tip_nodes_count; ++i)
   {
@@ -258,18 +258,18 @@ int main(int argc, char * argv[])
   if (i != tip_nodes_count)
     fatal("Some taxa are missing from FASTA file");
 
-  /* create the PLL partition instance 
+  /* create the PLL partition instance
 
   tip_nodes_count : the number of tip sequences we want to have
   inner_nodes_count : the number of CLV buffers to be allocated for inner nodes
   STATES : the number of states that our data have
-  1 : number of different substitution models (or eigen decomposition) 
+  1 : number of different substitution models (or eigen decomposition)
       to use concurrently (i.e. 4 for LG4)
   branch_count: number of probability matrices to be allocated
   RATE_CATS : number of rate categories we will use
   inner_nodes_count : how many scale buffers to use
   PLL_ATTRIB_ARCH_SSE : list of flags for hardware acceleration (not yet implemented)
-  
+
   */
 
   partition = pll_partition_create(tip_nodes_count,
@@ -316,27 +316,27 @@ int main(int argc, char * argv[])
   free(seqdata);
   free(headers);
 
-  /* allocate a buffer for storing pointers to nodes of the tree in postorder 
+  /* allocate a buffer for storing pointers to nodes of the tree in postorder
      traversal */
   travbuffer = (pll_utree_t **)malloc(nodes_count * sizeof(pll_utree_t *));
 
 
   branch_lengths = (double *)malloc(branch_count * sizeof(double));
   matrix_indices = (unsigned int *)malloc(branch_count * sizeof(unsigned int));
-  operations = (pll_operation_t *)malloc(inner_nodes_count * 
+  operations = (pll_operation_t *)malloc(inner_nodes_count *
                                                 sizeof(pll_operation_t));
 
-  /* compute a partial traversal starting from the randomly selected 
+  /* compute a partial traversal starting from the randomly selected
      inner node */
   unsigned int traversal_size;
-  if (!pll_utree_traverse(tree, 
-                          cb_full_traversal, 
+  if (!pll_utree_traverse(tree,
+                          cb_full_traversal,
                           travbuffer,
                           &traversal_size))
     fatal("Function pll_utree_traverse() requires inner nodes as parameters");
 
-  /* given the computed traversal descriptor, generate the operations 
-     structure, and the corresponding probability matrix indices that 
+  /* given the computed traversal descriptor, generate the operations
+     structure, and the corresponding probability matrix indices that
      may need recomputing */
   pll_utree_create_operations(travbuffer,
                               traversal_size,
@@ -374,21 +374,21 @@ int main(int argc, char * argv[])
        to with index matrix_indices[i] */
     unsigned int params_indices[4] = {0,0,0,0};
 
-    pll_update_prob_matrices(partition, 
-                             params_indices, 
-                             matrix_indices, 
-                             branch_lengths, 
+    pll_update_prob_matrices(partition,
+                             params_indices,
+                             matrix_indices,
+                             branch_lengths,
                              matrix_count);
 
     /* Uncomment to output the probability matrices (for each branch and each rate
-       category) on screen 
+       category) on screen
     for (i = 0; i < branch_count; ++i)
     {
       printf ("P-matrix (%d) for branch length %f\n", i, branch_lengths[i]);
       pll_show_pmatrix(partition, i,17);
       printf ("\n");
     }
-    
+
     */
 
     /* use the operations array to compute all tip_count-2 inner CLVs. Operations

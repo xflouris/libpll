@@ -23,7 +23,7 @@
 
 static int utree_find(pll_utree_t * start, pll_utree_t * target)
 {
-  /* checks whether the subtree rooted at 'start' (in the direction of 
+  /* checks whether the subtree rooted at 'start' (in the direction of
      start->next and start->next->next) contains the node 'target' */
 
   if (!start) return 0;
@@ -71,9 +71,9 @@ PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
      r' *                   * v              *                   *
        /\                   /\              /\                   /\
       /__\                 /__\            /__\                 /__\
-                                                                     
-       D                    E               C                    E   
-     
+
+       D                    E               C                    E
+
      node p must be part of an inner node (i.e. node with ->next set). The
      procedure prunes the subtree rooted at the opposite end-point of p
      (subtree C in our case) and regrafts it on the edge r'<->r. It is done
@@ -81,11 +81,11 @@ PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
 
      (a) prune the subtree rooted at the opposite end-point of p (p' on figure)
          by breaking the edges q<->u and q'<->v
-     
+
      (b) connect node u with node v
 
      (c) break edge r<->r' by connecting node r with node q, and node r' with
-         node q' 
+         node q'
 
      Node r must not be part of the subtree to be pruned (C in this case). Note
      that for speed reasons, the function *does not* check this property to save
@@ -134,7 +134,7 @@ PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
   double length = r->length / 2;
   utree_link(r->back, p->next->next, length);  /* r'<->q' */
   utree_link(r, p->next, length);              /* r<->q */
-  
+
   return PLL_SUCCESS;
 }
 
@@ -154,13 +154,13 @@ PLL_EXPORT int pll_utree_spr_safe(pll_utree_t * p,
   /* check all possible scenarios of failure */
   if (!p)
   {
-    snprintf(pll_errmsg, 200, "Node p is set to NULL"); 
+    snprintf(pll_errmsg, 200, "Node p is set to NULL");
     return PLL_FAILURE;
   }
 
   if (!r)
   {
-    snprintf(pll_errmsg, 200, "Node r is set to NULL"); 
+    snprintf(pll_errmsg, 200, "Node r is set to NULL");
     return PLL_FAILURE;
   }
 
