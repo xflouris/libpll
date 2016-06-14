@@ -960,6 +960,9 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
 
     if (asc_bias_type != PLL_ATTRIB_ASC_BIAS_STAMATAKIS)
     {
+      /* check that no additional sites have been evaluated */
+      assert(ef_sites == sites);
+
       for (n=0; n<states; ++n)
       {
         /* compute the site LK derivatives for the additional per-state sites */
@@ -975,8 +978,9 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
                                          site_lk);
         sum += rate_cats * states_padded;
 
-        scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-        scale_factors += (child_scaler) ? child_scaler[n] : 0;
+        /* apply scaling */
+        scale_factors = (parent_scaler) ? parent_scaler[sites + n] : 0;
+        scale_factors += (child_scaler) ? child_scaler[sites + n] : 0;
         asc_scaling = pow(PLL_SCALE_THRESHOLD, (double)scale_factors);
 
         /* sum over likelihood and 1st and 2nd derivative / apply scaling */

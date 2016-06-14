@@ -533,7 +533,7 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
         terma_r = 0;
         for (j = 0; j < states; ++j)
         {
-          terma_r += clvp[j] * freqs[j] * pmatrix[j];
+          terma_r += clvp[j] * freqs[j] * pmatrix[n];
           pmatrix += states_padded;
         }
 
