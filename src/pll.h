@@ -85,6 +85,17 @@
 #define PLL_ATTRIB_ASC_BIAS_MASK         (7 << 5)
 #define PLL_ATTRIB_ASC_BIAS_FLAG         (1 << 8)
 
+/* topological rearrangements */
+
+#define PLL_UTREE_MOVE_SPR                  1
+#define PLL_UTREE_MOVE_NNI                  2
+
+#define PLL_UTREE_MOVE_NNI_LEFT             1
+#define PLL_UTREE_MOVE_NNI_RIGHT            2
+
+#define PLL_ERROR_NNI_INVALIDMOVE 1
+#define PLL_ERROR_NNI_TERMINALBRANCH 2
+
 /* error codes */
 
 #define PLL_ERROR_FILE_OPEN                1
@@ -242,17 +253,29 @@ typedef struct pll_rtree
 
 /* structures for handling topological rearrangement move rollbacks */
 
-typedef struct pll_utree_rb_spr_s
+typedef struct pll_utree_rb_s
 {
-  pll_utree_t * p;
-  pll_utree_t * r;
-  pll_utree_t * rb;
-  pll_utree_t * pnb;
-  pll_utree_t * pnnb;
-  double r_len;
-  double pnb_len;
-  double pnnb_len;
-} pll_utree_rb_spr_t;
+  int move_type;
+  union
+  {
+    struct pll_utree_rb_spr_s
+    {
+      pll_utree_t * p;
+      pll_utree_t * r;
+      pll_utree_t * rb;
+      pll_utree_t * pnb;
+      pll_utree_t * pnnb;
+      double r_len;
+      double pnb_len;
+      double pnnb_len;
+    } spr;
+    struct pll_utree_rb_nni_s
+    {
+      pll_utree_t * p;
+      int nni_type;
+    } nni;
+  };
+} pll_utree_rb_t;
 
 /* common data */
 
@@ -788,17 +811,27 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
                                                      int count,
                                                      int * length);
 
-/* functions in tree_moves.c */
+/* functions in utree_moves.c */
 
 PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
                              pll_utree_t * r,
-                             pll_utree_rb_spr_t * rb);
-
-PLL_EXPORT void pll_utree_spr_rollback(pll_utree_rb_spr_t * rb);
+                             pll_utree_rb_t * rb,
+                             double * branch_lengths,
+                             unsigned int * matrix_indices);
 
 PLL_EXPORT int pll_utree_spr_safe(pll_utree_t * p,
                                   pll_utree_t * r,
-                                  pll_utree_rb_spr_t * rb);
+                                  pll_utree_rb_t * rb,
+                                  double * branch_lengths,
+                                  unsigned int * matrix_indices);
+
+PLL_EXPORT int pll_utree_nni(pll_utree_t * p,
+                             int type,
+                             pll_utree_rb_t * rb);
+
+PLL_EXPORT int pll_utree_rollback(pll_utree_rb_t * rollback,
+                                  double * branch_lengths,
+                                  unsigned int * matrix_indices);
 
 #ifdef __cplusplus
 } /* extern "C" */

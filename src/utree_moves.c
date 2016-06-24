@@ -44,20 +44,86 @@ static int utree_find(pll_utree_t * start, pll_utree_t * target)
   return 0;
 }
 
-static void utree_link(pll_utree_t * a, pll_utree_t * b, double length)
+static void utree_link(pll_utree_t * a,
+                       pll_utree_t * b,
+                       double length,
+                       unsigned int pmatrix_index)
 {
   a->back = b;
   b->back = a;
   a->length = length;
   b->length = length;
+
+  a->pmatrix_index = b->pmatrix_index = pmatrix_index;
 }
 
-/* drive fast and you will crash if not careful */
+static void utree_swap(pll_utree_t * t1, pll_utree_t * t2)
+{
+  /* swaps the positions of trees t1 and t2. The two trees retain the branch
+  lengths from their root to their respective parent nodes, and retain their
+  pmatrix indices (i.e. no updating of pmatrices is required) */
+
+  pll_utree_t * temp = t1->back;
+
+  utree_link(t1, t2->back, t2->back->length, t2->back->pmatrix_index);
+  utree_link(t2, temp, temp->length, temp->pmatrix_index);
+}
+
+PLL_EXPORT int pll_utree_nni(pll_utree_t * p,
+                             int type,
+                             pll_utree_rb_t * rb)
+{
+  pll_utree_t * subtree1;
+  pll_utree_t * subtree2;
+
+  if ((type != PLL_UTREE_MOVE_NNI_LEFT) && (type != PLL_UTREE_MOVE_NNI_RIGHT))
+  {
+    snprintf(pll_errmsg, 200, "Invalid NNI move type");
+    pll_errno = PLL_ERROR_NNI_INVALIDMOVE;
+    return PLL_FAILURE;
+  }
+
+  /* check if selected node p is edge  */
+  if (!(p->next) || !(p->back->next))
+  {
+    snprintf(pll_errmsg, 200, "Specified terminal branch");
+    pll_errno = PLL_ERROR_NNI_TERMINALBRANCH;
+    return PLL_FAILURE;
+  }
+
+  /* check if rollback buffer is provided, and fill it up */
+  if (rb)
+  {
+    rb->move_type = PLL_UTREE_MOVE_NNI;
+    rb->nni.p = p;
+    rb->nni.nni_type = type;
+  }
+
+  subtree1 = p->next;
+  subtree2 = (type == PLL_UTREE_MOVE_NNI_LEFT) ?
+               p->back->next : p->back->next->next;
+
+  utree_swap(subtree1,subtree2);
+
+  return PLL_SUCCESS;
+}
+
+static int utree_nni_rollback(pll_utree_rb_t * rb)
+{
+  /* restore the tree topology from a previous SPR */
+  return pll_utree_nni(rb->nni.p,
+                       rb->nni.nni_type,
+                       NULL);
+}
+
 PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
                              pll_utree_t * r,
-                             pll_utree_rb_spr_t * rb)
+                             pll_utree_rb_t * rb,
+                             double * branch_lengths,
+                             unsigned int * matrix_indices)
 {
-  /* perform an SPR move in the following way:
+  /* given nodes p and r, perform an SPR move in the following way,
+     i.e. prune subtree C and make it adjacent to subtree D:
 
       A           B          C             D           A          B
      ____        ____       ____          ____        ____       ____
@@ -93,6 +159,15 @@ PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
      property is pll_utree_spr_safe
   */
 
+  int k = 0;
+
+  if ((!branch_lengths && matrix_indices) ||
+      (branch_lengths && !matrix_indices))
+  {
+    snprintf(pll_errmsg, 200, "Parameters 4,5 must be both NULL or both set");
+    return PLL_FAILURE;
+  }
+
   /* if p is a tip node then prompt an error */
   if (!p->next)
   {
@@ -112,44 +187,124 @@ PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
   /* check if rollback buffer is provided, and fill it up */
   if (rb)
   {
-    rb->p = p;
-    rb->r = r;
-    rb->rb = r->back;
-    rb->r_len = r->length;
-    rb->pnb = p->next->back;
-    rb->pnb_len = p->next->length;
-    rb->pnnb = p->next->next->back;
-    rb->pnnb_len = p->next->next->length;
+    rb->move_type = PLL_UTREE_MOVE_SPR;
+    rb->spr.p = p;
+    rb->spr.r = r;
+    rb->spr.rb = r->back;
+    rb->spr.r_len = r->length;
+    rb->spr.pnb = p->next->back;
+    rb->spr.pnb_len = p->next->length;
+    rb->spr.pnnb = p->next->next->back;
+    rb->spr.pnnb_len = p->next->next->length;
   }
 
   /* (b) connect u and v */
   pll_utree_t * u = p->next->back;
   pll_utree_t * v = p->next->next->back;
-  utree_link(u, v, u->length + v->length);
+  utree_link(u,
+             v,
+             u->length + v->length,
+             u->pmatrix_index);
+  /* if requested, store the new branch length for the corresponding 
+     pmatrix index */
+  if (branch_lengths)
+  {
+    branch_lengths[k] = u->length;
+    matrix_indices[k] = u->pmatrix_index;
+  }
 
   /* (a) prune subtree C */
   p->next->back = p->next->next->back = NULL;
 
   /* (c) regraft C at r<->r' */
   double length = r->length / 2;
-  utree_link(r->back, p->next->next, length);  /* r'<->q' */
-  utree_link(r, p->next, length);              /* r<->q */
+
+  /* r' <-> q' */
+  utree_link(r->back,
+             p->next->next,
+             length,
+             p->next->next->pmatrix_index);
+  /* if requested, store the new branch length for the corresponding 
+     pmatrix index */
+  if (branch_lengths)
+  {
+    ++k;
+    branch_lengths[k] = length;
+    matrix_indices[k]   = p->next->next->pmatrix_index;
+  }
+
+  /* r<->q */
+  utree_link(r,
+             p->next,
+             length,
+             r->pmatrix_index);
+  /* if requested, store the new branch length for the corresponding 
+     pmatrix index */
+  if (branch_lengths)
+  {
+    ++k;
+    branch_lengths[k] = length;
+    matrix_indices[k]   = r->pmatrix_index;
+  }
 
   return PLL_SUCCESS;
 }
 
-PLL_EXPORT void pll_utree_spr_rollback(pll_utree_rb_spr_t * rb)
+static int utree_spr_rollback(pll_utree_rb_t * rb,
+                              double * branch_lengths,
+                              unsigned int * matrix_indices)
 {
+  if ((!branch_lengths && matrix_indices) ||
+      (branch_lengths && !matrix_indices))
+  {
+    snprintf(pll_errmsg, 200, "Parameters 4,5 must be both NULL or both set");
+    return PLL_FAILURE;
+  }
+
+  int k = 0;
+
   /* restore the tree topology from a previous SPR */
-  utree_link(rb->pnb, rb->p->next, rb->pnb_len);
-  utree_link(rb->pnnb, rb->p->next->next, rb->pnnb_len);
-  utree_link(rb->r, rb->rb, rb->r_len);
+  utree_link(rb->spr.pnb,
+             rb->spr.p->next,
+             rb->spr.pnb_len,
+             rb->spr.pnb->pmatrix_index);
+  if (branch_lengths)
+  {
+    branch_lengths[k] = rb->spr.pnb_len;
+    matrix_indices[k] = rb->spr.pnb->pmatrix_index;
+  }
+
+  utree_link(rb->spr.pnnb,
+             rb->spr.p->next->next,
+             rb->spr.pnnb_len,
+             rb->spr.p->next->next->pmatrix_index);
+  if (branch_lengths)
+  {
+    branch_lengths[++k] = rb->spr.pnnb_len;
+    matrix_indices[k]   = rb->spr.p->next->next->pmatrix_index;
+  }
+
+  utree_link(rb->spr.r,
+             rb->spr.rb,
+             rb->spr.r_len,
+             rb->spr.r->pmatrix_index);
+  if (branch_lengths)
+  {
+    branch_lengths[++k] = rb->spr.r_len;
+    matrix_indices[k]   = rb->spr.r->pmatrix_index;
+  }
+
+  return PLL_SUCCESS;
 }
 
-/* drive slow and safe even with dope at hand */
+/* this is a safer (but slower) function for performing an spr move, than
+   pll_utree_spr(). See the last paragraph in the comments section of the
+   pll_utree_spr() function for more details */
 PLL_EXPORT int pll_utree_spr_safe(pll_utree_t * p,
                                   pll_utree_t * r,
-                                  pll_utree_rb_spr_t * rb)
+                                  pll_utree_rb_t * rb,
+                                  double * branch_lengths,
+                                  unsigned int * matrix_indices)
 {
   /* check all possible scenarios of failure */
   if (!p)
@@ -186,5 +341,24 @@ PLL_EXPORT int pll_utree_spr_safe(pll_utree_t * p,
     return PLL_FAILURE;
   }
 
-  return pll_utree_spr(p,r,rb);
+  return pll_utree_spr(p,r,rb,branch_lengths,matrix_indices);
+}
+
+PLL_EXPORT int pll_utree_rollback(pll_utree_rb_t * rollback,
+                                  double * branch_lengths,
+                                  unsigned int * matrix_indices)
+{
+  if (!rollback)
+  {
+    snprintf(pll_errmsg, 200, "Provide a rollback");
+    return PLL_FAILURE;
+  }
+
+  if (rollback->move_type == PLL_UTREE_MOVE_SPR)
+    return utree_spr_rollback(rollback, branch_lengths, matrix_indices);
+  else if (rollback->move_type == PLL_UTREE_MOVE_NNI)
+    return utree_nni_rollback(rollback);
+
+  snprintf(pll_errmsg, 200, "Invalid move type");
+  return PLL_FAILURE;
 }
