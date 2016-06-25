@@ -258,7 +258,7 @@ typedef struct pll_utree_rb_s
   int move_type;
   union
   {
-    struct pll_utree_rb_spr_s
+    struct
     {
       pll_utree_t * p;
       pll_utree_t * r;
@@ -269,7 +269,7 @@ typedef struct pll_utree_rb_s
       double pnb_len;
       double pnnb_len;
     } spr;
-    struct pll_utree_rb_nni_s
+    struct
     {
       pll_utree_t * p;
       int nni_type;
