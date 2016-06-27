@@ -24,18 +24,25 @@ PROFILING=-g
 # Compiler warnings
 WARN=-Wall -Wsign-compare
 
-ifndef CC
-CC = gcc
-endif
+OS = $(shell uname -s)
+CC ?= gcc
+PROG=libpll.so
+
 CFLAGS = -DHAVE_AVX -D_GNU_SOURCE -fPIC -std=c99 -g -msse3 -O3 $(WARN)
 AVXFLAGS = -mavx
+
+ifeq ($(OS), Darwin)
+  SONAMEFLAGS=-Wl,-install_name,$(PROG)
+else
+  SONAMEFLAGS=-Wl,-soname,$(PROG)
+endif
+
 LINKFLAGS=$(PROFILING)
 LIBS=-lm
 
 BISON = bison
 FLEX = flex
 
-PROG=libpll.so
 
 all: $(PROG)
 
@@ -45,7 +52,7 @@ OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o \
      core_likelihood_avx.o core_pmatrix.o utree_moves.o
 
 $(PROG): $(OBJS)
-	$(CC) -shared -Wl,-soname,$@ -o $@ $+
+	$(CC) -shared $(SONAMEFLAGS) -o $@ $+
 
 %_avx.o: %_avx.c
 	$(CC) $(CFLAGS) $(AVXFLAGS) -c -o $@ $<
