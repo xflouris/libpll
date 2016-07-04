@@ -268,18 +268,24 @@ PLL_EXPORT void pll_utree_create_operations(pll_utree_t ** trav_buffer,
   }
 }
 
-static int utree_traverse_check(pll_utree_t * node,
-                                 int (*cbtrav)(pll_utree_t *))
+static int utree_every_recursive(pll_utree_t * node,
+                                 int (*cb)(pll_utree_t *))
 {
   if (!node->next)
-  {
-    return cbtrav(node);
-  }
-  if (!cbtrav(node))
+    return cb(node);
+
+  if (!cb(node))
     return 0;
 
-  return utree_traverse_check(node->next->back, cbtrav) &&
-         utree_traverse_check(node->next->next->back, cbtrav);
+  return (utree_every_recursive(node->next->back,cb) &&
+          utree_every_recursive(node->next->next->back,cb));
+}
+
+PLL_EXPORT int pll_utree_every(pll_utree_t * node,
+                               int (*cb)(pll_utree_t *))
+{
+  return (utree_every_recursive(node,cb) &&
+          utree_every_recursive(node->back,cb));
 }
 
 static void utree_traverse(pll_utree_t * node,
@@ -430,8 +436,7 @@ PLL_EXPORT int pll_utree_check_integrity(pll_utree_t * root)
 {
   pll_utree_t * start_node = root->next?root:root->back;
 
-  return utree_traverse_check(start_node->back, cb_check_integrity) &&
-         utree_traverse_check(start_node, cb_check_integrity);
+  return pll_utree_every(start_node->back, cb_check_integrity);
 }
 
 static pll_utree_t * clone_node( pll_utree_t * tree )

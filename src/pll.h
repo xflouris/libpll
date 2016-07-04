@@ -527,6 +527,8 @@ PLL_EXPORT int pll_utree_check_integrity(pll_utree_t * root);
 
 PLL_EXPORT pll_utree_t * pll_utree_clone(pll_utree_t * root);
 PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * root);
+PLL_EXPORT int pll_utree_every(pll_utree_t * node,
+                               int (*cb)(pll_utree_t *));
 
 /* functions in pll_phylip.y */
 
