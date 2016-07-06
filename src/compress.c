@@ -88,6 +88,7 @@ static void remap_range(const unsigned int * map,
   unsigned char k = 1;
 
   memcpy(oldmap, map, PLL_ASCII_SIZE * sizeof(unsigned int));
+  memset(charmap, 0, PLL_ASCII_SIZE * sizeof(unsigned char));
 
   for (i = 0; i < PLL_ASCII_SIZE; ++i)
     if (oldmap[i])
