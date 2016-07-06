@@ -170,7 +170,7 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
      compression is finished */
   for (i = 0; i < PLL_ASCII_SIZE; ++i)
     if (map[i])
-      inv_charmap[map[i]] = i;
+      inv_charmap[charmap[i]] = (unsigned char)i;
 
   /* encode sequences using charmap */
   encode(sequence,charmap,count);
