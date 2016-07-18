@@ -173,10 +173,12 @@ number: NUMBER   { $$=$1;};
 static void recursive_assign_indices(pll_utree_t * node,
                                     unsigned int * tip_clv_index,
                                     unsigned int * inner_clv_index,
-                                    int * inner_scaler_index)
+                                    int * inner_scaler_index,
+                                    unsigned int * inner_node_index)
 {
   if (!node->next)
   {
+    node->node_index = *tip_clv_index;
     node->clv_index = *tip_clv_index;
     node->pmatrix_index = *tip_clv_index;
     node->scaler_index = PLL_SCALE_BUFFER_NONE;
@@ -187,12 +189,18 @@ static void recursive_assign_indices(pll_utree_t * node,
   recursive_assign_indices(node->next->back,
                            tip_clv_index,
                            inner_clv_index,
-                           inner_scaler_index);
+                           inner_scaler_index,
+                           inner_node_index);
 
   recursive_assign_indices(node->next->next->back,
                            tip_clv_index,
                            inner_clv_index,
-                           inner_scaler_index);
+                           inner_scaler_index,
+                           inner_node_index);
+
+  node->node_index = *inner_node_index;
+  node->next->node_index = *inner_node_index + 1;
+  node->next->next->node_index = *inner_node_index + 2;
 
   node->clv_index = *inner_clv_index;
   node->next->clv_index = *inner_clv_index;
@@ -208,6 +216,7 @@ static void recursive_assign_indices(pll_utree_t * node,
 
   *inner_clv_index = *inner_clv_index + 1;
   *inner_scaler_index = *inner_scaler_index + 1;
+  *inner_node_index = *inner_node_index + 3;
 }
 
 PLL_EXPORT void pll_utree_reset_template_indices(pll_utree_t * node,
@@ -215,22 +224,30 @@ PLL_EXPORT void pll_utree_reset_template_indices(pll_utree_t * node,
 {
   unsigned int tip_clv_index = 0;
   unsigned int inner_clv_index = tip_count;
+  unsigned int inner_node_index = tip_count;
   int inner_scaler_index = 0;
 
   recursive_assign_indices(node->back,
                            &tip_clv_index,
                            &inner_clv_index,
-                           &inner_scaler_index);
+                           &inner_scaler_index,
+                           &inner_node_index);
 
   recursive_assign_indices(node->next->back,
                            &tip_clv_index,
                            &inner_clv_index,
-                           &inner_scaler_index);
+                           &inner_scaler_index,
+                           &inner_node_index);
 
   recursive_assign_indices(node->next->next->back,
                            &tip_clv_index,
                            &inner_clv_index,
-                           &inner_scaler_index);
+                           &inner_scaler_index,
+                           &inner_node_index);
+
+  node->node_index = inner_node_index;
+  node->next->node_index = inner_node_index + 1;
+  node->next->next->node_index = inner_node_index + 2;
 
   node->clv_index = inner_clv_index;
   node->next->clv_index = inner_clv_index;

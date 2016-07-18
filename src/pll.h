@@ -228,6 +228,7 @@ typedef struct pll_utree
 {
   char * label;
   double length;
+  unsigned int node_index;
   unsigned int clv_index;
   int scaler_index;
   unsigned int pmatrix_index;
@@ -241,6 +242,7 @@ typedef struct pll_rtree
 {
   char * label;
   double length;
+  unsigned int node_index;
   unsigned int clv_index;
   int scaler_index;
   unsigned int pmatrix_index;
