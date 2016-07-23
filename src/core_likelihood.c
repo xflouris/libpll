@@ -832,28 +832,27 @@ static void core_site_likelihood_derivatives(unsigned int states,
   }
 }
 
-PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
-                                                  unsigned int sites,
-                                                  unsigned int rate_cats,
-                                                  const double * rate_weights,
-                                                  const unsigned int * parent_scaler,
-                                                  const unsigned int * child_scaler,
-                                                  const int * invariant,
-                                                  const unsigned int * pattern_weights,
-                                                  double branch_length,
-                                                  const double * prop_invar,
-                                                  double ** freqs,
-                                                  const const double * rates,
-                                                  double ** eigenvals,
-                                                  const double * sumtable,
-                                                  double * d_f,
-                                                  double * dd_f,
-                                                  unsigned int attrib)
+PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
+                                               unsigned int sites,
+                                               unsigned int rate_cats,
+                                               const double * rate_weights,
+                                               const unsigned int * parent_scaler,
+                                               const unsigned int * child_scaler,
+                                               const int * invariant,
+                                               const unsigned int * pattern_weights,
+                                               double branch_length,
+                                               const double * prop_invar,
+                                               double ** freqs,
+                                               const const double * rates,
+                                               double ** eigenvals,
+                                               const double * sumtable,
+                                               double * d_f,
+                                               double * dd_f,
+                                               unsigned int attrib)
 {
   unsigned int n, i, j;
   unsigned int ef_sites;
   double site_lk[3];
-  double logLK = 0.0;
 
   const double * sum;
   double deriv1, deriv2;
@@ -897,7 +896,7 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf (pll_errmsg, 200, "Cannot allocate memory for diagptable");
-    return -INFINITY;
+    return PLL_FAILURE;
   }
 
   /* pre-compute the derivatives of the P matrix for all discrete GAMMA rates */
@@ -935,12 +934,6 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
 
     scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
     scale_factors += (child_scaler) ? child_scaler[n] : 0;
-
-    logLK += log (site_lk[0]) * pattern_weights[n];
-    if (scale_factors)
-    {
-      logLK += scale_factors * log (PLL_SCALE_THRESHOLD);
-    }
 
     /* build derivatives */
     deriv1 = (-site_lk[1] / site_lk[0]);
@@ -994,9 +987,6 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
       switch(asc_bias_type)
       {
         case PLL_ATTRIB_ASC_BIAS_LEWIS:
-          /* correct log-likelihood */
-          logLK -= pattern_weight_sum * log(1.0 - asc_Lk[0]);
-
           /* derivatives of log(1.0 - (sum Li(s) over states 's')) */
       		*d_f  -= pattern_weight_sum * (asc_Lk[1] / (asc_Lk[0] - 1.0));
       		*dd_f -= pattern_weight_sum *
@@ -1004,9 +994,6 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
                      ((asc_Lk[0] - 1.0) * (asc_Lk[0] - 1.0)));
           break;
         case PLL_ATTRIB_ASC_BIAS_FELSENSTEIN:
-          /* correct log-likelihood */
-          logLK += sum_w_inv * log(asc_Lk[0]);
-
           /* derivatives of log(sum Li(s) over states 's') */
       		*d_f  += sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
       		*dd_f += sum_w_inv *
@@ -1016,11 +1003,11 @@ PLL_EXPORT double pll_core_likelihood_derivatives(unsigned int states,
         default:
           pll_errno = PLL_ERROR_ASC_BIAS;
           snprintf(pll_errmsg, 200, "Illegal ascertainment bias algorithm");
-          return -INFINITY;
+          return PLL_FAILURE;
       }
     }
   }
 
   free (diagptable);
-  return logLK;
+  return PLL_SUCCESS;
 }

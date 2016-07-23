@@ -27,7 +27,7 @@
 
     The derivatives are computed twice at an inner edge and at a tip edge
     using 3 different alphas, 4 proportion of invariant sites, 3 sets of
-    rate categories and 9 branches ranging from 0.1 to 90.    
+    rate categories and 9 branches ranging from 0.1 to 90.
  */
 #include "common.h"
 
@@ -188,24 +188,66 @@ int main(int argc, char * argv[])
         pll_update_sumtable(partition, 6, 7, params_indices, sumtable);
 
         for (b = 0; b < NUM_BRANCHES; ++b) {
-          f = pll_compute_likelihood_derivatives(partition,
+          if (!pll_compute_likelihood_derivatives(partition,
                                              PLL_SCALE_BUFFER_NONE,
                                              PLL_SCALE_BUFFER_NONE,
                                              testbranches[b],
                                              params_indices,
                                              sumtable,
-                                             &d_f, &dd_f);
+                                             &d_f, &dd_f))
+          {
+            printf("Error computing likelihood derivatives\n");
+            exit(1);
+          }
+
+          /* update logLikelihood */
+          unsigned int pmatrix_index = 0;
+          pll_update_prob_matrices(partition,
+                                   params_indices,
+                                   &pmatrix_index,
+                                   &testbranches[b],
+                                   1);
+          f = pll_compute_edge_loglikelihood(partition,
+                                             6,
+                                             PLL_SCALE_BUFFER_NONE,
+                                             7,
+                                             PLL_SCALE_BUFFER_NONE,
+                                             0,
+                                             params_indices,
+                                             NULL);
+
           printf("Branch %6.1f : %10.6f %12.4e %12.4e\n", testbranches[b], f, d_f, dd_f);
         }
 
         /* test original branch length */
-        f = pll_compute_likelihood_derivatives(partition,
+        if (!pll_compute_likelihood_derivatives(partition,
                                            PLL_SCALE_BUFFER_NONE,
                                            PLL_SCALE_BUFFER_NONE,
                                            branch_lengths[0],
                                            params_indices,
                                            sumtable,
-                                           &d_f, &dd_f);
+                                           &d_f, &dd_f))
+        {
+          printf("Error computing likelihood derivatives\n");
+          exit(1);
+        }
+
+        /* update logLikelihood */
+        unsigned int pmatrix_index = 0;
+        pll_update_prob_matrices(partition,
+                                 params_indices,
+                                 &pmatrix_index,
+                                 branch_lengths,
+                                 1);
+        f = pll_compute_edge_loglikelihood(partition,
+                                           6,
+                                           PLL_SCALE_BUFFER_NONE,
+                                           7,
+                                           PLL_SCALE_BUFFER_NONE,
+                                           0,
+                                           params_indices,
+                                           NULL);
+
         printf("Test %10.6f = %10.6f\n", f, lk_scores[k*NUM_ALPHAS + i]);
         assert(fabs(f - lk_scores[k*NUM_ALPHAS + i]) < 1e-7);
 
@@ -225,24 +267,65 @@ int main(int argc, char * argv[])
         pll_update_sumtable(partition, 4, 7, params_indices, sumtable);
 
         for (b = 0; b < NUM_BRANCHES; ++b) {
-          f = pll_compute_likelihood_derivatives(partition,
+          if (!pll_compute_likelihood_derivatives(partition,
                                              PLL_SCALE_BUFFER_NONE,
                                              PLL_SCALE_BUFFER_NONE,
                                              testbranches[b],
                                              params_indices,
                                              sumtable,
-                                             &d_f, &dd_f);
+                                             &d_f, &dd_f))
+          {
+            printf("Error computing likelihood derivatives\n");
+            exit(1);
+          }
+
+          /* update logLikelihood */
+          pmatrix_index = 1;
+          pll_update_prob_matrices(partition,
+                                   params_indices,
+                                   &pmatrix_index,
+                                   &testbranches[b],
+                                   1);
+          f = pll_compute_edge_loglikelihood(partition,
+                                             4,
+                                             PLL_SCALE_BUFFER_NONE,
+                                             7,
+                                             PLL_SCALE_BUFFER_NONE,
+                                             1,
+                                             params_indices,
+                                             NULL);
           printf("Branch(Tip) %6.1f : %10.6f %12.4e %12.4e\n", testbranches[b], f, d_f, dd_f);
         }
 
         /* test original branch length */
-        f = pll_compute_likelihood_derivatives(partition,
+        if (!pll_compute_likelihood_derivatives(partition,
                                            PLL_SCALE_BUFFER_NONE,
                                            PLL_SCALE_BUFFER_NONE,
                                            branch_lengths[1],
                                            params_indices,
                                            sumtable,
-                                           &d_f, &dd_f);
+                                           &d_f, &dd_f))
+        {
+          printf("Error computing likelihood derivatives\n");
+          exit(1);
+        }
+
+        /* update logLikelihood */
+        pmatrix_index = 1;
+        pll_update_prob_matrices(partition,
+                                 params_indices,
+                                 &pmatrix_index,
+                                 &branch_lengths[1],
+                                 1);
+        f = pll_compute_edge_loglikelihood(partition,
+                                           4,
+                                           PLL_SCALE_BUFFER_NONE,
+                                           7,
+                                           PLL_SCALE_BUFFER_NONE,
+                                           1,
+                                           params_indices,
+                                           NULL);
+
         printf("Test %10.6f = %10.6f\n", f, lk_scores[k*NUM_ALPHAS + i]);
         assert(fabs(f - lk_scores[k*NUM_ALPHAS + i]) < 1e-7);
 

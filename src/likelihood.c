@@ -930,14 +930,14 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
  * d_f:  [output] first derivative
  * dd_f: [output] second derivative
  */
-PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition,
-                                                 int parent_scaler_index,
-                                                 int child_scaler_index,
-                                                 double branch_length,
-                                                 const unsigned int * params_indices,
-                                                 const double * sumtable,
-                                                 double * d_f,
-                                                 double * dd_f)
+PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
+                                                  int parent_scaler_index,
+                                                  int child_scaler_index,
+                                                  double branch_length,
+                                                  const unsigned int * params_indices,
+                                                  const double * sumtable,
+                                                  double * d_f,
+                                                  double * dd_f)
 {
   unsigned int * parent_scaler;
   unsigned int * child_scaler;
@@ -966,27 +966,27 @@ PLL_EXPORT double pll_compute_likelihood_derivatives(pll_partition_t * partition
   else
     child_scaler = partition->scale_buffer[child_scaler_index];
 
-  double logLK = pll_core_likelihood_derivatives(partition->states,
-                                                 partition->sites,
-                                                 partition->rate_cats,
-                                                 partition->rate_weights,
-                                                 parent_scaler,
-                                                 child_scaler,
-                                                 partition->invariant,
-                                                 partition->pattern_weights,
-                                                 branch_length,
-                                                 prop_invar,
-                                                 freqs,
-                                                 partition->rates,
-                                                 eigenvals,
-                                                 sumtable,
-                                                 d_f,
-                                                 dd_f,
-                                                 partition->attributes);
+  int retval = pll_core_likelihood_derivatives(partition->states,
+                                               partition->sites,
+                                               partition->rate_cats,
+                                               partition->rate_weights,
+                                               parent_scaler,
+                                               child_scaler,
+                                               partition->invariant,
+                                               partition->pattern_weights,
+                                               branch_length,
+                                               prop_invar,
+                                               freqs,
+                                               partition->rates,
+                                               eigenvals,
+                                               sumtable,
+                                               d_f,
+                                               dd_f,
+                                               partition->attributes);
 
   free (freqs);
   free (prop_invar);
   free (eigenvals);
 
-  return logLK;
+  return retval;
 }

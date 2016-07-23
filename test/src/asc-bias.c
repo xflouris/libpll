@@ -118,14 +118,33 @@ static double eval(pll_partition_t * partition,
   for (i=0; i<NUM_BRANCH_LENGTHS; ++i)
   {
     double branch_length = test_branch_lengths[i];
-    logl = pll_compute_likelihood_derivatives(partition,
-                                              tree->scaler_index,
-                                              tree->back->scaler_index,
-                                              branch_length,
-                                              params_indices,
-                                              sumtable,
-                                              &d_f,
-                                              &dd_f);
+    if (!pll_compute_likelihood_derivatives(partition,
+                                            tree->scaler_index,
+                                            tree->back->scaler_index,
+                                            branch_length,
+                                            params_indices,
+                                            sumtable,
+                                            &d_f,
+                                            &dd_f))
+   {
+     printf("Error computing likelihood derivatives\n");
+     exit(1);
+   }
+
+   /* update logLikelihood */
+   pll_update_prob_matrices(partition,
+                            params_indices,
+                            &(tree->pmatrix_index),
+                            &branch_length,
+                            1);
+   logl = pll_compute_edge_loglikelihood(partition,
+                                         tree->clv_index,
+                                         tree->scaler_index,
+                                         tree->back->clv_index,
+                                         tree->back->scaler_index,
+                                         tree->pmatrix_index,
+                                         params_indices,
+                                         NULL);
 
     printf("%8.4f %18.6f %15.8e %15.8e  ", branch_length, logl, d_f, dd_f);
     if (logl > max_logl)
