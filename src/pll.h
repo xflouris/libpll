@@ -796,6 +796,38 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
                                                double ** freqs,
                                                double *sumtable);
 
+PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
+                                               unsigned int sites,
+                                               unsigned int rate_cats,
+                                               const double * parent_clv,
+                                               const unsigned char * left_tipchars,
+                                               double ** eigenvecs,
+                                               double ** inv_eigenvecs,
+                                               double ** freqs,
+                                               unsigned int * tipmap,
+                                               double *sumtable,
+                                               unsigned int attrib);
+
+PLL_EXPORT void core_site_likelihood_derivatives_avx(unsigned int states,
+                                             unsigned int states_padded,
+                                             unsigned int rate_cats,
+                                             const double * rate_weights,
+                                             const double * prop_invar,
+                                             const double * lk_invar,
+                                             const double * sumtable,
+                                             const double * diagptable,
+                                             double * site_lk);
+
+PLL_EXPORT void core_site_likelihood_derivatives_4x4_avx(unsigned int rate_cats,
+                                             const double * rate_weights,
+                                             const double * prop_invar,
+                                             const double * lk_invar,
+                                             const double * sumtable,
+                                             const double * diagptable,
+                                             double * site_lk);
+
+
+
 /* functions in core_pmatrix.c */
 
 PLL_EXPORT void pll_core_update_pmatrix(double * pmatrix,
