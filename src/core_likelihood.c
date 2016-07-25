@@ -882,7 +882,9 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 
 #ifdef HAVE_AVX
   double site_lk[4] __attribute__( ( aligned ( PLL_ALIGNMENT_AVX ) ) ) ;
-  double * invar_lk = (double *) pll_aligned_alloc (rate_cats * states * sizeof(double), PLL_ALIGNMENT_AVX);
+  double * invar_lk = (double *) pll_aligned_alloc(
+                                    rate_cats * states * sizeof(double),
+                                    PLL_ALIGNMENT_AVX);
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
     states_padded = (states+3) & 0xFFFFFFFC;
@@ -916,7 +918,9 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
   *d_f = 0.0;
   *dd_f = 0.0;
 
-  diagptable = (double *) pll_aligned_alloc (rate_cats * states * 4 * sizeof(double), PLL_ALIGNMENT_AVX);
+  diagptable = (double *) pll_aligned_alloc(
+                                      rate_cats * states * 4 * sizeof(double),
+                                      PLL_ALIGNMENT_AVX);
   if (!diagptable)
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -948,7 +952,8 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 #ifdef HAVE_AVX
       if (attrib & PLL_ATTRIB_ARCH_AVX)
         {
-          const double * site_invar_lk = (!invariant || *invariant_ptr == -1) ? NULL : &invar_lk[(*invariant_ptr) * rate_cats];
+          const double * site_invar_lk = (!invariant || *invariant_ptr == -1) ?
+              NULL : &invar_lk[(*invariant_ptr) * rate_cats];
 
           if (states == 4)
             core_site_likelihood_derivatives_4x4_avx(rate_cats,
@@ -981,8 +986,6 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                                      sum,
                                      diagptable,
                                      site_lk);
-
-//    printf("SITELK: %f %f %f\n", site_lk[0], site_lk[1], site_lk[2]);
 
     invariant_ptr++;
     sum += rate_cats * states_padded;

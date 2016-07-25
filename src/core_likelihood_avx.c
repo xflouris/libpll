@@ -1257,8 +1257,8 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
     for (j = 0; j < states_padded; ++j)
       for (k = 0; k < states_padded; ++k)
       {
-        eigenvecs_trans[i * states_padded * states_padded + j * states_padded + k] =
-            (j < states && k < states) ? eigenvecs[i][k * states + j] : 0.;
+        eigenvecs_trans[i*states_padded*states_padded + j*states_padded + k] =
+            (j < states && k < states) ? eigenvecs[i][k*states + j] : 0.;
       }
   }
 
@@ -1273,7 +1273,8 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
               if (k < states && j < states)
                 {
                   __m256d v_freqs = _mm256_set1_pd(freqs[i][k]);
-                  __m256d v_eigen = _mm256_load_pd(inv_eigenvecs[i] + k*states + j);
+                  __m256d v_eigen = _mm256_load_pd(inv_eigenvecs[i] +
+                                                               k*states + j);
                   __m256d v_lefterm =  _mm256_mul_pd(v_eigen, v_freqs);
                   _mm256_store_pd(t_precomp, v_lefterm);
                 }
@@ -1307,12 +1308,16 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
           for (k = 0; k < states; ++k)
             {
               __m256d v_clvc = _mm256_set1_pd(t_clvc[k]);
-              __m256d v_eigen = _mm256_load_pd(t_eigenvecs_trans + k*states_padded + j);
-              v_righterm =  _mm256_add_pd(v_righterm, _mm256_mul_pd(v_eigen, v_clvc));
+              __m256d v_eigen = _mm256_load_pd(t_eigenvecs_trans +
+                                                          k*states_padded + j);
+              v_righterm =  _mm256_add_pd(v_righterm,
+                                          _mm256_mul_pd(v_eigen, v_clvc));
 
               if ((tipstate >> k) & 1)
                 {
-                  v_lefterm =  _mm256_add_pd(v_lefterm, _mm256_load_pd(t_precomp + k*states_padded + j));
+                  v_lefterm = _mm256_add_pd(v_lefterm,
+                                 _mm256_load_pd(t_precomp +
+                                                         k*states_padded + j));
                 }
             }
 
