@@ -48,8 +48,10 @@ all: $(PROG)
 
 OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o \
      parse_utree.o parse_rtree.o lex_utree.o lex_rtree.o utree.o rtree.o \
-     core_likelihood.o compress.o parse_phylip.o lex_phylip.o \
-     core_likelihood_avx.o core_pmatrix.o utree_moves.o
+     derivatives.o partials.o compress.o parse_phylip.o lex_phylip.o \
+     utree_moves.o core_derivatives.o core_partials.o core_pmatrix.o \
+     core_partials_avx.o core_derivatives_avx.o core_likelihood.o \
+     core_likelihood_avx.o
 
 $(PROG): $(OBJS)
 	$(CC) -shared $(SONAMEFLAGS) -o $@ $+
