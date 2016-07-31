@@ -22,7 +22,18 @@
 #include "parse_rtree.h"
 #include "pll.h"
 
+#define YY_USER_ACTION preaction();
+
 static size_t string_length = 0;
+
+int pll_rtree_colstart = 0;
+int pll_rtree_colend = 0;
+
+static void preaction()
+{
+  pll_rtree_colstart = pll_rtree_colend;
+  pll_rtree_colend = pll_rtree_colend + pll_rtree_leng - 1;
+}
 
 static char * xstrndup(const char * s, size_t len)
 {
@@ -62,6 +73,7 @@ static char * append(size_t * dstlen, const char * src, size_t srclen)
 %option prefix="pll_rtree_"
 %option nounput
 %option noinput
+%option yylineno
 %x apos
 %x quot
 
@@ -93,10 +105,11 @@ static char * append(size_t * dstlen, const char * src, size_t srclen)
 \,                                               return COMMA;
 \"                                               {string_length = 0; BEGIN(quot);}
 \'                                               {string_length = 0; BEGIN(apos);}
+\n                                               {pll_rtree_colstart = pll_rtree_colend = 0;}
 [\+|\-]?[0-9]+                                   {pll_rtree_lval.d = xstrndup(pll_rtree_text, pll_rtree_leng); return NUMBER;}
 [\+|\-]?[0-9]+\.[0-9]+([e|E][\+|\-]?[0-9]+)?     {pll_rtree_lval.d = xstrndup(pll_rtree_text, pll_rtree_leng); return NUMBER;}
 [^ \'\",\(\):;\[\]\t\n\r][^ \t\n\r\)\(\[\]\,:;]* {pll_rtree_lval.s = xstrndup(pll_rtree_text, pll_rtree_leng); return STRING;}
-[ \t\n\r]                                        ;
+[ \t\r]                                        ;
 .                                                {snprintf(pll_errmsg, 200, "Syntax error (%c)\n", pll_rtree_text[0]);
                                                   pll_errno = PLL_ERROR_NEWICK_SYNTAX;
                                                   return PLL_FAILURE;}

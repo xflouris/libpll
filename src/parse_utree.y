@@ -24,6 +24,9 @@
 extern int pll_utree_lex();
 extern FILE * pll_utree_in;
 extern void pll_utree_lex_destroy();
+extern int pll_utree_lineno;
+extern int pll_utree_colstart;
+extern int pll_utree_colend;
 
 static unsigned int tip_cnt = 0;
 
@@ -70,7 +73,12 @@ PLL_EXPORT void pll_utree_destroy(pll_utree_t * root)
 
 static void pll_utree_error(pll_utree_t * tree, const char * s)
 {
-  snprintf(pll_errmsg, 200, "%s.\n", s);
+  if (pll_utree_colstart == pll_utree_colend)
+    snprintf(pll_errmsg, 200, "%s. (line %d column %d)\n",
+             s, pll_utree_lineno, pll_utree_colstart);
+  else
+    snprintf(pll_errmsg, 200, "%s. (line %d column %d-%d)\n",
+             s, pll_utree_lineno, pll_utree_colstart, pll_utree_colend);
 }
 
 %}
@@ -300,3 +308,44 @@ PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
 
   return tree;
 }
+
+#ifdef __linux__
+PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(char * s,
+                                                       unsigned int * tip_count)
+{
+  struct pll_utree * tree;
+
+  /* reset tip count */
+  tip_cnt = 0;
+
+  tree = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
+
+  pll_utree_in = fmemopen(s, strlen(s), "r");
+  if (!pll_utree_in)
+  {
+    pll_utree_destroy(tree);
+    pll_errno = PLL_ERROR_FILE_OPEN;
+    snprintf(pll_errmsg, 200, "Unable to map string (%s)", s);
+    return PLL_FAILURE;
+  }
+  else if (pll_utree_parse(tree))
+  {
+    pll_utree_destroy(tree);
+    tree = NULL;
+    fclose(pll_utree_in);
+    pll_utree_lex_destroy();
+    return PLL_FAILURE;
+  }
+
+  if (pll_utree_in) fclose(pll_utree_in);
+
+  pll_utree_lex_destroy();
+
+  *tip_count = tip_cnt;
+
+  /* initialize clv and scaler indices */
+  pll_utree_reset_template_indices(tree, tip_cnt);
+
+  return tree;
+}
+#endif
