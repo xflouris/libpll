@@ -283,6 +283,7 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
       prop_invar = invar_proportion ? invar_proportion[freqs_indices[i]] : 0;
       if (prop_invar > 0)
       {
+        freqs = frequencies[freqs_indices[i]];
         inv_site_lk = (invar_indices[n] == -1) ?
                           0 : freqs[invar_indices[n]];
         terma += rate_weights[i] * (terma_r * (1 - prop_invar) +
