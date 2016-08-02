@@ -306,6 +306,24 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                     freqs_indices,
                                                     persite_lnl);
     }
+    else
+    {
+      return pll_core_edge_loglikelihood_ii_avx(states,
+                                                sites,
+                                                rate_cats,
+                                                clvp,
+                                                parent_scaler,
+                                                clvc,
+                                                child_scaler,
+                                                pmatrix,
+                                                frequencies,
+                                                rate_weights,
+                                                pattern_weights,
+                                                invar_proportion,
+                                                invar_indices,
+                                                freqs_indices,
+                                                persite_lnl);
+    }
   }
   #endif
   
