@@ -887,6 +887,20 @@ PLL_EXPORT void core_site_likelihood_derivatives_4x4_avx(unsigned int rate_cats,
                                                          const double * diagptable,
                                                          double * site_lk);
 
+PLL_EXPORT void core_likelihood_derivatives_avx(unsigned int states,
+                                             unsigned int states_padded,
+                                             unsigned int rate_cats,
+                                             unsigned int ef_sites,
+                                             const unsigned int * pattern_weights,
+                                             const double * rate_weights,
+                                             const int * invariant,
+                                             const double * prop_invar,
+                                             double ** freqs,
+                                             const double * sumtable,
+                                             const double * diagptable,
+                                             double * d_f,
+                                             double * dd_f);
+
 /* functions in core_likelihood_avx.c */
 
 PLL_EXPORT double pll_core_edge_loglikelihood_ii_avx(unsigned int states,

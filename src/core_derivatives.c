@@ -312,6 +312,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 
   const double * sum;
   double deriv1, deriv2;
+  double site_lk[3];
 
   const double * t_eigenvals;
   double t_branch_length;
@@ -322,30 +323,13 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
   double ki;
 
   unsigned int states_padded = states;
-  unsigned int pattern_weight_sum = 0;
 
 #ifdef HAVE_AVX
-  double site_lk[4] __attribute__( ( aligned ( PLL_ALIGNMENT_AVX ) ) ) ;
-  double * invar_lk = (double *) pll_aligned_alloc(
-                                    rate_cats * states * sizeof(double),
-                                    PLL_ALIGNMENT_AVX);
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
     states_padded = (states+3) & 0xFFFFFFFC;
-
-    /* pre-compute invariant site likelihoods*/
-    for(i = 0; i < states; ++i)
-    {
-      for(j = 0; j < rate_cats; ++j)
-      {
-        invar_lk[i * rate_cats + j] = freqs[j][i] * prop_invar[j];
-      }
-    }
   }
 #elif defined(HAVE_SSE)
-  double site_lk[4] __attribute__( ( aligned ( PLL_ALIGNMENT_SSE3 ) ) ) ;
-#else
-  double site_lk[3];
 #endif
 
   /* For Stamatakis correction, the likelihood derivatives are computed in
@@ -389,37 +373,30 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
     }
   }
 
-  sum = sumtable;
-  invariant_ptr = invariant;
-  for (n = 0; n < ef_sites; ++n)
-  {
 #ifdef HAVE_AVX
-      if (attrib & PLL_ATTRIB_ARCH_AVX)
-        {
-          const double * site_invar_lk = (!invariant || *invariant_ptr == -1) ?
-              NULL : &invar_lk[(*invariant_ptr) * rate_cats];
-
-          if (states == 4)
-            core_site_likelihood_derivatives_4x4_avx(rate_cats,
-                                               rate_weights,
-                                               prop_invar,
-                                               site_invar_lk,
-                                               sum,
-                                               diagptable,
-                                               site_lk);
-          else
-            core_site_likelihood_derivatives_avx(states,
-                                             states_padded,
-                                             rate_cats,
-                                             rate_weights,
-                                             prop_invar,
-                                             site_invar_lk,
-                                             sum,
-                                             diagptable,
-                                             site_lk);
-        }
-      else
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    core_likelihood_derivatives_avx(states,
+                                   states_padded,
+                                   rate_cats,
+                                   ef_sites,
+                                   pattern_weights,
+                                   rate_weights,
+                                   invariant,
+                                   prop_invar,
+                                   freqs,
+                                   sumtable,
+                                   diagptable,
+                                   d_f,
+                                   dd_f);
+  }
+  else
 #endif
+  {
+    sum = sumtable;
+    invariant_ptr = invariant;
+    for (n = 0; n < ef_sites; ++n)
+    {
       core_site_likelihood_derivatives(states,
                                      states_padded,
                                      rate_cats,
@@ -431,18 +408,15 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                                      diagptable,
                                      site_lk);
 
-    invariant_ptr++;
-    sum += rate_cats * states_padded;
+      invariant_ptr++;
+      sum += rate_cats * states_padded;
 
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-    scale_factors += (child_scaler) ? child_scaler[n] : 0;
-
-    /* build derivatives */
-    deriv1 = (-site_lk[1] / site_lk[0]);
-    deriv2 = (deriv1 * deriv1 - (site_lk[2] / site_lk[0]));
-    *d_f += pattern_weights[n] * deriv1;
-    *dd_f += pattern_weights[n] * deriv2;
-    pattern_weight_sum += pattern_weights[n];
+      /* build derivatives */
+      deriv1 = (-site_lk[1] / site_lk[0]);
+      deriv2 = (deriv1 * deriv1 - (site_lk[2] / site_lk[0]));
+      *d_f += pattern_weights[n] * deriv1;
+      *dd_f += pattern_weights[n] * deriv2;
+    }
   }
 
   /* account for ascertainment bias correction */
@@ -458,6 +432,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
       /* check that no additional sites have been evaluated */
       assert(ef_sites == sites);
 
+      sum = sumtable + sites * rate_cats * states_padded;
       for (n=0; n<states; ++n)
       {
         /* compute the site LK derivatives for the additional per-state sites */
@@ -489,18 +464,25 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
       switch(asc_bias_type)
       {
         case PLL_ATTRIB_ASC_BIAS_LEWIS:
+        {
+          // TODO: pattern_weight_sum should be stored somewhere!
+          unsigned int pattern_weight_sum = 0;
+          for (n = 0; n < ef_sites; ++n)
+            pattern_weight_sum += pattern_weights[n];
+
           /* derivatives of log(1.0 - (sum Li(s) over states 's')) */
-      		*d_f  -= pattern_weight_sum * (asc_Lk[1] / (asc_Lk[0] - 1.0));
-      		*dd_f -= pattern_weight_sum *
-                     (((asc_Lk[0] - 1.0) * asc_Lk[2] - asc_Lk[1] * asc_Lk[1]) /
-                     ((asc_Lk[0] - 1.0) * (asc_Lk[0] - 1.0)));
-          break;
+          *d_f  -= pattern_weight_sum * (asc_Lk[1] / (asc_Lk[0] - 1.0));
+          *dd_f -= pattern_weight_sum *
+               (((asc_Lk[0] - 1.0) * asc_Lk[2] - asc_Lk[1] * asc_Lk[1]) /
+               ((asc_Lk[0] - 1.0) * (asc_Lk[0] - 1.0)));
+        }
+        break;
         case PLL_ATTRIB_ASC_BIAS_FELSENSTEIN:
           /* derivatives of log(sum Li(s) over states 's') */
-      		*d_f  += sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
-      		*dd_f += sum_w_inv *
-                     (((asc_Lk[2] * asc_Lk[0]) - asc_Lk[1] * asc_Lk[1]) /
-                     (asc_Lk[0] * asc_Lk[0]));
+          *d_f  += sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
+          *dd_f += sum_w_inv *
+               (((asc_Lk[2] * asc_Lk[0]) - asc_Lk[1] * asc_Lk[1]) /
+               (asc_Lk[0] * asc_Lk[0]));
         break;
         default:
           pll_errno = PLL_ERROR_ASC_BIAS;
@@ -511,10 +493,6 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
   }
 
   pll_aligned_free (diagptable);
-
-#ifdef HAVE_AVX
-  pll_aligned_free (invar_lk);
-#endif
 
   return PLL_SUCCESS;
 }

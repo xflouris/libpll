@@ -566,6 +566,7 @@ PLL_EXPORT void core_site_likelihood_derivatives_4x4_avx(unsigned int rate_cats,
       __m256d v_diagp = _mm256_load_pd(diagp);
       __m256d v_sum = _mm256_set1_pd(sum[0]);
       v_cat_sitelk = _mm256_add_pd (v_cat_sitelk, _mm256_mul_pd(v_sum, v_diagp));
+//      v_cat_sitelk = _mm256_fmadd_pd (v_sum, v_diagp, v_cat_sitelk);
 
       v_diagp = _mm256_load_pd(diagp + 4);
       v_sum = _mm256_set1_pd(sum[1]);
@@ -600,4 +601,194 @@ PLL_EXPORT void core_site_likelihood_derivatives_4x4_avx(unsigned int rate_cats,
       sum += 4;
   }
   _mm256_store_pd(site_lk, v_sitelk);
+}
+
+PLL_EXPORT void core_likelihood_derivatives_avx(unsigned int states,
+                                             unsigned int states_padded,
+                                             unsigned int rate_cats,
+                                             unsigned int ef_sites,
+                                             const unsigned int * pattern_weights,
+                                             const double * rate_weights,
+                                             const int * invariant,
+                                             const double * prop_invar,
+                                             double ** freqs,
+                                             const double * sumtable,
+                                             const double * diagptable,
+                                             double * d_f,
+                                             double * dd_f)
+{
+
+  unsigned int i,j,n;
+
+  double * invar_lk = (double *) pll_aligned_alloc(
+                                    rate_cats * states * sizeof(double),
+                                    PLL_ALIGNMENT_AVX);
+
+  /* pre-compute invariant site likelihoods*/
+  for(i = 0; i < states; ++i)
+  {
+    for(j = 0; j < rate_cats; ++j)
+    {
+      invar_lk[i * rate_cats + j] = freqs[j][i] * prop_invar[j];
+    }
+  }
+
+  /* check for special cases in which we can save some computation later on */
+  int use_pinv = 0;
+  int eq_weights = 1;
+  for (i = 0; i < rate_cats; ++i)
+    {
+      /* check if proportion of invariant site is used */
+      use_pinv |= (prop_invar[i] > 0);
+
+      /* check if rate weights are all equal (e.g. GAMMA) */
+      eq_weights &= (rate_weights[i] == rate_weights[0]);
+    }
+
+  /* here we will temporary store per-site LH, 1st and 2nd derivatives */
+  double site_lk[16] __attribute__( ( aligned ( PLL_ALIGNMENT_AVX ) ) ) ;
+
+  /* vectors for accumulating 1st and 2nd derivatives */
+  __m256d v_df = _mm256_setzero_pd ();
+  __m256d v_ddf = _mm256_setzero_pd ();
+  __m256d v_all1 = _mm256_set1_pd(1.);
+
+  const double *sum = sumtable;
+  const int * invariant_ptr = invariant;
+  unsigned int offset = 0;
+  for (n = 0; n < ef_sites; ++n)
+  {
+    const double * diagp = diagptable;
+
+    __m256d v_sitelk = _mm256_setzero_pd ();
+    for (i = 0; i < rate_cats; ++i)
+    {
+      __m256d v_cat_sitelk = _mm256_setzero_pd ();
+
+      if (states == 4)
+      {
+        /* use unrolled loop */
+        __m256d v_diagp = _mm256_load_pd(diagp);
+        __m256d v_sum = _mm256_set1_pd(sum[0]);
+        v_cat_sitelk = _mm256_add_pd (v_cat_sitelk, _mm256_mul_pd(v_sum, v_diagp));
+
+        v_diagp = _mm256_load_pd(diagp + 4);
+        v_sum = _mm256_set1_pd(sum[1]);
+        v_cat_sitelk = _mm256_add_pd (v_cat_sitelk, _mm256_mul_pd(v_sum, v_diagp));
+
+        v_diagp = _mm256_load_pd(diagp + 8);
+        v_sum = _mm256_set1_pd(sum[2]);
+        v_cat_sitelk = _mm256_add_pd (v_cat_sitelk, _mm256_mul_pd(v_sum, v_diagp));
+
+        v_diagp = _mm256_load_pd(diagp + 12);
+        v_sum = _mm256_set1_pd(sum[3]);
+        v_cat_sitelk = _mm256_add_pd (v_cat_sitelk, _mm256_mul_pd(v_sum, v_diagp));
+
+        diagp += 16;
+        sum += 4;
+      }
+      else
+      {
+        for (j = 0; j < states; j++)
+        {
+          __m256d v_diagp = _mm256_load_pd(diagp);
+          __m256d v_sum = _mm256_set1_pd(sum[j]);
+          v_cat_sitelk = _mm256_add_pd (v_cat_sitelk, _mm256_mul_pd(v_sum, v_diagp));
+
+          diagp += 4;
+        }
+        sum += states_padded;
+      }
+
+      /* account for invariant sites */
+      if (use_pinv && prop_invar[i] > 0)
+      {
+        __m256d v_inv_prop = _mm256_set1_pd(1. - prop_invar[i]);
+        v_cat_sitelk = _mm256_mul_pd(v_cat_sitelk, v_inv_prop);
+
+        if (invariant && *invariant_ptr != -1)
+        {
+          double site_invar_lk = invar_lk[(*invariant_ptr) * rate_cats + i];
+          __m256d v_inv_lk = _mm256_setr_pd(site_invar_lk, 0., 0., 0.);
+          v_cat_sitelk = _mm256_add_pd(v_cat_sitelk, v_inv_lk);
+        }
+      }
+
+      /* apply rate category weights */
+      if (eq_weights)
+      {
+        /* all rate weights are equal -> no multiplication needed */
+        v_sitelk = _mm256_add_pd (v_sitelk, v_cat_sitelk);
+      }
+      else
+      {
+        __m256d v_weight = _mm256_set1_pd(rate_weights[i]);
+        v_sitelk = _mm256_add_pd (v_sitelk, _mm256_mul_pd(v_cat_sitelk, v_weight));
+      }
+    }
+
+    _mm256_store_pd(&site_lk[offset], v_sitelk);
+    offset += 4;
+
+    invariant_ptr++;
+
+    /* build derivatives for 4 adjacent sites at once */
+    if (offset == 16)
+    {
+      __m256d v_term0 = _mm256_setr_pd(site_lk[0], site_lk[4],
+                                       site_lk[8], site_lk[12]);
+      __m256d v_term1 = _mm256_setr_pd(site_lk[1], site_lk[5],
+                                       site_lk[9], site_lk[13]);
+      __m256d v_term2 = _mm256_setr_pd(site_lk[2], site_lk[6],
+                                       site_lk[10], site_lk[14]);
+
+      __m256d v_recip0 = _mm256_div_pd(v_all1, v_term0);
+      __m256d v_deriv1 = _mm256_mul_pd(v_term1, v_recip0);
+      __m256d v_deriv2 = _mm256_sub_pd(_mm256_mul_pd(v_deriv1, v_deriv1),
+                                       _mm256_mul_pd(v_term2, v_recip0));
+
+      /* assumption: no zero weights */
+      if ((pattern_weights[n-3] | pattern_weights[n-2] |
+           pattern_weights[n-1] | pattern_weights[n]) == 1)
+      {
+        /* all 4 weights are 1 -> no multiplication needed */
+        v_df = _mm256_sub_pd (v_df, v_deriv1);
+        v_ddf = _mm256_add_pd (v_ddf, v_deriv2);
+      }
+      else
+      {
+        __m256d v_patw = _mm256_setr_pd(pattern_weights[n-3], pattern_weights[n-2],
+                                        pattern_weights[n-1], pattern_weights[n]);
+
+        v_df = _mm256_sub_pd (v_df, _mm256_mul_pd(v_deriv1, v_patw));
+        v_ddf = _mm256_add_pd (v_ddf, _mm256_mul_pd(v_deriv2, v_patw));
+      }
+      offset = 0;
+    }
+  }
+
+  *d_f = *dd_f = 0.;
+
+  /* remainder loop */
+  while (offset > 0)
+    {
+      offset -= 4;
+      n--;
+      double deriv1 = (-site_lk[offset+1] / site_lk[offset]);
+      double deriv2 = (deriv1 * deriv1 - (site_lk[offset+2] / site_lk[offset]));
+      *d_f += pattern_weights[n] * deriv1;
+      *dd_f += pattern_weights[n] * deriv2;
+    }
+
+  assert(offset == 0 && n == ef_sites / 4 * 4);
+
+  /* reduce 1st derivative */
+  _mm256_store_pd(site_lk, v_df);
+  *d_f += site_lk[0] + site_lk[1] + site_lk[2] + site_lk[3];
+
+  /* reduce 2nd derivative */
+  _mm256_store_pd(site_lk, v_ddf);
+  *dd_f += site_lk[0] + site_lk[1] + site_lk[2] + site_lk[3];
+
+  pll_aligned_free(invar_lk);
 }
