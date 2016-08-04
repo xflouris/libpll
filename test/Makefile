@@ -24,6 +24,7 @@ CLIBS = -lpll -lm
 CFILES = src/alpha-cats.c \
 				 src/asc-bias.c \
          src/derivatives.c \
+         src/derivatives-oddstates.c \
          src/fasta-dna.c \
          src/fasta-prot.c \
          src/rooted.c \

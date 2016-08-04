@@ -22,6 +22,19 @@ categories.
 (optimize module) Optimize branch lengths for a minimal tree with 3 tips and
 3 branches.
 
+## derivatives
+
+Evaluate the computation of the likelihood derivatives at different branch 
+lengths on a small tree and msa.
+
+The derivatives are computed twice at an inner edge and at a tip edge using 3 
+different alphas, 4 proportion of invariant sites, 3 sets of rate categories 
+and 9 branches ranging from 0.1 to 90.
+
+## derivatives-oddstates
+
+Analogous to `derivatives` but using an odd number of states.
+
 ## fasta-dna
 
 Read a DNA MSA in FASTA format, load the sequences into the PLL partition 
