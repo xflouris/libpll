@@ -118,15 +118,16 @@ static unsigned int findmax(const unsigned int * map)
   return max;
 }
 
-static void encode(char ** sequence, const unsigned char * map, int count)
+static void encode(char ** sequence, const unsigned char * map, int count, int len)
 {
-  int i;
+  int i,j;
   char * p;
 
   for (i = 0; i < count; ++i)
   {
     p = sequence[i];
-    while (*p)
+    j = len;
+    while (j--)
     {
       *p = map[(int)(*p)];
       ++p;
@@ -174,7 +175,7 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
       inv_charmap[charmap[i]] = (unsigned char)i;
 
   /* encode sequences using charmap */
-  encode(sequence,charmap,count);
+  encode(sequence,charmap,count,*length);
 
   /* allocate memory for columns */
   column = (char **)malloc((size_t)(*length)*sizeof(char *));
@@ -279,8 +280,7 @@ PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,
   *length = compressed_length;
 
   /* decode sequences using inv_charmap */
-  encode(sequence,inv_charmap,count);
+  encode(sequence,inv_charmap,count,compressed_length);
 
   return weight;
 }
-
