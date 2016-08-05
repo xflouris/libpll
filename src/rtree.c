@@ -402,3 +402,65 @@ PLL_EXPORT unsigned int pll_rtree_query_innernodes(pll_rtree_t * root,
 
   return index;
 }
+
+PLL_EXPORT void pll_rtree_create_pars_buildops(pll_rtree_t ** trav_buffer,
+                                               unsigned int trav_buffer_size,
+                                               pll_pars_buildop_t * ops,
+                                               unsigned int * ops_count)
+{
+  pll_rtree_t * node;
+  unsigned int i;
+
+  *ops_count = 0;
+
+  for (i = 0; i < trav_buffer_size; ++i)
+  {
+    node = trav_buffer[i];
+
+    if (node->left)
+    {
+      ops[*ops_count].parent_score_index = node->clv_index;
+      ops[*ops_count].child1_score_index = node->left->clv_index;
+      ops[*ops_count].child2_score_index = node->right->clv_index;
+
+      *ops_count = *ops_count + 1;
+    }
+  }
+}
+
+PLL_EXPORT void pll_rtree_create_pars_recops(pll_rtree_t ** trav_buffer,
+                                             unsigned int trav_buffer_size,
+                                             pll_pars_recop_t * ops,
+                                             unsigned int * ops_count)
+{
+  pll_rtree_t * node;
+  unsigned int i;
+
+  *ops_count = 0;
+
+  for (i = 0; i < trav_buffer_size; ++i)
+  {
+    node = trav_buffer[i];
+
+    if (node->left)
+    {
+      ops[*ops_count].node_score_index = node->clv_index;
+      ops[*ops_count].node_ancestral_index = node->clv_index;
+
+      if (node->parent)
+      {
+        ops[*ops_count].parent_score_index = node->parent->clv_index;
+        ops[*ops_count].parent_ancestral_index = node->parent->clv_index;
+      }
+      else
+      {
+        /* invalid entries for the root - they will never be used */
+        ops[*ops_count].parent_score_index = 0;
+        ops[*ops_count].parent_ancestral_index = 0;
+      }
+
+      *ops_count = *ops_count + 1;
+    }
+  }
+}
+

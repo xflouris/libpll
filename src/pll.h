@@ -279,6 +279,36 @@ typedef struct pll_utree_rb_s
   };
 } pll_utree_rb_t;
 
+/* structures for parsimony */
+
+typedef struct pll_parsimony_s
+{
+  unsigned int tips;
+  unsigned int states;
+  unsigned int sites;
+  unsigned int score_buffers;
+  unsigned int ancestral_buffers;
+
+  double * score_matrix;
+  double ** sbuffer;
+  unsigned int ** anc_states;
+} pll_parsimony_t;
+
+typedef struct pll_pars_buildop_s
+{
+  unsigned int parent_score_index;
+  unsigned int child1_score_index;
+  unsigned int child2_score_index;
+} pll_pars_buildop_t;
+
+typedef struct pll_pars_recop_s
+{
+  unsigned int node_score_index;
+  unsigned int node_ancestral_index;
+  unsigned int parent_score_index;
+  unsigned int parent_ancestral_index;
+} pll_pars_recop_t;
+
 /* common data */
 
 PLL_EXPORT extern __thread int pll_errno;
@@ -583,6 +613,16 @@ PLL_EXPORT int pll_rtree_traverse_preorder(pll_rtree_t * root,
                                            int (*cbtrav)(pll_rtree_t *),
                                            pll_rtree_t ** outbuffer,
                                            unsigned int * trav_size);
+
+PLL_EXPORT void pll_rtree_create_pars_buildops(pll_rtree_t ** trav_buffer,
+                                               unsigned int trav_buffer_size,
+                                               pll_pars_buildop_t * ops,
+                                               unsigned int * ops_count);
+
+PLL_EXPORT void pll_rtree_create_pars_recops(pll_rtree_t ** trav_buffer,
+                                             unsigned int trav_buffer_size,
+                                             pll_pars_recop_t * ops,
+                                             unsigned int * ops_count);
 
 /* functions in core_likelihood.c */
 
@@ -993,6 +1033,34 @@ PLL_EXPORT int pll_utree_nni(pll_utree_t * p,
 PLL_EXPORT int pll_utree_rollback(pll_utree_rb_t * rollback,
                                   double * branch_lengths,
                                   unsigned int * matrix_indices);
+
+/* functions in parsimony.c */
+
+PLL_EXPORT int pll_set_parsimony_sequence(pll_parsimony_t * pars,
+                                          unsigned int tip_index,
+                                          const unsigned int * map,
+                                          const char * sequence);
+
+PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
+                                                  unsigned int states,
+                                                  unsigned int sites,
+                                                  double * score_matrix,
+                                                  unsigned int score_buffers,
+                                                  unsigned int ancestral_buffers);
+
+PLL_EXPORT double pll_parsimony_build(pll_parsimony_t * pars,
+                                      pll_pars_buildop_t * operations,
+                                      unsigned int count);
+
+PLL_EXPORT void pll_parsimony_reconstruct(pll_parsimony_t * pars,
+                                          const unsigned int * map,
+                                          pll_pars_recop_t * operations,
+                                          unsigned int count);
+
+PLL_EXPORT double pll_parsimony_score(pll_parsimony_t * pars,
+                                      unsigned int score_buffer_index);
+
+PLL_EXPORT void pll_parsimony_destroy(pll_parsimony_t * pars);
 
 #ifdef __cplusplus
 } /* extern "C" */
