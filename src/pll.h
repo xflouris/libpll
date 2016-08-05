@@ -579,6 +579,11 @@ PLL_EXPORT void pll_rtree_create_operations(pll_rtree_t ** trav_buffer,
                                             unsigned int * matrix_count,
                                             unsigned int * ops_count);
 
+PLL_EXPORT int pll_rtree_traverse_preorder(pll_rtree_t * root,
+                                           int (*cbtrav)(pll_rtree_t *),
+                                           pll_rtree_t ** outbuffer,
+                                           unsigned int * trav_size);
+
 /* functions in core_likelihood.c */
 
 PLL_EXPORT void pll_core_create_lookup(unsigned int states,

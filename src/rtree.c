@@ -288,6 +288,53 @@ int pll_rtree_traverse(pll_rtree_t * root,
   return PLL_SUCCESS;
 }
 
+static void rtree_traverse_preorder(pll_rtree_t * node,
+                                    int (*cbtrav)(pll_rtree_t *),
+                                    unsigned int * index,
+                                    pll_rtree_t ** outbuffer)
+{
+  if (!node->left)
+  {
+    if (cbtrav(node))
+    {
+      outbuffer[*index] = node;
+      *index = *index + 1;
+    }
+    return;
+  }
+  if (!cbtrav(node))
+    return;
+
+  outbuffer[*index] = node;
+  *index = *index + 1;
+
+  rtree_traverse_preorder(node->left, cbtrav, index, outbuffer);
+  rtree_traverse_preorder(node->right, cbtrav, index, outbuffer);
+
+}
+
+PLL_EXPORT int pll_rtree_traverse_preorder(pll_rtree_t * root,
+                                           int (*cbtrav)(pll_rtree_t *),
+                                           pll_rtree_t ** outbuffer,
+                                           unsigned int * trav_size)
+{
+  *trav_size = 0;
+  if (!root->left) return PLL_FAILURE;
+
+  /* we will traverse an unrooted tree in the following way
+
+           root
+            /\
+           /  \
+        left   right
+
+     at each node the callback function is called to decide whether we
+     are going to traversing the subtree rooted at the specific node */
+
+  rtree_traverse_preorder(root, cbtrav, trav_size, outbuffer);
+  return PLL_SUCCESS;
+}
+
 static void rtree_query_tipnodes_recursive(pll_rtree_t * node,
                                            pll_rtree_t ** node_list,
                                            unsigned int * index)
