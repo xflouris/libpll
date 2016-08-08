@@ -443,7 +443,6 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4_avx(unsigned int sites,
   }
 }
 
-/* not vectorized for a general number of states */
 PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
                                                unsigned int sites,
                                                unsigned int rate_cats,
@@ -456,12 +455,18 @@ PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
                                                const unsigned int * right_scaler,
                                                const unsigned int * tipmap)
 {
-  int scaling;
   unsigned int i,j,k,n;
+  unsigned int scaling;
 
   const double * lmat;
   const double * rmat;
 
+  unsigned int states_padded = (states+3) & 0xFFFFFFFC;
+  unsigned int span_padded = states_padded * rate_cats;
+
+  unsigned int lstate;
+
+  /* dedicated functions for 4x4 matrices */
   if (states == 4)
   {
     pll_core_update_partial_ti_4x4_avx(sites,
@@ -476,12 +481,15 @@ PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
     return;
   }
 
-  unsigned int states_padded = (states+3) & 0xFFFFFFFC;
-  unsigned int span_padded = states_padded * rate_cats;
-
+  /* add up the scale vector of the two children if available */
   if (parent_scaler)
     fill_parent_scaler(sites, parent_scaler, NULL, right_scaler);
 
+  size_t displacement = (states_padded - states) * (states_padded);
+
+  __m256i mask;
+
+  /* compute CLV */
   for (n = 0; n < sites; ++n)
   {
     lmat = left_matrix;
@@ -489,28 +497,148 @@ PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
 
     scaling = (parent_scaler) ? 1 : 0;
 
+    lstate = tipmap[left_tipchars[n]];
+
     for (k = 0; k < rate_cats; ++k)
     {
-      for (i = 0; i < states; ++i)
+      /* iterate over quadruples of rows */
+      for (i = 0; i < states_padded; i += 4)
       {
-        double terma = 0;
-        double termb = 0;
-        unsigned int lstate = tipmap[(unsigned int)left_tipchars[n]];
-        for (j = 0; j < states; ++j)
+
+        __m256d v_terma0 = _mm256_setzero_pd();
+        __m256d v_termb0 = _mm256_setzero_pd();
+        __m256d v_terma1 = _mm256_setzero_pd();
+        __m256d v_termb1 = _mm256_setzero_pd();
+        __m256d v_terma2 = _mm256_setzero_pd();
+        __m256d v_termb2 = _mm256_setzero_pd();
+        __m256d v_terma3 = _mm256_setzero_pd();
+        __m256d v_termb3 = _mm256_setzero_pd();
+
+        __m256d v_mat;
+        __m256d v_rclv;
+
+        /* point to the four rows of the left matrix */
+        const double * lm0 = lmat;
+        const double * lm1 = lm0 + states_padded;
+        const double * lm2 = lm1 + states_padded;
+        const double * lm3 = lm2 + states_padded;
+
+        /* point to the four rows of the right matrix */
+        const double * rm0 = rmat;
+        const double * rm1 = rm0 + states_padded;
+        const double * rm2 = rm1 + states_padded;
+        const double * rm3 = rm2 + states_padded;
+
+        /* set position of least significant bit in character state */
+        register int lsb = 0;
+
+        /* iterate over quadruples of columns */
+        for (j = 0; j < states_padded; j += 4)
         {
-          if (lstate & 1)
-            terma += lmat[j];
 
-          termb += rmat[j] * right_clv[j];
+          /* set mask */
+          mask = _mm256_set_epi64x(
+                    ((lstate >> (lsb+3)) & 1) ? ~0 : 0,
+                    ((lstate >> (lsb+2)) & 1) ? ~0 : 0,
+                    ((lstate >> (lsb+1)) & 1) ? ~0 : 0,
+                    ((lstate >> (lsb+0)) & 1) ? ~0 : 0);
 
-          lstate >>= 1;
+          lsb += 4;
+
+          v_rclv    = _mm256_load_pd(right_clv+j);
+
+          /* row 0 */
+          v_mat    = _mm256_maskload_pd(lm0,mask);
+          v_terma0 = _mm256_add_pd(v_terma0,v_mat);
+
+          v_mat    = _mm256_load_pd(rm0);
+          v_termb0 = _mm256_add_pd(v_termb0,
+                                   _mm256_mul_pd(v_mat,v_rclv));
+          lm0 += 4;
+          rm0 += 4;
+
+          /* row 1 */
+          v_mat    = _mm256_maskload_pd(lm1,mask);
+          v_terma1 = _mm256_add_pd(v_terma1,v_mat);
+
+          v_mat    = _mm256_load_pd(rm1);
+          v_termb1 = _mm256_add_pd(v_termb1,
+                                   _mm256_mul_pd(v_mat,v_rclv));
+          lm1 += 4;
+          rm1 += 4;
+
+          /* row 2 */
+          v_mat    = _mm256_maskload_pd(lm2,mask);
+          v_terma2 = _mm256_add_pd(v_terma2,v_mat);
+
+          v_mat    = _mm256_load_pd(rm2);
+          v_termb2 = _mm256_add_pd(v_termb2,
+                                   _mm256_mul_pd(v_mat,v_rclv));
+          lm2 += 4;
+          rm2 += 4;
+
+          /* row 3 */
+          v_mat    = _mm256_maskload_pd(lm3,mask);
+          v_terma3 = _mm256_add_pd(v_terma3,v_mat);
+
+          v_mat    = _mm256_load_pd(rm3);
+          v_termb3 = _mm256_add_pd(v_termb3,
+                                   _mm256_mul_pd(v_mat,v_rclv));
+          lm3 += 4;
+          rm3 += 4;
         }
-        parent_clv[i] = terma*termb;
-        lmat += states_padded;
-        rmat += states_padded;
 
-        scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
+        /* point pmatrix to the next four rows */ 
+        lmat = lm3;
+        rmat = rm3;
+
+        __m256d xmm0 = _mm256_unpackhi_pd(v_terma0,v_terma1);
+        __m256d xmm1 = _mm256_unpacklo_pd(v_terma0,v_terma1);
+
+        __m256d xmm2 = _mm256_unpackhi_pd(v_terma2,v_terma3);
+        __m256d xmm3 = _mm256_unpacklo_pd(v_terma2,v_terma3);
+
+        xmm0 = _mm256_add_pd(xmm0,xmm1);
+        xmm1 = _mm256_add_pd(xmm2,xmm3);
+
+        xmm2 = _mm256_permute2f128_pd(xmm0,xmm1, _MM_SHUFFLE(0,2,0,1));
+
+        xmm3 = _mm256_blend_pd(xmm0,xmm1,12);
+
+        __m256d v_terma_sum = _mm256_add_pd(xmm2,xmm3);
+
+        /* compute termb */
+
+        xmm0 = _mm256_unpackhi_pd(v_termb0,v_termb1);
+        xmm1 = _mm256_unpacklo_pd(v_termb0,v_termb1);
+
+        xmm2 = _mm256_unpackhi_pd(v_termb2,v_termb3);
+        xmm3 = _mm256_unpacklo_pd(v_termb2,v_termb3);
+
+        xmm0 = _mm256_add_pd(xmm0,xmm1);
+        xmm1 = _mm256_add_pd(xmm2,xmm3);
+
+        xmm2 = _mm256_permute2f128_pd(xmm0,xmm1, _MM_SHUFFLE(0,2,0,1));
+
+        xmm3 = _mm256_blend_pd(xmm0,xmm1,12);
+
+        __m256d v_termb_sum = _mm256_add_pd(xmm2,xmm3);
+
+        __m256d v_prod = _mm256_mul_pd(v_terma_sum,v_termb_sum);
+
+        _mm256_store_pd(parent_clv+i, v_prod);
+
       }
+
+      /* reset pointers to point to the start of the next p-matrix, as the
+         vectorization assumes a square states_padded * states_padded matrix,
+         even though the real matrix is states * states_padded */
+      lmat -= displacement;
+      rmat -= displacement;
+
+      for (j = 0; j < states; ++j)
+        scaling = scaling && (parent_clv[j] < PLL_SCALE_THRESHOLD);
+
       parent_clv += states_padded;
       right_clv  += states_padded;
     }
@@ -518,9 +646,18 @@ PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
        (all) entries by PLL_SCALE_FACTOR */
     if (scaling)
     {
+      __m256d v_scale_factor = _mm256_set_pd(PLL_SCALE_FACTOR,
+                                             PLL_SCALE_FACTOR,
+                                             PLL_SCALE_FACTOR,
+                                             PLL_SCALE_FACTOR);
+
       parent_clv -= span_padded;
-      for (i = 0; i < span_padded; ++i)
-        parent_clv[i] *= PLL_SCALE_FACTOR;
+      for (i = 0; i < span_padded; i += 4)
+      {
+        __m256d v_prod = _mm256_load_pd(parent_clv + i);
+        v_prod = _mm256_mul_pd(v_prod,v_scale_factor);
+        _mm256_store_pd(parent_clv + i, v_prod);
+      }
       parent_clv += span_padded;
       parent_scaler[n] += 1;
     }
