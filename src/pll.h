@@ -993,6 +993,21 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
                                                          const unsigned int * freqs_indices,
                                                          double * persite_lnl);
 
+PLL_EXPORT double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
+                                                     unsigned int sites,
+                                                     unsigned int rate_cats,
+                                                     const double * parent_clv,
+                                                     const unsigned int * parent_scaler,
+                                                     const unsigned char * tipchars,
+                                                     const unsigned int * tipmap,
+                                                     const double * pmatrix,
+                                                     double ** frequencies,
+                                                     const double * rate_weights,
+                                                     const unsigned int * pattern_weights,
+                                                     const double * invar_proportion,
+                                                     const int * invar_indices,
+                                                     const unsigned int * freqs_indices,
+                                                     double * persite_lnl);
 /* functions in core_pmatrix.c */
 
 PLL_EXPORT void pll_core_update_pmatrix(double * pmatrix,
