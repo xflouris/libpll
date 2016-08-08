@@ -250,7 +250,6 @@ double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
           xmm4 = _mm256_maskload_pd(row3,mask);
           xmm3 = _mm256_add_pd(xmm3,xmm4);
           row3 += 4;
-
         }
 
         /* point pmatrix to the next four rows */ 
@@ -372,50 +371,45 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
         xmm1 = _mm256_setzero_pd();
         xmm2 = _mm256_setzero_pd();
         xmm3 = _mm256_setzero_pd();
+
+        /* point to the four rows */
+        const double * row0 = pmat;
+        const double * row1 = row0 + states_padded;
+        const double * row2 = row1 + states_padded;
+        const double * row3 = row2 + states_padded;
         
-        /* row 1 */
+        /* iterate quadruples of columns */
         for (k = 0; k < states_padded; k += 4)
         {
-          xmm4 = _mm256_load_pd(pmat);
           xmm5 = _mm256_load_pd(clvc+k);
+
+          /* row 0 */
+          xmm4 = _mm256_load_pd(row0);
           xmm6 = _mm256_mul_pd(xmm4,xmm5);
           xmm0 = _mm256_add_pd(xmm0,xmm6);
+          row0 += 4;
 
-          pmat += 4;
-        }
-
-        /* row 2 */
-        for (k = 0; k < states_padded; k += 4)
-        {
-          xmm4 = _mm256_load_pd(pmat);
-          xmm5 = _mm256_load_pd(clvc+k);
+          /* row 1 */
+          xmm4 = _mm256_load_pd(row1);
           xmm6 = _mm256_mul_pd(xmm4,xmm5);
           xmm1 = _mm256_add_pd(xmm1,xmm6);
-
-          pmat += 4;
-        }
-
-        /* row 3 */
-        for (k = 0; k < states_padded; k += 4)
-        {
-          xmm4 = _mm256_load_pd(pmat);
-          xmm5 = _mm256_load_pd(clvc+k);
+          row1 += 4;
+          
+          /* row 2 */
+          xmm4 = _mm256_load_pd(row2);
           xmm6 = _mm256_mul_pd(xmm4,xmm5);
           xmm2 = _mm256_add_pd(xmm2,xmm6);
+          row2 += 4;
 
-          pmat += 4;
-        }
-
-        /* row 4 */
-        for (k = 0; k < states_padded; k += 4)
-        {
-          xmm4 = _mm256_load_pd(pmat);
-          xmm5 = _mm256_load_pd(clvc+k);
+          /* row 3 */
+          xmm4 = _mm256_load_pd(row3);
           xmm6 = _mm256_mul_pd(xmm4,xmm5);
           xmm3 = _mm256_add_pd(xmm3,xmm6);
-
-          pmat += 4;
+          row3 += 4;
         }
+
+        /* point pmatrix to the next four rows */ 
+        pmat = row3;
 
         /* create a vector containing the sums of xmm0, xmm1, xmm2, xmm3 */
         xmm4 = _mm256_unpackhi_pd(xmm0,xmm1);
