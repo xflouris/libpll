@@ -708,6 +708,7 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
     scaling = (parent_scaler) ? 1 : 0;
     for (k = 0; k < rate_cats; ++k)
     {
+      /* iterate over quadruples of rows */
       for (i = 0; i < states_padded; i += 4)
       {
 
@@ -721,71 +722,71 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
         __m256d v_termb3 = _mm256_setzero_pd();
 
         __m256d v_mat;
-        __m256d v_clv;
+        __m256d v_lclv;
+        __m256d v_rclv;
 
+        /* point to the four rows of the left matrix */
+        const double * lm0 = lmat;
+        const double * lm1 = lm0 + states_padded;
+        const double * lm2 = lm1 + states_padded;
+        const double * lm3 = lm2 + states_padded;
+
+        /* point to the four rows of the right matrix */
+        const double * rm0 = rmat;
+        const double * rm1 = rm0 + states_padded;
+        const double * rm2 = rm1 + states_padded;
+        const double * rm3 = rm2 + states_padded;
+
+        /* iterate over quadruples of columns */
         for (j = 0; j < states_padded; j += 4)
         {
-          v_mat    = _mm256_load_pd(lmat);
-          v_clv    = _mm256_load_pd(left_clv+j);
+          v_lclv    = _mm256_load_pd(left_clv+j);
+          v_rclv    = _mm256_load_pd(right_clv+j);
+
+          /* row 0 */
+          v_mat    = _mm256_load_pd(lm0);
           v_terma0 = _mm256_add_pd(v_terma0,
-                                   _mm256_mul_pd(v_mat,v_clv));
-
-          v_mat    = _mm256_load_pd(rmat);
-          v_clv    = _mm256_load_pd(right_clv+j);
+                                   _mm256_mul_pd(v_mat,v_lclv));
+          v_mat    = _mm256_load_pd(rm0);
           v_termb0 = _mm256_add_pd(v_termb0,
-                                   _mm256_mul_pd(v_mat,v_clv));
+                                   _mm256_mul_pd(v_mat,v_rclv));
+          lm0 += 4;
+          rm0 += 4;
 
-          lmat += 4;
-          rmat += 4;
-        }
-
-        for (j = 0; j < states_padded; j += 4)
-        {
-          v_mat    = _mm256_load_pd(lmat);
-          v_clv    = _mm256_load_pd(left_clv+j);
+          /* row 1 */
+          v_mat    = _mm256_load_pd(lm1);
           v_terma1 = _mm256_add_pd(v_terma1,
-                                   _mm256_mul_pd(v_mat,v_clv));
-
-          v_mat    = _mm256_load_pd(rmat);
-          v_clv    = _mm256_load_pd(right_clv+j);
+                                   _mm256_mul_pd(v_mat,v_lclv));
+          v_mat    = _mm256_load_pd(rm1);
           v_termb1 = _mm256_add_pd(v_termb1,
-                                   _mm256_mul_pd(v_mat,v_clv));
+                                   _mm256_mul_pd(v_mat,v_rclv));
+          lm1 += 4;
+          rm1 += 4;
 
-          lmat += 4;
-          rmat += 4;
-        }
-
-        for (j = 0; j < states_padded; j += 4)
-        {
-          v_mat    = _mm256_load_pd(lmat);
-          v_clv    = _mm256_load_pd(left_clv+j);
+          /* row 2 */
+          v_mat    = _mm256_load_pd(lm2);
           v_terma2 = _mm256_add_pd(v_terma2,
-                                   _mm256_mul_pd(v_mat,v_clv));
-
-          v_mat    = _mm256_load_pd(rmat);
-          v_clv    = _mm256_load_pd(right_clv+j);
+                                   _mm256_mul_pd(v_mat,v_lclv));
+          v_mat    = _mm256_load_pd(rm2);
           v_termb2 = _mm256_add_pd(v_termb2,
-                                   _mm256_mul_pd(v_mat,v_clv));
+                                   _mm256_mul_pd(v_mat,v_rclv));
+          lm2 += 4;
+          rm2 += 4;
 
-          lmat += 4;
-          rmat += 4;
-        }
-
-        for (j = 0; j < states_padded; j += 4)
-        {
-          v_mat    = _mm256_load_pd(lmat);
-          v_clv    = _mm256_load_pd(left_clv+j);
+          /* row 3 */
+          v_mat    = _mm256_load_pd(lm3);
           v_terma3 = _mm256_add_pd(v_terma3,
-                                   _mm256_mul_pd(v_mat,v_clv));
-
-          v_mat    = _mm256_load_pd(rmat);
-          v_clv    = _mm256_load_pd(right_clv+j);
+                                   _mm256_mul_pd(v_mat,v_lclv));
+          v_mat    = _mm256_load_pd(rm3);
           v_termb3 = _mm256_add_pd(v_termb3,
-                                   _mm256_mul_pd(v_mat,v_clv));
-
-          lmat += 4;
-          rmat += 4;
+                                   _mm256_mul_pd(v_mat,v_rclv));
+          lm3 += 4;
+          rm3 += 4;
         }
+
+        /* point pmatrix to the next four rows */ 
+        lmat = lm3;
+        rmat = rm3;
 
         __m256d xmm0 = _mm256_unpackhi_pd(v_terma0,v_terma1);
         __m256d xmm1 = _mm256_unpacklo_pd(v_terma0,v_terma1);
