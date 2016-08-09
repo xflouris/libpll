@@ -688,60 +688,43 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
   __m256d xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7;
   __m256i mask;
 
-  if (parent_scaler)
-    fill_parent_scaler(sites, parent_scaler, NULL, right_scaler);
+  /* precompute a lookup table of four values per entry (one for each state),
+     for all 16 states (including ambiguities) and for each rate category. */
+  double * lookup = pll_aligned_alloc(64*rate_cats*sizeof(double),
+                                      PLL_ALIGNMENT_AVX);
+  if (!lookup)
+  {
+    /* TODO: in the highly unlikely event that allocation fails, we should
+       resort to a non-lookup-precomputation version of this function,
+       available at commit e.g.  a4fc873fdc65741e402cdc1c59919375143d97d1 */
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Cannot allocate space for precomputation.");
+    return;
+  }
 
-  for (n = 0; n < sites; ++n)
+  /* skip first entry of lookup table as it is never used */
+  double * ptr = lookup + 4*rate_cats;
+
+  for (i = 1; i < 16; ++i)
   {
     lmat = left_matrix;
-    rmat = right_matrix;
 
-    scaling = (parent_scaler) ? 1 : 0;
-
-    lstate = left_tipchar[n];
-
+    /* mask the entries of pmatrix row to be loaded */
     mask = _mm256_set_epi64x(
-              ((lstate >> 3) & 1) ? ~0 : 0,
-              ((lstate >> 2) & 1) ? ~0 : 0,
-              ((lstate >> 1) & 1) ? ~0 : 0,
-              ((lstate >> 0) & 1) ? ~0 : 0);
+              ((i >> 3) & 1) ? ~0 : 0,
+              ((i >> 2) & 1) ? ~0 : 0,
+              ((i >> 1) & 1) ? ~0 : 0,
+              ((i >> 0) & 1) ? ~0 : 0);
 
     for (k = 0; k < rate_cats; ++k)
     {
-      xmm0 = _mm256_maskload_pd(lmat,mask);
+      /* masked load of the four matrix rows */
+      xmm0 = _mm256_maskload_pd(lmat+0, mask);
+      xmm1 = _mm256_maskload_pd(lmat+4, mask);
+      xmm2 = _mm256_maskload_pd(lmat+8, mask);
+      xmm3 = _mm256_maskload_pd(lmat+12,mask);
 
-      ymm4 = _mm256_load_pd(rmat);
-      ymm5 = _mm256_load_pd(right_clv);
-      ymm0 = _mm256_mul_pd(ymm4,ymm5);
-
-      lmat += states;
-      rmat += states;
-
-      xmm1 = _mm256_maskload_pd(lmat,mask);
-
-      ymm4 = _mm256_load_pd(rmat);
-      ymm1 = _mm256_mul_pd(ymm4,ymm5);
-
-      lmat += states;
-      rmat += states;
-
-      xmm2 = _mm256_maskload_pd(lmat,mask);
-
-      ymm4 = _mm256_load_pd(rmat);
-      ymm2 = _mm256_mul_pd(ymm4,ymm5);
-
-      lmat += states;
-      rmat += states;
-
-      xmm3 = _mm256_maskload_pd(lmat,mask);
-
-      ymm4 = _mm256_load_pd(rmat);
-      ymm3 = _mm256_mul_pd(ymm4,ymm5);
-
-      lmat += states;
-      rmat += states;
-
-      /* compute x */
+      /* create a vector containing the sums of xmm0, xmm1, xmm2, xmm3 */
       xmm4 = _mm256_unpackhi_pd(xmm0,xmm1);
       xmm5 = _mm256_unpacklo_pd(xmm0,xmm1);
 
@@ -754,6 +737,53 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
       xmm2 = _mm256_permute2f128_pd(xmm0,xmm1, _MM_SHUFFLE(0,2,0,1));
       xmm3 = _mm256_blend_pd(xmm0,xmm1,12);
       xmm4 = _mm256_add_pd(xmm2,xmm3);
+
+      /* store the result (four sums) to the lookup table */
+      _mm256_store_pd(ptr,xmm4);
+
+      /* move pointers */
+      ptr  += 4;
+      lmat += 16;
+    }
+  }
+
+  /* update the parent scaler with the scaler of the right child */
+  if (parent_scaler)
+    fill_parent_scaler(sites, parent_scaler, NULL, right_scaler);
+
+  /* iterate over sites and compute CLV entries */
+  for (n = 0; n < sites; ++n)
+  {
+    lmat = left_matrix;
+    rmat = right_matrix;
+
+    scaling = (parent_scaler) ? 1 : 0;
+
+    lstate = left_tipchar[n];
+
+    unsigned int loffset = rate_cats*lstate*4;
+
+    for (k = 0; k < rate_cats; ++k)
+    {
+      ymm4 = _mm256_load_pd(rmat);
+      ymm5 = _mm256_load_pd(right_clv);
+      ymm0 = _mm256_mul_pd(ymm4,ymm5);
+      rmat += states;
+
+      ymm4 = _mm256_load_pd(rmat);
+      ymm1 = _mm256_mul_pd(ymm4,ymm5);
+      rmat += states;
+
+      ymm4 = _mm256_load_pd(rmat);
+      ymm2 = _mm256_mul_pd(ymm4,ymm5);
+      rmat += states;
+
+      ymm4 = _mm256_load_pd(rmat);
+      ymm3 = _mm256_mul_pd(ymm4,ymm5);
+      rmat += states;
+
+      /* load x from precomputed lookup table into xmm4 */
+      xmm4 = _mm256_load_pd(lookup+loffset);
 
       /* compute y */
       ymm4 = _mm256_unpackhi_pd(ymm0,ymm1);
@@ -779,6 +809,7 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
 
       parent_clv += states;
       right_clv  += states;
+      loffset    += 4;
     }
     /* if *all* entries of the site CLV were below the threshold then scale
        (all) entries by PLL_SCALE_FACTOR */
@@ -791,8 +822,8 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
       parent_scaler[n] += 1;
     }
   }
+  pll_aligned_free(lookup);
 }
-
 
 PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
                                                unsigned int sites,
