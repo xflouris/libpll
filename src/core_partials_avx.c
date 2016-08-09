@@ -754,7 +754,6 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
   /* iterate over sites and compute CLV entries */
   for (n = 0; n < sites; ++n)
   {
-    lmat = left_matrix;
     rmat = right_matrix;
 
     scaling = (parent_scaler) ? 1 : 0;
@@ -1028,4 +1027,3 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
     }
   }
 }
-

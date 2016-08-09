@@ -49,11 +49,78 @@ double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
 
   unsigned int scale_factors;
   unsigned int cstate;
-  unsigned int states = 4;
   unsigned int states_padded = 4;
 
-  __m256d xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6;
+  __m256d xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7;
   __m256i mask;
+
+  /* precompute a lookup table of four values per entry (one for each state),
+     for all 16 states (including ambiguities) and for each rate category. */
+  double * lookup = pll_aligned_alloc(64*rate_cats*sizeof(double),
+                                      PLL_ALIGNMENT_AVX);
+  if (!lookup)
+  {
+    /* TODO: in the highly unlikely event that allocation fails, we should
+       resort to a non-lookup-precomputation version of this function,
+       available at commit e.g.  a4fc873fdc65741e402cdc1c59919375143d97d1 */
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Cannot allocate space for precomputation.");
+    return 1;
+  }
+
+  /* skip first entry of lookup table as it is never used */
+  double * ptr = lookup + 4*rate_cats;
+
+  /* iterate all ambiguities skipping 0 */
+  for (i = 1; i < 16; ++i)
+  {
+    pmat = pmatrix;
+
+    /* mask the entries of pmatrix row to be loaded */
+    mask = _mm256_set_epi64x(
+              ((i >> 3) & 1) ? ~0 : 0,
+              ((i >> 2) & 1) ? ~0 : 0,
+              ((i >> 1) & 1) ? ~0 : 0,
+              ((i >> 0) & 1) ? ~0 : 0);
+
+    for (n = 0; n < rate_cats; ++n)
+    {
+      freqs = frequencies[freqs_indices[n]];
+
+      /* masked load of the four matrix rows */
+      xmm0 = _mm256_maskload_pd(pmat+0, mask);
+      xmm1 = _mm256_maskload_pd(pmat+4, mask);
+      xmm2 = _mm256_maskload_pd(pmat+8, mask);
+      xmm3 = _mm256_maskload_pd(pmat+12,mask);
+
+      /* create a vector containing the sums of xmm0, xmm1, xmm2, xmm3 */
+      xmm4 = _mm256_unpackhi_pd(xmm0,xmm1);
+      xmm5 = _mm256_unpacklo_pd(xmm0,xmm1);
+
+      xmm6 = _mm256_unpackhi_pd(xmm2,xmm3);
+      xmm7 = _mm256_unpacklo_pd(xmm2,xmm3);
+
+      xmm0 = _mm256_add_pd(xmm4,xmm5);
+      xmm1 = _mm256_add_pd(xmm6,xmm7);
+
+      xmm2 = _mm256_permute2f128_pd(xmm0,xmm1, _MM_SHUFFLE(0,2,0,1));
+      xmm3 = _mm256_blend_pd(xmm0,xmm1,12);
+      xmm4 = _mm256_add_pd(xmm2,xmm3);
+
+      /* load frequencies */
+      xmm0 = _mm256_load_pd(freqs);
+
+      /* multiply sums with frequencies */
+      xmm1 = _mm256_mul_pd(xmm0,xmm4);
+
+      /* store the result in the lookup table */
+      _mm256_store_pd(ptr,xmm1);
+
+      /* move pointers */
+      ptr  += 4;
+      pmat += 16;
+    }
+  }
 
   for (n = 0; n < sites; ++n)
   {
@@ -62,53 +129,12 @@ double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
 
     cstate = tipchars[n];
 
-    mask = _mm256_set_epi64x(
-              ((cstate >> 3) & 1) ? ~0 : 0,
-              ((cstate >> 2) & 1) ? ~0 : 0,
-              ((cstate >> 1) & 1) ? ~0 : 0,
-              ((cstate >> 0) & 1) ? ~0 : 0);
+    unsigned int coffset = rate_cats*cstate*4;
 
     for (i = 0; i < rate_cats; ++i)
     {
-      freqs = frequencies[freqs_indices[i]];
-
-      /* load frequencies for current rate matrix */
-      xmm0 = _mm256_load_pd(freqs);
-
-      /* load pmatrix row 1 and multiply with clvc */
-      xmm3 = _mm256_maskload_pd(pmat,mask);
-
-      /* load pmatrix row 2 and multiply with clvc */
-      pmat += states;
-      xmm4 = _mm256_maskload_pd(pmat,mask);
-
-      /* load pmatrix row 3 and multiply with clvc */
-      pmat += states;
-      xmm5 = _mm256_maskload_pd(pmat,mask);
-
-      /* load pmatrix row 4 and multiply with clvc */
-      pmat += states;
-      xmm6 = _mm256_maskload_pd(pmat,mask);
-
-      /* point to the pmatrix for the next rate category */
-      pmat += states;
-
-      /* create a vector containing the sums of xmm3, xmm4, xmm5, xmm6 */
-      xmm1 = _mm256_unpackhi_pd(xmm3,xmm4);
-      xmm2 = _mm256_unpacklo_pd(xmm3,xmm4);
-
-      xmm3 = _mm256_unpackhi_pd(xmm5,xmm6);
-      xmm4 = _mm256_unpacklo_pd(xmm5,xmm6);
-
-      xmm5 = _mm256_add_pd(xmm1,xmm2);
-      xmm6 = _mm256_add_pd(xmm3,xmm4);
-
-      xmm1 = _mm256_permute2f128_pd(xmm5,xmm6, _MM_SHUFFLE(0,2,0,1));
-      xmm2 = _mm256_blend_pd(xmm5,xmm6,12);
-      xmm3 = _mm256_add_pd(xmm1,xmm2);
-
-      /* multiply with frequencies */
-      xmm1 = _mm256_mul_pd(xmm0,xmm3);
+      /* load precomputed lookup table into xmm3 */
+      xmm1 = _mm256_load_pd(lookup+coffset);
 
       /* multiply with clvp */
       xmm2 = _mm256_load_pd(clvp);
@@ -133,6 +159,7 @@ double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
       }
 
       clvp += states_padded;
+      coffset += 4;
     }
 
     /* count number of scaling factors to acount for */
@@ -149,6 +176,7 @@ double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
 
     logl += site_lk;
   }
+  pll_aligned_free(lookup);
   return logl;
 }
 
