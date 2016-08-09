@@ -144,7 +144,7 @@ int main(int argc, char * argv[])
                                                sizeof(unsigned int));
   for (i = 0; i < tip_nodes_count; ++i)
   {
-    data[i] = i;
+    data[i] = tipnodes[i]->clv_index;
     ENTRY entry;
     entry.key = tipnodes[i]->label;
     entry.data = (void *)(data+i);
