@@ -148,18 +148,22 @@ PLL_EXPORT void pll_core_create_lookup_4x4_avx(unsigned int rate_cats,
   const double * jmat;
   const double * kmat;
 
-  for (j = 0; j < maxstates; ++j)
+  lookup += maxstates*states*rate_cats;
+
+  for (j = 1; j < maxstates; ++j)
   {
-    for (k = 0; k < maxstates; ++k)
+    jmask = _mm256_set_epi64x(
+               ((j >> 3) & 1) ? ~0 : 0,
+               ((j >> 2) & 1) ? ~0 : 0,
+               ((j >> 1) & 1) ? ~0 : 0,
+               (j & 1) ? ~0 : 0);
+    
+    lookup += states*rate_cats;
+
+    for (k = 1; k < maxstates; ++k)
     {
       jmat = left_matrix;
       kmat = right_matrix;
-
-      jmask = _mm256_set_epi64x(
-                 ((j >> 3) & 1) ? ~0 : 0,
-                 ((j >> 2) & 1) ? ~0 : 0,
-                 ((j >> 1) & 1) ? ~0 : 0,
-                 (j & 1) ? ~0 : 0);
 
       kmask = _mm256_set_epi64x(
                  ((k >> 3) & 1) ? ~0 : 0,
