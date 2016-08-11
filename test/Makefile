@@ -18,11 +18,11 @@
 #    Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 
 CC = gcc
-CFLAGS = -g -O3 -Wall 
+CFLAGS = -L. -g -O3 -Wall 
 CLIBS = -lpll -lm
 
 CFILES = src/alpha-cats.c \
-				 src/asc-bias.c \
+	 src/asc-bias.c \
          src/derivatives.c \
          src/derivatives-oddstates.c \
          src/fasta-dna.c \
@@ -32,6 +32,7 @@ CFILES = src/alpha-cats.c \
          src/odd-states.c \
          src/partial-traversal.c \
          src/protein-models.c
+
 OBJFILES = $(patsubst src/%.c, obj/%, $(CFILES))
 
 OBJCOMMON = src/common.o
@@ -40,11 +41,12 @@ DATADIR = testdata
 RESULTDIR = result
 
 DEPFILES = worms16s.fas \
-					 small.fas small.tree small.rooted.tree \
-					 246x4465.fas 246x4465.tree \
-					 ribosomal_l5_pf00673.fas \
-					 medium.fas medium.tree \
-					 2000.fas 2000.tree
+	   small.fas small.tree small.rooted.tree \
+	   246x4465.fas 246x4465.tree \
+	   ribosomal_l5_pf00673.fas \
+	   medium.fas medium.tree \
+	   2000.fas 2000.tree
+
 REQFILES = $(patsubst %, $(DATADIR)/%, $(DEPFILES))
 ASSETS = https://raw.githubusercontent.com/xflouris/assets/master/libpll
 
