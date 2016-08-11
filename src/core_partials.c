@@ -90,6 +90,32 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
   unsigned int j,k,n;
   const double * offset;
 
+  #ifdef HAVE_SSE
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    if (states == 4)
+      pll_core_update_partial_tt_4x4_sse(sites,
+                                         rate_cats,
+                                         parent_clv,
+                                         parent_scaler,
+                                         left_tipchars,
+                                         right_tipchars,
+                                         lookup);
+    else
+      pll_core_update_partial_tt_sse(states,
+                                     sites,
+                                     rate_cats,
+                                     parent_clv,
+                                     parent_scaler,
+                                     left_tipchars,
+                                     right_tipchars,
+                                     lookup,
+                                     tipmap_size);
+
+    return;
+  }
+  
+  #endif
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
@@ -155,6 +181,21 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
   const double * lmat;
   const double * rmat;
 
+  #ifdef HAVE_SSE
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    pll_core_update_partial_ti_4x4_sse(sites,
+                                       rate_cats,
+                                       parent_clv,
+                                       parent_scaler,
+                                       left_tipchars,
+                                       right_clv,
+                                       left_matrix,
+                                       right_matrix,
+                                       right_scaler);
+    return;
+  }
+  #endif
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
@@ -239,37 +280,22 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
   const double * lmat;
   const double * rmat;
 
-#ifdef HAVE_AVX
-    if ((attrib & PLL_ATTRIB_ARCH_AVX))
-    {
-      if (states == 4)
-        pll_core_update_partial_ti_4x4_avx(sites,
-                                           rate_cats,
-                                           parent_clv,
-                                           parent_scaler,
-                                           left_tipchars,
-                                           right_clv,
-                                           left_matrix,
-                                           right_matrix,
-                                           right_scaler);
-      else
-        pll_core_update_partial_ti_avx(states,
-                                       sites,
-                                       rate_cats,
-                                       parent_clv,
-                                       parent_scaler,
-                                       left_tipchars,
-                                       right_clv,
-                                       left_matrix,
-                                       right_matrix,
-                                       right_scaler,
-                                       tipmap);
-      return;
-    }
-#endif
+#ifdef HAVE_SSE
+  if ((attrib & PLL_ATTRIB_ARCH_SSE))
+  {
     if (states == 4)
-    {
-      pll_core_update_partial_ti_4x4(sites,
+      pll_core_update_partial_ti_4x4_sse(sites,
+                                         rate_cats,
+                                         parent_clv,
+                                         parent_scaler,
+                                         left_tipchars,
+                                         right_clv,
+                                         left_matrix,
+                                         right_matrix,
+                                         right_scaler);
+    else
+      pll_core_update_partial_ti_sse(states,
+                                     sites,
                                      rate_cats,
                                      parent_clv,
                                      parent_scaler,
@@ -278,9 +304,53 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
                                      left_matrix,
                                      right_matrix,
                                      right_scaler,
-                                     attrib);
-      return;
-    }
+                                     tipmap);
+    return;
+  }
+#endif
+#ifdef HAVE_AVX
+  if ((attrib & PLL_ATTRIB_ARCH_AVX))
+  {
+    if (states == 4)
+      pll_core_update_partial_ti_4x4_avx(sites,
+                                         rate_cats,
+                                         parent_clv,
+                                         parent_scaler,
+                                         left_tipchars,
+                                         right_clv,
+                                         left_matrix,
+                                         right_matrix,
+                                         right_scaler);
+    else
+      pll_core_update_partial_ti_avx(states,
+                                     sites,
+                                     rate_cats,
+                                     parent_clv,
+                                     parent_scaler,
+                                     left_tipchars,
+                                     right_clv,
+                                     left_matrix,
+                                     right_matrix,
+                                     right_scaler,
+                                     tipmap);
+    return;
+  }
+#endif
+
+  if (states == 4)
+  {
+    pll_core_update_partial_ti_4x4(sites,
+                                   rate_cats,
+                                   parent_clv,
+                                   parent_scaler,
+                                   left_tipchars,
+                                   right_clv,
+                                   left_matrix,
+                                   right_matrix,
+                                   right_scaler,
+                                   attrib);
+    return;
+  }
 
   if (parent_scaler)
     fill_parent_scaler(sites, parent_scaler, NULL, right_scaler);
@@ -351,6 +421,23 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
 
   unsigned int span = states * rate_cats;
 
+#ifdef HAVE_SSE
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    pll_core_update_partial_ii_sse(states,
+                                   sites,
+                                   rate_cats,
+                                   parent_clv,
+                                   parent_scaler,
+                                   left_clv,
+                                   right_clv,
+                                   left_matrix,
+                                   right_matrix,
+                                   left_scaler,
+                                   right_scaler);
+    return;
+  }
+#endif
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
@@ -367,8 +454,6 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                    right_scaler);
     return;
   }
-#endif
-#ifdef HAVE_SSE
 #endif
 
   /* add up the scale vectors of the two children if available */
@@ -486,6 +571,25 @@ PLL_EXPORT void pll_core_create_lookup(unsigned int states,
                                        unsigned int attrib)
 {
 
+  #ifdef HAVE_SSE
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    if (states == 4)
+      pll_core_create_lookup_4x4_sse(rate_cats,
+                                     lookup,
+                                     left_matrix,
+                                     right_matrix);
+    else
+      pll_core_create_lookup_sse(states,
+                                 rate_cats,
+                                 lookup,
+                                 left_matrix,
+                                 right_matrix,
+                                 tipmap,
+                                 tipmap_size);
+    return;
+  }
+  #endif
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {

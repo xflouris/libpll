@@ -166,6 +166,12 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
 
   unsigned int states_padded = states;
 
+  #ifdef HAVE_SSE
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    states_padded = (states+1) & 0xFFFFFFFE;
+  }
+  #endif
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
@@ -302,6 +308,12 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   */
   unsigned int states_padded = states;
 
+  #ifdef HAVE_SSE
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    states_padded = (states+1) & 0xFFFFFFFE;
+  }
+  #endif
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {

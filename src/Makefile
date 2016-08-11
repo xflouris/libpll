@@ -28,8 +28,9 @@ OS = $(shell uname -s)
 CC ?= gcc
 PROG=libpll.so
 
-CFLAGS = -DHAVE_AVX -D_GNU_SOURCE -fPIC -std=c99 -g -msse3 -O3 $(WARN)
+CFLAGS = -DHAVE_SSE -DHAVE_AVX -D_GNU_SOURCE -fPIC -std=c99 -g -msse3 -O3 $(WARN)
 AVXFLAGS = -mavx
+SSEFLAGS = -msse3
 
 ifeq ($(OS), Darwin)
   SONAMEFLAGS=-Wl,-install_name,$(PROG)
@@ -51,13 +52,18 @@ OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o \
      derivatives.o partials.o compress.o parse_phylip.o lex_phylip.o \
      utree_moves.o parsimony.o core_derivatives.o core_partials.o \
      core_pmatrix.o core_partials_avx.o core_derivatives_avx.o \
-     core_likelihood.o core_likelihood_avx.o
+     core_likelihood.o core_likelihood_avx.o core_partials_sse.o \
+     core_derivatives_sse.o
 
 $(PROG): $(OBJS)
 	$(CC) -shared $(SONAMEFLAGS) -o $@ $+
 
 %_avx.o: %_avx.c
 	$(CC) $(CFLAGS) $(AVXFLAGS) -c -o $@ $<
+
+%_sse.o: %_sse.c
+	$(CC) $(CFLAGS) $(SSEFLAGS) -c -o $@ $<
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
