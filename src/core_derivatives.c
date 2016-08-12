@@ -99,6 +99,20 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
   const double * t_inv_eigenvecs;
   const double * t_freqs;
 
+#ifdef HAVE_SSE
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    return pll_core_update_sumtable_ii_sse(states,
+                                           sites,
+                                           rate_cats,
+                                           parent_clv,
+                                           child_clv,
+                                           eigenvecs,
+                                           inv_eigenvecs,
+                                           freqs,
+                                           sumtable);
+  }
+#endif
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
@@ -112,8 +126,6 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
                                            freqs,
                                            sumtable);
   }
-#endif
-#ifdef HAVE_SSE
 #endif
 
   /* build sumtable */
@@ -170,39 +182,51 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
 
   unsigned int states_padded = states;
 
+#ifdef HAVE_SSE
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    return pll_core_update_sumtable_ti_sse(states,
+                                           sites,
+                                           rate_cats,
+                                           parent_clv,
+                                           left_tipchars,
+                                           eigenvecs,
+                                           inv_eigenvecs,
+                                           freqs,
+                                           tipmap,
+                                           sumtable);
+  }
+#endif
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
     return pll_core_update_sumtable_ti_avx(states,
-                                    sites,
-                                    rate_cats,
-                                    parent_clv,
-                                    left_tipchars,
-                                    eigenvecs,
-                                    inv_eigenvecs,
-                                    freqs,
-                                    tipmap,
-                                    sumtable,
-                                    attrib);
+                                           sites,
+                                           rate_cats,
+                                           parent_clv,
+                                           left_tipchars,
+                                           eigenvecs,
+                                           inv_eigenvecs,
+                                           freqs,
+                                           tipmap,
+                                           sumtable,
+                                           attrib);
   }
-
-#endif
-#ifdef HAVE_SSE
 #endif
 
   /* non-vectorized version, special case for 4 states */
   if (states == 4)
   {
     return pll_core_update_sumtable_ti_4x4(sites,
-                                    rate_cats,
-                                    parent_clv,
-                                    left_tipchars,
-                                    eigenvecs,
-                                    inv_eigenvecs,
-                                    freqs,
-                                    tipmap,
-                                    sumtable,
-                                    attrib);
+                                           rate_cats,
+                                           parent_clv,
+                                           left_tipchars,
+                                           eigenvecs,
+                                           inv_eigenvecs,
+                                           freqs,
+                                           tipmap,
+                                           sumtable,
+                                           attrib);
   }
 
   /* build sumtable: non-vectorized version, general case */
@@ -324,12 +348,17 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 
   unsigned int states_padded = states;
 
+#ifdef HAVE_SSE
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    states_padded = (states+1) & 0xFFFFFFFE;
+  }
+#endif
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
     states_padded = (states+3) & 0xFFFFFFFC;
   }
-#elif defined(HAVE_SSE)
 #endif
 
   /* For Stamatakis correction, the likelihood derivatives are computed in

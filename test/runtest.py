@@ -40,12 +40,14 @@ import time
 #####################
 #   Configuration   #
 #####################
-do_memtest       =  1           # Evaluate memory leaks
-num_replicates   = 20           # Number of samples for the speed test
-all_args         = [0, 1, 2, 3] # 0: No vector / No tip pattern
-                                # 1: No vector / Tip pattern
-                                # 2: AVX / No tip pattern
-                                # 3: AVX / Tip pattern
+do_memtest       =  1             # Evaluate memory leaks
+num_replicates   = 20             # Number of samples for the speed test
+all_args         = [0,1,2,3,4,5]  # 0: No vector / No tip pattern
+                                  # 1: No vector / Tip pattern
+                                  # 2: AVX / No tip pattern
+                                  # 3: AVX / Tip pattern
+                                  # 4: SSE / No tip pattern
+                                  # 5: SSE / Tip pattern
 #####################
 
 colors={"default":"",
@@ -153,8 +155,8 @@ def runSpeedTest(files):
           attribstr += " AVX"
           typestr   += "A"
       else:
-        attribstr += " CPU"
-        typestr   += "C"
+          attribstr += " CPU"
+          typestr   += "C"
           
       fancyprint("bluebg", "{:<80}"
         .format(attribstr.rjust(40 + len(attribstr)/2)), True)
@@ -269,9 +271,13 @@ def runValidation(files):
           attribstr += " Pattern Tip"
           typestr   += "T"
       if (args & 2):
-          attrib += " avx"
+          attrib    += " avx"
           attribstr += " AVX"
           typestr   += "A"
+      if (args & 4):
+          attrib    += " sse"
+          attribstr += " SSE"
+          typestr   += "S"
       else:
         attribstr += " CPU"
         typestr   += "C"
