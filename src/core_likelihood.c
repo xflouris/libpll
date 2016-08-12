@@ -54,6 +54,24 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
   unsigned int states = 4;
   unsigned int states_padded = states;
 
+  #ifdef HAVE_SSE
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    return pll_core_edge_loglikelihood_ti_4x4_sse(sites,
+                                                  rate_cats,
+                                                  parent_clv,
+                                                  parent_scaler,
+                                                  tipchars,
+                                                  pmatrix,
+                                                  frequencies,
+                                                  rate_weights,
+                                                  pattern_weights,
+                                                  invar_proportion,
+                                                  invar_indices,
+                                                  freqs_indices,
+                                                  persite_lnl);
+  }
+  #endif
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
@@ -169,14 +187,48 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
   #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
+    if (states == 4)
+    {
+      return pll_core_edge_loglikelihood_ti_4x4_sse(sites,
+                                                    rate_cats,
+                                                    parent_clv,
+                                                    parent_scaler,
+                                                    tipchars,
+                                                    pmatrix,
+                                                    frequencies,
+                                                    rate_weights,
+                                                    pattern_weights,
+                                                    invar_proportion,
+                                                    invar_indices,
+                                                    freqs_indices,
+                                                    persite_lnl);
+    }
+    else
+    {
+      return pll_core_edge_loglikelihood_ti_sse(states,
+                                                sites,
+                                                rate_cats,
+                                                parent_clv,
+                                                parent_scaler,
+                                                tipchars,
+                                                tipmap,
+                                                pmatrix,
+                                                frequencies,
+                                                rate_weights,
+                                                pattern_weights,
+                                                invar_proportion,
+                                                invar_indices,
+                                                freqs_indices,
+                                                persite_lnl);
+    }
+    /* this line is never called, but should we disable the else case above,
+       then states_padded must be set to this value */
     states_padded = (states+1) & 0xFFFFFFFE;
   }
   #endif
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
-    states_padded = (states+3) & 0xFFFFFFFC;
-    
     if (states == 4)
     {
       return pll_core_edge_loglikelihood_ti_4x4_avx(sites,
@@ -196,21 +248,24 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
     else
     {
       return pll_core_edge_loglikelihood_ti_avx(states,
-                                          sites,
-                                          rate_cats,
-                                          parent_clv,
-                                          parent_scaler,
-                                          tipchars,
-                                          tipmap,
-                                          pmatrix,
-                                          frequencies,
-                                          rate_weights,
-                                          pattern_weights,
-                                          invar_proportion,
-                                          invar_indices,
-                                          freqs_indices,
-                                          persite_lnl);
+                                                sites,
+                                                rate_cats,
+                                                parent_clv,
+                                                parent_scaler,
+                                                tipchars,
+                                                tipmap,
+                                                pmatrix,
+                                                frequencies,
+                                                rate_weights,
+                                                pattern_weights,
+                                                invar_proportion,
+                                                invar_indices,
+                                                freqs_indices,
+                                                persite_lnl);
     }
+    /* this line is never called, but should we disable the else case above,
+       then states_padded must be set to this value */
+    states_padded = (states+3) & 0xFFFFFFFC;
   }
   #endif
 
@@ -311,14 +366,49 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
+    if (states == 4)
+    {
+      return pll_core_edge_loglikelihood_ii_4x4_sse(sites,
+                                                    rate_cats,
+                                                    clvp,
+                                                    parent_scaler,
+                                                    clvc,
+                                                    child_scaler,
+                                                    pmatrix,
+                                                    frequencies,
+                                                    rate_weights,
+                                                    pattern_weights,
+                                                    invar_proportion,
+                                                    invar_indices,
+                                                    freqs_indices,
+                                                    persite_lnl);
+    }
+    else
+    {
+      return pll_core_edge_loglikelihood_ii_sse(states,
+                                                sites,
+                                                rate_cats,
+                                                clvp,
+                                                parent_scaler,
+                                                clvc,
+                                                child_scaler,
+                                                pmatrix,
+                                                frequencies,
+                                                rate_weights,
+                                                pattern_weights,
+                                                invar_proportion,
+                                                invar_indices,
+                                                freqs_indices,
+                                                persite_lnl);
+    }
+    /* this line is never called, but should we disable the else case above,
+       then states_padded must be set to this value */
     states_padded = (states+1) & 0xFFFFFFFE;
   }
   #endif
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
-    states_padded = (states+3) & 0xFFFFFFFC;
-
     if (states == 4)
     {
       return pll_core_edge_loglikelihood_ii_4x4_avx(sites,
@@ -354,6 +444,9 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
                                                 freqs_indices,
                                                 persite_lnl);
     }
+    /* this line is never called, but should we disable the else case above,
+       then states_padded must be set to this value */
+    states_padded = (states+3) & 0xFFFFFFFC;
   }
   #endif
   

@@ -828,10 +828,11 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_sse(unsigned int sites,
   }
 
   /* skip first entry of lookup table as it is never used */
-  double * ptr = lookup + 4*rate_cats;
+  double * ptr = lookup + span;
 
   ymm3 = _mm_setzero_pd();
 
+  /* iterate all ambiguities skipping 0 */
   for (i = 1; i < 16; ++i)
   {
     lmat = left_matrix;
@@ -915,7 +916,7 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_sse(unsigned int sites,
 
     lstate = left_tipchar[n];
 
-    unsigned int loffset = rate_cats*lstate*4;
+    unsigned int loffset = lstate*span;
 
     for (k = 0; k < rate_cats; ++k)
     {

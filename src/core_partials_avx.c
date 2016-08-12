@@ -818,9 +818,18 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
        (all) entries by PLL_SCALE_FACTOR */
     if (scaling)
     {
+      __m256d v_scale_factor = _mm256_set_pd(PLL_SCALE_FACTOR,
+                                             PLL_SCALE_FACTOR,
+                                             PLL_SCALE_FACTOR,
+                                             PLL_SCALE_FACTOR);
+
       parent_clv -= span;
-      for (i = 0; i < span; ++i)
-        parent_clv[i] *= PLL_SCALE_FACTOR;
+      for (i = 0; i < span; i += 4)
+      {
+        __m256d v_prod = _mm256_load_pd(parent_clv + i);
+        v_prod = _mm256_mul_pd(v_prod,v_scale_factor);
+        _mm256_store_pd(parent_clv + i, v_prod);
+      }
       parent_clv += span;
       parent_scaler[n] += 1;
     }

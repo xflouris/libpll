@@ -1057,6 +1057,73 @@ PLL_EXPORT void core_likelihood_derivatives_avx(unsigned int states,
                                              double * d_f,
                                              double * dd_f);
 
+/* functions in core_likelihood_sse.c */
+
+PLL_EXPORT
+double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
+                                          unsigned int sites,
+                                          unsigned int rate_cats,
+                                          const double * parent_clv,
+                                          const unsigned int * parent_scaler,
+                                          const double * child_clv,
+                                          const unsigned int * child_scaler,
+                                          const double * pmatrix,
+                                          double ** frequencies,
+                                          const double * rate_weights,
+                                          const unsigned int * pattern_weights,
+                                          const double * invar_proportion,
+                                          const int * invar_indices,
+                                          const unsigned int * freqs_indices,
+                                          double * persite_lnl);
+
+PLL_EXPORT
+double pll_core_edge_loglikelihood_ii_4x4_sse(unsigned int sites,
+                                              unsigned int rate_cats,
+                                              const double * parent_clv,
+                                              const unsigned int * parent_scaler,
+                                              const double * child_clv,
+                                              const unsigned int * child_scaler,
+                                              const double * pmatrix,
+                                              double ** frequencies,
+                                              const double * rate_weights,
+                                              const unsigned int * pattern_weights,
+                                              const double * invar_proportion,
+                                              const int * invar_indices,
+                                              const unsigned int * freqs_indices,
+                                              double * persite_lnl);
+
+PLL_EXPORT
+double pll_core_edge_loglikelihood_ti_sse(unsigned int states,
+                                          unsigned int sites,
+                                          unsigned int rate_cats,
+                                          const double * parent_clv,
+                                          const unsigned int * parent_scaler,
+                                          const unsigned char * tipchars,
+                                          const unsigned int * tipmap,
+                                          const double * pmatrix,
+                                          double ** frequencies,
+                                          const double * rate_weights,
+                                          const unsigned int * pattern_weights,
+                                          const double * invar_proportion,
+                                          const int * invar_indices,
+                                          const unsigned int * freqs_indices,
+                                          double * persite_lnl);
+
+PLL_EXPORT
+double pll_core_edge_loglikelihood_ti_4x4_sse(unsigned int sites,
+                                              unsigned int rate_cats,
+                                              const double * parent_clv,
+                                              const unsigned int * parent_scaler,
+                                              const unsigned char * tipchars,
+                                              const double * pmatrix,
+                                              double ** frequencies,
+                                              const double * rate_weights,
+                                              const unsigned int * pattern_weights,
+                                              const double * invar_proportion,
+                                              const int * invar_indices,
+                                              const unsigned int * freqs_indices,
+                                              double * persite_lnl);
+
 /* functions in core_likelihood_avx.c */
 
 PLL_EXPORT double pll_core_edge_loglikelihood_ii_avx(unsigned int states,

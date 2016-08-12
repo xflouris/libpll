@@ -50,6 +50,7 @@ double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
   unsigned int scale_factors;
   unsigned int cstate;
   unsigned int states_padded = 4;
+  unsigned int span = rate_cats*states_padded;
 
   __m256d xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7;
   __m256i mask;
@@ -69,7 +70,7 @@ double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
   }
 
   /* skip first entry of lookup table as it is never used */
-  double * ptr = lookup + 4*rate_cats;
+  double * ptr = lookup + span;
 
   /* iterate all ambiguities skipping 0 */
   for (i = 1; i < 16; ++i)
@@ -129,7 +130,7 @@ double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
 
     cstate = tipchars[n];
 
-    unsigned int coffset = rate_cats*cstate*4;
+    unsigned int coffset = cstate*span;
 
     for (i = 0; i < rate_cats; ++i)
     {
