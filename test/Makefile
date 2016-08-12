@@ -28,6 +28,7 @@ CFILES = src/alpha-cats.c \
          src/fasta-dna.c \
          src/fasta-prot.c \
          src/rooted.c \
+         src/rooted-tipinner.c \
          src/hky.c \
          src/odd-states.c \
          src/partial-traversal.c \
@@ -40,7 +41,7 @@ DATADIR = testdata
 RESULTDIR = result
 
 DEPFILES = worms16s.fas \
-					 small.fas small.tree small.rooted.tree \
+					 small.fas small.tree small.rooted.tree small.rooted.tip.tree \
 					 246x4465.fas 246x4465.tree \
 					 ribosomal_l5_pf00673.fas \
 					 medium.fas medium.tree \

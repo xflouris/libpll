@@ -66,6 +66,28 @@ Perform partial traversals on the tree.
 Evaluate the likelihood of a short sequence under all the available empirical 
 amino acid replacement models
 
+## rooted
+
+Evaluate the likelihood of a tree rooted at an inner-inner node with 
+4 categories and 4 different proportions of invariant sites, from 0.0 to 0.9
+
+    /\
+   /  \
+  /    \
+ /\    /\
+/  \  /  \
+
+## rooted-tipinner
+
+Evaluate the likelihood of a tree rooted at a tip-inner node with 4 categories 
+and 4 different proportions of invariant sites, from 0.0 to 0.9
+
+    /\
+   /  \
+  /    \
+ /     /\
+/     /  \
+
 ## treemove-nni
 
 Validate Nearest Neighbor Interchange moves.

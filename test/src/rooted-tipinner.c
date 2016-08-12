@@ -7,8 +7,7 @@
 #define N_RATE_CATS 4
 
 #define FASTAFILE     "testdata/small.fas"
-#define TREEFILE      "testdata/small.rooted.tree"
-#define TREEFILE_TIP  "testdata/small.rooted.tip.tree"
+#define TREEFILE      "testdata/small.rooted.tip.tree"
 
 static void fatal(const char * format, ...) __attribute__ ((noreturn));
 static double prop_invar_list[4] = {0.0, 0.1, 0.5, 0.9};
@@ -246,6 +245,7 @@ int main(int argc, char * argv[])
     pll_update_invariant_sites_proportion(partition,
                                           0,
                                           prop_invar_list[j]);
+
     /* update matrix_count probability matrices for model with index 0. The i-th
        matrix (i ranges from 0 to matrix_count - 1) is generated using branch
        length branch_lengths[i] and can be refered to with index
@@ -267,11 +267,11 @@ int main(int argc, char * argv[])
        will be carried out sequentially starting from operation 0 towrds ops_count-1 */
     pll_update_partials(partition, operations, ops_count);
 
-  //  for (i = tip_nodes_count; i < nodes_count; ++i)
-  //  {
-  //    printf ("CLV %d: ", i);
-  //    pll_show_clv(partition,i, PLL_SCALE_BUFFER_NONE, 6);
-  //  }
+//    for (i = tip_nodes_count; i < nodes_count; ++i)
+//    {
+//      printf ("CLV %d: ", i);
+//      pll_show_clv(partition,i, PLL_SCALE_BUFFER_NONE, 6);
+//    }
 
     /* compute the likelihood on an edge of the unrooted tree by specifying
        the CLV indices at the two end-point of the branch, the probability matrix
@@ -282,10 +282,9 @@ int main(int argc, char * argv[])
                                                  tree->scaler_index,
                                                  params_indices,
                                                  NULL);
+
     printf("Log-L: %f (pinv = %f)\n", logl, prop_invar_list[j]);
   }
-
-
 
   /* deallocate the inner nodes list */
   free(inner_nodes_list);
