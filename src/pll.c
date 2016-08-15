@@ -248,7 +248,7 @@ static int update_charmap(pll_partition_t * partition, const unsigned int * map)
                                             partition->alignment);
     if (!partition->ttlookup)
     {
-      pll_errno = PLL_ERROR_INIT_CHARMAP;
+      pll_errno = PLL_ERROR_MEM_ALLOC;
       snprintf (pll_errmsg, 200,
                 "Cannot allocate space for storing precomputed tip-tip CLVs.");
       return PLL_FAILURE;
@@ -282,7 +282,7 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
   if (!(partition->charmap = (unsigned char *)calloc(PLL_ASCII_SIZE,
                                                      sizeof(unsigned char))))
   {
-    pll_errno = PLL_ERROR_INIT_CHARMAP;
+    pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf (pll_errmsg, 200,
               "Cannot allocate charmap for tip-tip precomputation.");
     return PLL_FAILURE;
@@ -291,7 +291,7 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
   if (!(partition->tipmap = (unsigned int *)calloc(PLL_ASCII_SIZE,
                                                    sizeof(unsigned int))))
   {
-    pll_errno = PLL_ERROR_INIT_CHARMAP;
+    pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf (pll_errmsg, 200,
               "Cannot allocate tipmap for tip-tip precomputation.");
     return PLL_FAILURE;
@@ -344,7 +344,7 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
                                             partition->alignment);
     if (!partition->ttlookup)
     {
-      pll_errno = PLL_ERROR_INIT_CHARMAP;
+      pll_errno = PLL_ERROR_MEM_ALLOC;
       snprintf (pll_errmsg, 200,
                 "Cannot allocate space for storing precomputed tip-tip CLVs.");
       return PLL_FAILURE;
@@ -356,7 +356,7 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
                                             partition->alignment);
     if (!partition->ttlookup)
     {
-      pll_errno = PLL_ERROR_INIT_CHARMAP;
+      pll_errno = PLL_ERROR_MEM_ALLOC;
       snprintf (pll_errmsg, 200,
                 "Cannot allocate space for storing precomputed tip-tip CLVs.");
       return PLL_FAILURE;
@@ -368,9 +368,9 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
                                                  sizeof(unsigned char *));
   if (!partition->tipchars)
   {
-    pll_errno = PLL_ERROR_INIT_CHARMAP;
-    snprintf (pll_errmsg, 200,
-              "Cannot allocate space for storing tip characters.");
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200,
+             "Cannot allocate space for storing tip characters.");
     return PLL_FAILURE;
   }
 
@@ -380,9 +380,9 @@ static int create_charmap(pll_partition_t * partition, const unsigned int * user
                                                      sizeof(unsigned char));
     if (!partition->tipchars[i])
     {
-      pll_errno = PLL_ERROR_INIT_CHARMAP;
-      snprintf (pll_errmsg, 200,
-                "Cannot allocate space for storing tip characters.");
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200,
+               "Cannot allocate space for storing tip characters.");
       return PLL_FAILURE;
     }
   }
@@ -406,13 +406,19 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   /* make sure that multiple ARCH were not specified */
   if (__builtin_popcount(attributes & PLL_ATTRIB_ARCH_MASK) > 1)
   {
-    pll_errno = PLL_ERROR_MULTIPLE_ARCH;
+    pll_errno = PLL_ERROR_PARAM_INVALID;
+    snprintf(pll_errmsg, 200, "Multiple architecture flags specified.");
     return PLL_FAILURE;
   }
 
   /* allocate partition */
   pll_partition_t * partition = (pll_partition_t *)malloc(sizeof(pll_partition_t));
-  if (!partition) return PLL_FAILURE;
+  if (!partition)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Cannot allocate memory for partition.");
+    return PLL_FAILURE;
+  }
 
   /* extract architecture and set vectorization parameters */
   partition->alignment = PLL_ALIGNMENT_CPU;
@@ -471,7 +477,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
      with additional sites for each state */
   partition->asc_bias_alloc =
                (partition->attributes &
-                 (PLL_ATTRIB_ASC_BIAS_MASK | PLL_ATTRIB_ASC_BIAS_FLAG)) > 0;
+                 (PLL_ATTRIB_AB_MASK | PLL_ATTRIB_AB_FLAG)) > 0;
   sites_alloc = partition->asc_bias_alloc ? sites + states : sites;
 
   /* allocate structures */
@@ -482,6 +488,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->eigen_decomp_valid)
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return PLL_FAILURE;
   }
   /* clv */
@@ -490,6 +498,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->clv)
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory for CLVs.");
     return PLL_FAILURE;
   }
 
@@ -506,6 +516,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     if (!partition->clv[i])
     {
       dealloc_partition_data(partition);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "Unable to allocate enough memory for CLVs.");
       return PLL_FAILURE;
     }
     /* zero-out CLV vectors to avoid valgrind warnings when using odd number of
@@ -521,6 +533,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->pmatrix)
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory for p-matrix.");
     return PLL_FAILURE;
   }
 
@@ -536,6 +550,8 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->pmatrix[0])
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory for p-matrix.");
     return PLL_FAILURE;
   }
   for (i = 1; i < partition->prob_matrices; ++i)
@@ -554,6 +570,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->eigenvecs)
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for eigenvectors.");
     return PLL_FAILURE;
   }
   for (i = 0; i < partition->rate_matrices; ++i)
@@ -564,6 +584,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     if (!partition->eigenvecs[i])
     {
       dealloc_partition_data(partition);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg,
+               200,
+               "Unable to allocate enough memory for eigenvectors.");
       return PLL_FAILURE;
     }
     /* TODO: don't forget to add code for SSE/AVX */
@@ -575,6 +599,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->inv_eigenvecs)
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for inverse eigenvectors.");
     return PLL_FAILURE;
   }
   for (i = 0; i < partition->rate_matrices; ++i)
@@ -585,6 +613,9 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     if (!partition->inv_eigenvecs[i])
     {
       dealloc_partition_data(partition);
+      snprintf(pll_errmsg,
+               200,
+               "Unable to allocate enough memory for inverse eigenvectors.");
       return PLL_FAILURE;
     }
     /* TODO: don't forget to add code for SSE/AVX */
@@ -596,6 +627,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->eigenvals)
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for eigenvalues.");
     return PLL_FAILURE;
   }
   for (i = 0; i < partition->rate_matrices; ++i)
@@ -605,6 +640,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     if (!partition->eigenvals[i])
     {
       dealloc_partition_data(partition);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg,
+               200,
+               "Unable to allocate enough memory for eigenvalues.");
       return PLL_FAILURE;
     }
     /* TODO: don't forget to add code for SSE/AVX */
@@ -616,6 +655,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->subst_params)
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for substitution parameters.");
     return PLL_FAILURE;
   }
   for (i = 0; i < partition->rate_matrices; ++i)
@@ -626,6 +669,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     if (!partition->subst_params[i])
     {
       dealloc_partition_data(partition);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg,
+               200,
+               "Unable to allocate enough memory for substitution parameters.");
       return PLL_FAILURE;
     }
     /* TODO: don't forget to add code for SSE/AVX */
@@ -637,6 +684,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->frequencies)
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for frequencies.");
     return PLL_FAILURE;
   }
   for (i = 0; i < partition->rate_matrices; ++i)
@@ -646,6 +697,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     if (!partition->frequencies[i])
     {
       dealloc_partition_data(partition);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg,
+               200,
+               "Unable to allocate enough memory for frequencies.");
       return PLL_FAILURE;
     }
     /* TODO: don't forget to add code for SSE/AVX */
@@ -659,6 +714,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->rates)
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for heterogeneity rates.");
     return PLL_FAILURE;
   }
 
@@ -673,6 +732,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   else
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for rate weights.");
     return PLL_FAILURE;
   }
 
@@ -682,6 +745,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->prop_invar)
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for invar sites proportion.");
     return PLL_FAILURE;
   }
 
@@ -691,6 +758,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->pattern_weights)
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for site pattern weights.");
     return PLL_FAILURE;
   }
   for (i = 0; i < partition->sites; ++i) partition->pattern_weights[i] = 1;
@@ -703,6 +774,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   if (!partition->scale_buffer)
   {
     dealloc_partition_data(partition);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg,
+             200,
+             "Unable to allocate enough memory for scale buffers.");
     return PLL_FAILURE;
   }
   for (i = 0; i < partition->scale_buffers; ++i)
@@ -712,6 +787,10 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     if (!partition->scale_buffer[i])
     {
       dealloc_partition_data(partition);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg,
+               200,
+               "Unable to allocate enough memory for scale buffers.");
       return PLL_FAILURE;
     }
   }
@@ -737,7 +816,7 @@ static int set_tipchars_4x4(pll_partition_t * partition,
   {
     if ((c = map[(int)sequence[i]]) == 0)
     {
-      pll_errno = PLL_ERROR_TIP_DATA_ILLEGAL_STATE;
+      pll_errno = PLL_ERROR_TIPDATA_ILLEGALSTATE;
       snprintf(pll_errmsg, 200, "Illegal state code in tip \"%c\"", sequence[i]);
       return PLL_FAILURE;
     }
@@ -774,7 +853,7 @@ static int set_tipchars(pll_partition_t * partition,
   {
     if ((c = map[(int)sequence[i]]) == 0)
     {
-      pll_errno = PLL_ERROR_TIP_DATA_ILLEGAL_STATE;
+      pll_errno = PLL_ERROR_TIPDATA_ILLEGALSTATE;
       snprintf(pll_errmsg, 200, "Illegal state code in tip \"%c\"", sequence[i]);
       return PLL_FAILURE;
     }
@@ -810,7 +889,7 @@ static int set_tipclv(pll_partition_t * partition,
   {
     if ((c = map[(int)sequence[i]]) == 0)
     {
-      pll_errno = PLL_ERROR_TIP_DATA_ILLEGAL_STATE;
+      pll_errno = PLL_ERROR_TIPDATA_ILLEGALSTATE;
       snprintf(pll_errmsg, 200, "Illegal state code in tip \"%c\"", sequence[i]);
       return PLL_FAILURE;
     }
@@ -900,6 +979,7 @@ PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
 
   if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
   {
+    pll_errno = PLL_ERROR_TIPDATA_ILLEGALFUNCTION;
     snprintf(pll_errmsg, 200,
              "Cannot use pll_set_tip_clv with PLL_ATTRIB_PATTERN_TIP.");
     return PLL_FAILURE;
@@ -955,15 +1035,17 @@ PLL_EXPORT int pll_set_asc_bias_type(pll_partition_t * partition,
 {
   unsigned int i;
   int prop_invar = 0;
-  int asc_bias_attr = asc_bias_type & PLL_ATTRIB_ASC_BIAS_MASK;
+  int asc_bias_attr = asc_bias_type & PLL_ATTRIB_AB_MASK;
 
   /* If the partition was created **without** ascertainment bias correction,
      CLVs do not have space allocated for the invariant states, and setting
      ascertaiment bias will likely produce a segfault later. */
   if (!partition->asc_bias_alloc)
   {
-    pll_errno = PLL_ERROR_ASC_BIAS;
-    snprintf(pll_errmsg, 200, "Partition was not created with ASC BIAS support");
+    pll_errno = PLL_ERROR_AB_NOSUPPORT;
+    snprintf(pll_errmsg,
+             200,
+             "Partition was not created with ascertainment bias support");
     return PLL_FAILURE;
   }
 
@@ -972,7 +1054,7 @@ PLL_EXPORT int pll_set_asc_bias_type(pll_partition_t * partition,
     prop_invar |= (partition->prop_invar[i] > 0);
   if (asc_bias_type != 0 && prop_invar)
   {
-    pll_errno = PLL_ERROR_PINV;
+    pll_errno = PLL_ERROR_INVAR_INCOMPAT;
     snprintf(pll_errmsg, 200,
       "Invariant sites are not compatible with asc bias correction");
     return PLL_FAILURE;
@@ -981,14 +1063,14 @@ PLL_EXPORT int pll_set_asc_bias_type(pll_partition_t * partition,
   /* check that asc_bias_type is either 0 or a valid type */
   if (asc_bias_attr != asc_bias_type)
   {
-    pll_errno = PLL_ERROR_ASC_BIAS;
+    pll_errno = PLL_ERROR_AB_INVALIDMETHOD;
     snprintf(pll_errmsg, 200, "Illegal ascertainment bias algorithm \"%d\"",
                               asc_bias_type);
     return PLL_FAILURE;
   }
 
   /* reset current ascertainment bias type (if any) */
-  partition->attributes &= ~PLL_ATTRIB_ASC_BIAS_MASK;
+  partition->attributes &= ~PLL_ATTRIB_AB_MASK;
 
   /* set new ascertainment bias type */
   partition->attributes |= asc_bias_attr;

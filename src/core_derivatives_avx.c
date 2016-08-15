@@ -727,19 +727,19 @@ PLL_EXPORT void core_site_likelihood_derivatives_4x4_avx(unsigned int rate_cats,
   _mm256_store_pd(site_lk, v_sitelk);
 }
 
-PLL_EXPORT void core_likelihood_derivatives_avx(unsigned int states,
-                                             unsigned int states_padded,
-                                             unsigned int rate_cats,
-                                             unsigned int ef_sites,
-                                             const unsigned int * pattern_weights,
-                                             const double * rate_weights,
-                                             const int * invariant,
-                                             const double * prop_invar,
-                                             double ** freqs,
-                                             const double * sumtable,
-                                             const double * diagptable,
-                                             double * d_f,
-                                             double * dd_f)
+PLL_EXPORT int core_likelihood_derivatives_avx(unsigned int states,
+                                               unsigned int states_padded,
+                                               unsigned int rate_cats,
+                                               unsigned int ef_sites,
+                                               const unsigned int * pattern_weights,
+                                               const double * rate_weights,
+                                               const int * invariant,
+                                               const double * prop_invar,
+                                               double ** freqs,
+                                               const double * sumtable,
+                                               const double * diagptable,
+                                               double * d_f,
+                                               double * dd_f)
 {
 
   unsigned int i,j,n;
@@ -747,6 +747,13 @@ PLL_EXPORT void core_likelihood_derivatives_avx(unsigned int states,
   double * invar_lk = (double *) pll_aligned_alloc(
                                     rate_cats * states * sizeof(double),
                                     PLL_ALIGNMENT_AVX);
+  if (!invar_lk)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return PLL_FAILURE;
+  }
+
 
   /* pre-compute invariant site likelihoods*/
   for(i = 0; i < states; ++i)
@@ -915,4 +922,6 @@ PLL_EXPORT void core_likelihood_derivatives_avx(unsigned int states,
   *dd_f += site_lk[0] + site_lk[1] + site_lk[2] + site_lk[3];
 
   pll_aligned_free(invar_lk);
+
+  return PLL_SUCCESS;
 }

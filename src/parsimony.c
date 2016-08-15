@@ -45,7 +45,7 @@ PLL_EXPORT int pll_set_parsimony_sequence(pll_parsimony_t * pars,
   {
     if ((c = map[(int)sequence[i]]) == 0)
     {
-      pll_errno = PLL_ERROR_TIP_DATA_ILLEGAL_STATE;
+      pll_errno = PLL_ERROR_TIPDATA_ILLEGALSTATE;
       snprintf(pll_errmsg, 200, "Illegal state code in tip \"%c\"", sequence[i]);
       printf ("%s\n", pll_errmsg);
       return PLL_FAILURE;
@@ -106,7 +106,11 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
   /* create parsimony instance */
   pll_parsimony_t * pars = (pll_parsimony_t *)malloc(sizeof(pll_parsimony_t));
   if (!pars)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return PLL_FAILURE;
+  }
 
   /* store passed parameters */
   pars->tips = tips;
@@ -120,6 +124,9 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
   if (!pars->score_matrix)
   {
     dealloc_pars_data(pars);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200,
+             "Unable to allocate enough memory for scoring matrix.");
     return NULL;
   }
   memcpy(pars->score_matrix, score_matrix, states*states*sizeof(double));
@@ -129,6 +136,9 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
   if (!pars->sbuffer)
   {
     dealloc_pars_data(pars);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200,
+             "Unable to allocate enough memory for score buffers.");
     return NULL;
   }
   for (i=0; i < score_buffers+tips; ++i)
@@ -137,6 +147,9 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
     if (!pars->sbuffer[i])
     {
       dealloc_pars_data(pars);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200,
+               "Unable to allocate enough memory for score buffers.");
       return NULL;
     }
   }
@@ -147,6 +160,9 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
   if (!pars->anc_states)
   {
     dealloc_pars_data(pars);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200,
+             "Unable to allocate enough memory for score buffers.");
     return NULL;
   }
   for (i=tips; i < ancestral_buffers+tips; ++i)
@@ -155,6 +171,9 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
     if (!pars->anc_states[i])
     {
       dealloc_pars_data(pars);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200,
+               "Unable to allocate enough memory for score buffers.");
       return NULL;
     }
   }

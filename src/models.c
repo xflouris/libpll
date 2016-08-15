@@ -190,7 +190,9 @@ static double ** create_ratematrix(double * params,
   /* normalize substitution parameters */
   unsigned int params_count = (states*states - states) / 2;
   double * params_normalized = (double *)malloc(sizeof(double) * params_count);
-  if (!params_normalized) return NULL;
+  if (!params_normalized)
+    return NULL;
+
   memcpy(params_normalized,params,params_count*sizeof(double));
 
   if (params_normalized[params_count - 1] > 0.0)
@@ -246,8 +248,8 @@ static double ** create_ratematrix(double * params,
   return qmatrix;
 }
 
-PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
-                                 unsigned int params_index)
+PLL_EXPORT int pll_update_eigen(pll_partition_t * partition,
+                                unsigned int params_index)
 {
   unsigned int i,j,k;
   double *e, *d;
@@ -264,9 +266,25 @@ PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
   a = create_ratematrix(subst_params,
                         freqs,
                         states);
+  if (!a)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return PLL_FAILURE;
+  }
 
   d = (double *)malloc(states*sizeof(double));
   e = (double *)malloc(states*sizeof(double));
+  if (!d || !e)
+  {
+    if (d) free(d);
+    if (e) free(e);
+    for(i = 0; i < states; ++i) free(a[i]);
+    free(a);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return PLL_FAILURE;
+  }
 
   mytred2(a, states, d, e);
   mytqli(d, e, states, a);
@@ -300,13 +318,15 @@ PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
   for (i = 0; i < states; ++i)
     free(a[i]);
   free(a);
+
+  return PLL_SUCCESS;
 }
 
-PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
-                                         const unsigned int * params_indices,
-                                         const unsigned int * matrix_indices,
-                                         const double * branch_lengths,
-                                         unsigned int count)
+PLL_EXPORT int pll_update_prob_matrices(pll_partition_t * partition,
+                                        const unsigned int * params_indices,
+                                        const unsigned int * matrix_indices,
+                                        const double * branch_lengths,
+                                        unsigned int count)
 {
   unsigned int i,n,j,k,m;
   double * expd;
@@ -330,12 +350,22 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
   {
     if (!partition->eigen_decomp_valid[params_indices[n]])
     {
-      pll_update_eigen(partition, params_indices[n]);
+      if (!pll_update_eigen(partition, params_indices[n]))
+        return PLL_FAILURE;
     }
   }
 
   expd = (double *)malloc(states * sizeof(double));
   temp = (double *)malloc(states*states* sizeof(double));
+  if (!expd || !temp)
+  {
+    if (expd) free(expd);
+    if (temp) free(temp);
+
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return PLL_FAILURE;
+  }
 
   for (i = 0; i < count; ++i)
   {
@@ -384,6 +414,7 @@ PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
   }
   free(expd);
   free(temp);
+  return PLL_SUCCESS;
 }
 
 PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition,
@@ -428,37 +459,44 @@ PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition
 {
 
   /* check that there is no ascertainment bias correction */
-  if (prop_invar != 0.0 && (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK))
+  if (prop_invar != 0.0 && (partition->attributes & PLL_ATTRIB_AB_MASK))
   {
-    pll_errno = PLL_ERROR_PINV;
-    snprintf(pll_errmsg, 200,
-      "Invariant sites are not compatible with asc bias correction");
+    pll_errno = PLL_ERROR_INVAR_INCOMPAT;
+    snprintf(pll_errmsg,
+             200,
+             "Invariant sites are not compatible with asc bias correction");
     return PLL_FAILURE;
   }
 
   /* validate new invariant sites proportion */
   if (prop_invar < 0 || prop_invar >= 1)
   {
-    pll_errno = PLL_ERROR_PINV;
-    snprintf(pll_errmsg, 200,
-        "Invalid proportion of invariant sites (%f)", prop_invar);
+    pll_errno = PLL_ERROR_INVAR_PROPORTION;
+    snprintf(pll_errmsg,
+             200,
+             "Invalid proportion of invariant sites (%f)", prop_invar);
     return PLL_FAILURE;
   }
 
   if (params_index > partition->rate_matrices)
   {
-    pll_errno = PLL_ERROR_PINV;
-    snprintf(pll_errmsg, 200,
-        "Invalid params index (%d)", params_index);
+    pll_errno = PLL_ERROR_INVAR_PARAMINDEX;
+    snprintf(pll_errmsg,
+             200,
+             "Invalid params index (%d)", params_index);
     return PLL_FAILURE;
   }
 
   if (prop_invar > 0.0 && !partition->invariant)
   {
-      if (!pll_update_invariant_sites(partition))
-      {
-        return PLL_FAILURE;
-      }
+    if (!pll_update_invariant_sites(partition))
+    {
+      pll_errno = PLL_ERROR_INVAR_NONEFOUND;
+      snprintf(pll_errmsg,
+               200,
+               "No invariant sites found");
+      return PLL_FAILURE;
+    }
   }
 
   partition->prop_invar[params_index] = prop_invar;
@@ -469,16 +507,16 @@ PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition
 PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
                                                   unsigned int * state_inv_count)
 {
+  int inv_site;
   unsigned int i,j,k;
-  int * invariant = partition->invariant;
   unsigned int invariant_count = 0;
   unsigned int tips = partition->tips;
   unsigned int sites = partition->sites;
   unsigned int states = partition->states;
   unsigned int gap_state = 0;
   unsigned int state;
+  int * invariant = partition->invariant;
   double * tipclv;
-  int inv_site;
 
   /* gap state has always all bits set to one */
   for (i = 0; i < states; ++i)
@@ -606,7 +644,6 @@ PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
       }
     }
   }
-
   return invariant_count;
 }
 

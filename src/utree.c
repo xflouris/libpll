@@ -130,6 +130,12 @@ PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options)
   unsigned int max_indent_level = (a > b ? a : b);
 
   int * active_node_order = (int *)malloc((max_indent_level+1) * sizeof(int));
+  if (!active_node_order)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return;
+  }
   active_node_order[0] = 1;
   active_node_order[1] = 1;
 
@@ -151,11 +157,17 @@ static char * newick_utree_recurse(pll_utree_t * root)
   {
     char * subtree1 = newick_utree_recurse(root->next->back);
     if (subtree1 == NULL)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
       return NULL;
+    }
     char * subtree2 = newick_utree_recurse(root->next->next->back);
     if (subtree2 == NULL)
     {
       free(subtree1);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
       return NULL;
     }
     size_alloced = asprintf(&newick,
@@ -187,11 +199,17 @@ PLL_EXPORT char * pll_utree_export_newick(pll_utree_t * root)
 
   char * subtree1 = newick_utree_recurse(root->back);
   if (subtree1 == NULL)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return NULL;
+  }
   char * subtree2 = newick_utree_recurse(root->next->back);
   if (subtree2 == NULL)
   {
     free(subtree1);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return NULL;
   }
   char * subtree3 = newick_utree_recurse(root->next->next->back);
@@ -199,6 +217,8 @@ PLL_EXPORT char * pll_utree_export_newick(pll_utree_t * root)
   {
     free(subtree1);
     free(subtree2);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return NULL;
   }
 
@@ -490,6 +510,13 @@ PLL_EXPORT pll_utree_t * pll_utree_clone(pll_utree_t * root)
 static pll_utree_t * rtree_unroot(pll_rtree_t * root, pll_utree_t * back)
 {
   pll_utree_t * uroot = (void *)calloc(1,sizeof(pll_utree_t));
+  if (!uroot)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return NULL;
+  }
+
   uroot->back = back;
   uroot->label = (root->label) ? xstrdup(root->label) : NULL;
   uroot->length = uroot->back->length;
@@ -501,7 +528,24 @@ static pll_utree_t * rtree_unroot(pll_rtree_t * root, pll_utree_t * back)
   }
 
   uroot->next = (void *)calloc(1,sizeof(pll_utree_t));
+  if (!uroot->next)
+  {
+    free(uroot);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return NULL;
+  }
+
   uroot->next->next = (void *)calloc(1,sizeof(pll_utree_t));
+  if (!uroot->next->next)
+  {
+    free(uroot->next);
+    free(uroot);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return NULL;
+  }
+
   uroot->next->next->next = uroot;
 
   uroot->next->length = root->left->length;
@@ -526,8 +570,32 @@ PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * root)
   pll_rtree_t * new_root;
 
   pll_utree_t * uroot = (void *)calloc(1,sizeof(pll_utree_t));
+  if (!uroot)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return NULL;
+  }
+
   uroot->next = (void *)calloc(1,sizeof(pll_utree_t));
+  if (!uroot->next)
+  {
+    free(uroot);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return NULL;
+  }
+
   uroot->next->next = (void *)calloc(1,sizeof(pll_utree_t));
+  if (!uroot->next->next)
+  {
+    free(uroot->next);
+    free(uroot);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return NULL;
+  }
+
   uroot->next->next->next = uroot;
   uroot->length = root->left->length + root->right->length;
 
@@ -536,11 +604,15 @@ PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * root)
   {
     new_root = root->left;
     uroot->back = rtree_unroot(root->right,uroot);
+    /* TODO: Need to clean uroot in case of error */
+    if (!uroot->back) return NULL;
   }
   else
   {
     new_root = root->right;
     uroot->back = rtree_unroot(root->left,uroot);
+    /* TODO: Need to clean uroot in case of error*/
+    if (!uroot->back) return NULL;
   }
 
   uroot->label = (new_root->label) ? xstrdup(new_root->label) : NULL;
@@ -548,10 +620,14 @@ PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * root)
   uroot->next->label = uroot->label;
   uroot->next->length = new_root->left->length;
   uroot->next->back = rtree_unroot(new_root->left, uroot->next);
+  /* TODO: Need to clean uroot in case of error*/
+  if (!uroot->next->back) return NULL;
 
   uroot->next->next->label = uroot->label;
   uroot->next->next->length = new_root->right->length;
   uroot->next->next->back = rtree_unroot(new_root->right, uroot->next->next);
+  /* TODO: Need to clean uroot in case of error*/
+  if (!uroot->next->next->back) return NULL;
 
   return uroot;
 }

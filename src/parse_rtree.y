@@ -44,6 +44,7 @@ PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root)
 
 static void pll_rtree_error(pll_rtree_t * tree, const char * s)
 {
+  pll_errno = PLL_ERROR_NEWICK_SYNTAX;
   if (pll_rtree_colstart == pll_rtree_colend)
     snprintf(pll_errmsg, 200, "%s. (line %d column %d)\n",
              s, pll_rtree_lineno, pll_rtree_colstart);

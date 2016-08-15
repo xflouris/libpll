@@ -73,6 +73,7 @@ PLL_EXPORT void pll_utree_destroy(pll_utree_t * root)
 
 static void pll_utree_error(pll_utree_t * tree, const char * s)
 {
+  pll_errno = PLL_ERROR_NEWICK_SYNTAX;
   if (pll_utree_colstart == pll_utree_colend)
     snprintf(pll_errmsg, 200, "%s. (line %d column %d)\n",
              s, pll_utree_lineno, pll_utree_colstart);

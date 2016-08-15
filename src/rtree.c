@@ -109,6 +109,12 @@ void pll_rtree_show_ascii(pll_rtree_t * tree, int options)
   unsigned int indent_max = tree_indent_level(tree,0);
 
   int * active_node_order = (int *)malloc((indent_max+1) * sizeof(int));
+  if (!active_node_order)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return;
+  }
   active_node_order[0] = 1;
   active_node_order[1] = 1;
 
@@ -152,7 +158,7 @@ static char * rtree_export_newick_recursive(pll_rtree_t * root)
   if (size_alloced < 0)
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
-    snprintf(pll_errmsg, 200, "memory allocation during newick export failed");
+    snprintf(pll_errmsg, 200, "memory allocation during newick export failed.");
     return NULL;
   }
 
@@ -171,11 +177,17 @@ PLL_EXPORT char * pll_rtree_export_newick(pll_rtree_t * root)
   {
     char * subtree1 = rtree_export_newick_recursive(root->left);
     if (subtree1 == NULL)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
       return NULL;
+    }
     char * subtree2 = rtree_export_newick_recursive(root->right);
     if (subtree2 == NULL)
     {
       free(subtree1);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
       return NULL;
     }
 

@@ -26,7 +26,12 @@ static int dlist_insert(pll_dlist_t ** dlist, void * data, int insert_end)
   if (!*dlist)
   {
     *dlist = (pll_dlist_t *)malloc(sizeof(pll_dlist_t));
-    if (!*dlist) return PLL_FAILURE;
+    if (!*dlist)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+      return PLL_FAILURE;
+    }
 
     (*dlist)->next = NULL;
     (*dlist)->prev = NULL;
@@ -39,7 +44,12 @@ static int dlist_insert(pll_dlist_t ** dlist, void * data, int insert_end)
     for(; (*dlist)->next; dlist = &(*dlist)->next);
 
   (*dlist)->next = (pll_dlist_t *)malloc(sizeof(pll_dlist_t));
-  if (!(*dlist)->next) return PLL_FAILURE;
+  if (!(*dlist)->next)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return PLL_FAILURE;
+  }
 
   (*dlist)->next->next = NULL;
   (*dlist)->next->data = data;

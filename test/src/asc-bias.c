@@ -214,11 +214,11 @@ int main(int argc, char * argv[])
 
   /* test 2: ascertainment bias correction */
   printf("\nTEST 2: ASC BIAS LEWIS\n");
-  attributes |= PLL_ATTRIB_ASC_BIAS_LEWIS;
+  attributes |= PLL_ATTRIB_AB_LEWIS;
   partition = parse_msa(MSA_FILENAME, taxa_count, STATES, rate_cats, 1,
                         tree, attributes);
 
-  pll_set_asc_bias_type(partition, PLL_ATTRIB_ASC_BIAS_LEWIS);
+  pll_set_asc_bias_type(partition, PLL_ATTRIB_AB_LEWIS);
   eval(partition, tree, alpha);
 
   /* attempt to update invariant sites proportion. This should fail */
@@ -230,13 +230,13 @@ int main(int argc, char * argv[])
 
   /* test 2: ascertainment bias correction */
   printf("\nTEST 2: ASC BIAS FELSENSTEIN\n");
-  pll_set_asc_bias_type(partition, PLL_ATTRIB_ASC_BIAS_FELSENSTEIN);
+  pll_set_asc_bias_type(partition, PLL_ATTRIB_AB_FELSENSTEIN);
   pll_set_asc_state_weights(partition, invar_weights);
   eval(partition, tree, alpha);
 
   /* test 2: ascertainment bias correction */
   printf("\nTEST 2: ASC BIAS STAMATAKIS\n");
-  pll_set_asc_bias_type(partition, PLL_ATTRIB_ASC_BIAS_STAMATAKIS);
+  pll_set_asc_bias_type(partition, PLL_ATTRIB_AB_STAMATAKIS);
   pll_set_asc_state_weights(partition, invar_weights);
   eval(partition, tree, alpha);
 

@@ -1,14 +1,14 @@
 #include "pll.h"
 
-PLL_EXPORT void pll_core_update_pmatrix(double * pmatrix,
-                                        unsigned int states,
-                                        double rate,
-                                        double prop_invar,
-                                        double branch_length,
-                                        double * eigenvals,
-                                        double * eigenvecs,
-                                        double * inv_eigenvecs,
-                                        unsigned int attrib)
+PLL_EXPORT int pll_core_update_pmatrix(double * pmatrix,
+                                       unsigned int states,
+                                       double rate,
+                                       double prop_invar,
+                                       double branch_length,
+                                       double * eigenvals,
+                                       double * eigenvecs,
+                                       double * inv_eigenvecs,
+                                       unsigned int attrib)
 {
   unsigned int j,k,m;
   unsigned int states_padded = states;
@@ -17,6 +17,16 @@ PLL_EXPORT void pll_core_update_pmatrix(double * pmatrix,
 
   expd = (double *)malloc(states * sizeof(double));
   temp = (double *)malloc(states*states* sizeof(double));
+  if (!expd || !temp)
+  {
+    if (expd) free(expd);
+    if (temp) free(temp);
+
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return PLL_FAILURE;
+  }
+
 
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
@@ -56,4 +66,5 @@ PLL_EXPORT void pll_core_update_pmatrix(double * pmatrix,
   }
   free(expd);
   free(temp);
+  return PLL_SUCCESS;
 }

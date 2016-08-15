@@ -37,6 +37,16 @@ static int sumtable_tipinner(pll_partition_t * partition,
                                               sizeof(double *));
   double ** freqs = (double **)malloc(partition->rate_cats *
                                       sizeof(double *));
+  if (!eigenvecs || !inv_eigenvecs || !freqs)
+  {
+    if (eigenvecs) free(eigenvecs);
+    if (inv_eigenvecs) free(inv_eigenvecs);
+    if (freqs) free(freqs);
+
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return PLL_FAILURE;
+  }
 
   /* ascertaiment bias correction */
   if (partition->asc_bias_alloc)
@@ -95,6 +105,16 @@ static int sumtable_innerinner(pll_partition_t * partition,
                                               sizeof(double *));
   double ** freqs = (double **)malloc(partition->rate_cats *
                                       sizeof(double *));
+  if (!eigenvecs || !inv_eigenvecs || !freqs)
+  {
+    if (eigenvecs) free(eigenvecs);
+    if (inv_eigenvecs) free(inv_eigenvecs);
+    if (freqs) free(freqs);
+
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return PLL_FAILURE;
+  }
 
   /* ascertaiment bias correction */
   if (partition->asc_bias_alloc)
@@ -202,6 +222,16 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
   double ** eigenvals = (double **) malloc(rate_cats * sizeof(double *));
   double ** freqs     = (double **) malloc(rate_cats * sizeof(double *));
   double * prop_invar = (double *)  malloc(rate_cats * sizeof(double));
+  if (!eigenvals || !prop_invar || !freqs)
+  {
+    if (eigenvals) free(eigenvals);
+    if (prop_invar) free(prop_invar);
+    if (freqs) free(freqs);
+
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return PLL_FAILURE;
+  }
 
   for (i=0; i<rate_cats; ++i)
   {

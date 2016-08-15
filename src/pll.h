@@ -78,12 +78,12 @@
 
 #define PLL_ATTRIB_PATTERN_TIP    (1 << 4)
 
-/* ascertainment correction */
-#define PLL_ATTRIB_ASC_BIAS_LEWIS        (1 << 5)
-#define PLL_ATTRIB_ASC_BIAS_FELSENSTEIN  (2 << 5)
-#define PLL_ATTRIB_ASC_BIAS_STAMATAKIS   (3 << 5)
-#define PLL_ATTRIB_ASC_BIAS_MASK         (7 << 5)
-#define PLL_ATTRIB_ASC_BIAS_FLAG         (1 << 8)
+/* ascertainment bias correction */
+#define PLL_ATTRIB_AB_LEWIS        (1 << 5)
+#define PLL_ATTRIB_AB_FELSENSTEIN  (2 << 5)
+#define PLL_ATTRIB_AB_STAMATAKIS   (3 << 5)
+#define PLL_ATTRIB_AB_MASK         (7 << 5)
+#define PLL_ATTRIB_AB_FLAG         (1 << 8)
 
 /* topological rearrangements */
 
@@ -93,29 +93,32 @@
 #define PLL_UTREE_MOVE_NNI_LEFT             1
 #define PLL_UTREE_MOVE_NNI_RIGHT            2
 
-#define PLL_ERROR_NNI_INVALIDMOVE 1
-#define PLL_ERROR_NNI_TERMINALBRANCH 2
-
 /* error codes */
 
-#define PLL_ERROR_FILE_OPEN                1
-#define PLL_ERROR_FILE_SEEK                2
-#define PLL_ERROR_FILE_EOF                 3
-#define PLL_ERROR_FASTA_ILLEGALCHAR        4
-#define PLL_ERROR_FASTA_UNPRINTABLECHAR    5
-#define PLL_ERROR_FASTA_INVALIDHEADER      6
-#define PLL_ERROR_MEM_ALLOC                7
-#define PLL_ERROR_NEWICK_SYNTAX            8
-#define PLL_ERROR_TIP_DATA_ILLEGAL_STATE   9
-#define PLL_ERROR_MULTIPLE_ARCH           10
-#define PLL_ERROR_INIT_CHARMAP            11
-#define PLL_ERROR_PHYLIP_SYNTAX           12
-#define PLL_ERROR_TREE_CONVERSION         13
+#define PLL_ERROR_FILE_OPEN                100
+#define PLL_ERROR_FILE_SEEK                101
+#define PLL_ERROR_FILE_EOF                 102
+#define PLL_ERROR_FASTA_ILLEGALCHAR        103
+#define PLL_ERROR_FASTA_UNPRINTABLECHAR    104
+#define PLL_ERROR_FASTA_INVALIDHEADER      105
+#define PLL_ERROR_PHYLIP_SYNTAX            106
+#define PLL_ERROR_NEWICK_SYNTAX            107
+#define PLL_ERROR_MEM_ALLOC                108
+#define PLL_ERROR_PARAM_INVALID            109
+#define PLL_ERROR_TIPDATA_ILLEGALSTATE     110
+#define PLL_ERROR_TIPDATA_ILLEGALFUNCTION  111
+#define PLL_ERROR_TREE_CONVERSION          112
+#define PLL_ERROR_INVAR_INCOMPAT           113
+#define PLL_ERROR_INVAR_PROPORTION         114
+#define PLL_ERROR_INVAR_PARAMINDEX         115
+#define PLL_ERROR_INVAR_NONEFOUND          116
+#define PLL_ERROR_AB_INVALIDMETHOD         117
+#define PLL_ERROR_AB_NOSUPPORT             118
+#define PLL_ERROR_SPR_TERMINALBRANCH       119
+#define PLL_ERROR_SPR_NOCHANGE             120
+#define PLL_ERROR_NNI_INVALIDMOVE          121
+#define PLL_ERROR_NNI_TERMINALBRANCH       122
 
-#define PLL_ERROR_ALPHA                  101
-#define PLL_ERROR_PINV                   102
-#define PLL_ERROR_MIXTURE                103
-#define PLL_ERROR_ASC_BIAS               104
 
 /* utree specific */
 
@@ -421,14 +424,14 @@ PLL_EXPORT void pll_set_category_rates(pll_partition_t * partition,
 PLL_EXPORT void pll_set_category_weights(pll_partition_t * partition,
                                          const double * rate_weights);
 
-PLL_EXPORT void pll_update_eigen(pll_partition_t * partition,
-                                 unsigned int params_index);
+PLL_EXPORT int pll_update_eigen(pll_partition_t * partition,
+                                unsigned int params_index);
 
-PLL_EXPORT void pll_update_prob_matrices(pll_partition_t * partition,
-                                         const unsigned int * params_index,
-                                         const unsigned int * matrix_indices,
-                                         const double * branch_lengths,
-                                         unsigned int count);
+PLL_EXPORT int pll_update_prob_matrices(pll_partition_t * partition,
+                                        const unsigned int * params_index,
+                                        const unsigned int * matrix_indices,
+                                        const double * branch_lengths,
+                                        unsigned int count);
 
 PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
                                                   unsigned int * state_inv_count);
@@ -1043,19 +1046,19 @@ PLL_EXPORT void core_site_likelihood_derivatives_4x4_avx(unsigned int rate_cats,
                                                          const double * diagptable,
                                                          double * site_lk);
 
-PLL_EXPORT void core_likelihood_derivatives_avx(unsigned int states,
-                                             unsigned int states_padded,
-                                             unsigned int rate_cats,
-                                             unsigned int ef_sites,
-                                             const unsigned int * pattern_weights,
-                                             const double * rate_weights,
-                                             const int * invariant,
-                                             const double * prop_invar,
-                                             double ** freqs,
-                                             const double * sumtable,
-                                             const double * diagptable,
-                                             double * d_f,
-                                             double * dd_f);
+PLL_EXPORT int core_likelihood_derivatives_avx(unsigned int states,
+                                               unsigned int states_padded,
+                                               unsigned int rate_cats,
+                                               unsigned int ef_sites,
+                                               const unsigned int * pattern_weights,
+                                               const double * rate_weights,
+                                               const int * invariant,
+                                               const double * prop_invar,
+                                               double ** freqs,
+                                               const double * sumtable,
+                                               const double * diagptable,
+                                               double * d_f,
+                                               double * dd_f);
 
 /* functions in core_likelihood_sse.c */
 
@@ -1188,15 +1191,15 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
                                                      double * persite_lnl);
 /* functions in core_pmatrix.c */
 
-PLL_EXPORT void pll_core_update_pmatrix(double * pmatrix,
-                                        unsigned int states,
-                                        double rate,
-                                        double prop_invar,
-                                        double branch_length,
-                                        double * eigenvals,
-                                        double * eigenvecs,
-                                        double * inv_eigenvecs,
-                                        unsigned int attrib);
+PLL_EXPORT int pll_core_update_pmatrix(double * pmatrix,
+                                       unsigned int states,
+                                       double rate,
+                                       double prop_invar,
+                                       double branch_length,
+                                       double * eigenvals,
+                                       double * eigenvecs,
+                                       double * inv_eigenvecs,
+                                       unsigned int attrib);
 
 /* functions in compress.c */
 

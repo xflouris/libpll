@@ -29,18 +29,18 @@ static double compute_asc_bias_correction(double logl_base,
   double logl_correction = 0.0;
   switch (asc_bias_type)
   {
-    case PLL_ATTRIB_ASC_BIAS_LEWIS:
+    case PLL_ATTRIB_AB_LEWIS:
       logl_correction = -(sum_w*log(1 - logl_base));
       break;
-    case PLL_ATTRIB_ASC_BIAS_STAMATAKIS:
+    case PLL_ATTRIB_AB_STAMATAKIS:
       /* no need to add anything here */
       logl_correction = logl_base;
       break;
-    case PLL_ATTRIB_ASC_BIAS_FELSENSTEIN:
+    case PLL_ATTRIB_AB_FELSENSTEIN:
       logl_correction = sum_w_inv * log(logl_base);
       break;
     default:
-      pll_errno = PLL_ERROR_ASC_BIAS;
+      pll_errno = PLL_ERROR_AB_INVALIDMETHOD;
       snprintf(pll_errmsg, 200, "Illegal ascertainment bias algorithm");
       return -INFINITY;
   }
@@ -114,13 +114,13 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
   }
 
   /* ascertainment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (partition->attributes & PLL_ATTRIB_AB_MASK)
   {
     assert(prop_invar == 0);
     double logl_correction = 0;
     unsigned int sum_w_inv = 0;
     unsigned int scale_factors;
-    int asc_bias_type = partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK;
+    int asc_bias_type = partition->attributes & PLL_ATTRIB_AB_MASK;
 
     for (i = 0; i < partition->states; ++i)
     {
@@ -143,7 +143,7 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
       scale_factors = scaler?scaler[partition->sites + i]:0;
 
       sum_w_inv += partition->pattern_weights[partition->sites + i];
-      if (asc_bias_type == PLL_ATTRIB_ASC_BIAS_STAMATAKIS)
+      if (asc_bias_type == PLL_ATTRIB_AB_STAMATAKIS)
       {
         /* 2a. site_lk is the lnl weighted by the number of occurences */
         site_lk = log(term) * partition->pattern_weights[partition->sites + i];
@@ -192,7 +192,7 @@ static double edge_loglikelihood_asc_bias_ti(pll_partition_t * partition,
 
   double logl_correction = 0;
   unsigned int sum_w_inv = 0;
-  int asc_bias_type = partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK;
+  int asc_bias_type = partition->attributes & PLL_ATTRIB_AB_MASK;
 
   /* 1. compute per-site logl for each state */
   for (n = 0; n < partition->states; ++n)
@@ -217,7 +217,7 @@ static double edge_loglikelihood_asc_bias_ti(pll_partition_t * partition,
     scale_factors = (parent_scaler) ? parent_scaler[partition->sites + n] : 0;
 
     sum_w_inv += partition->pattern_weights[partition->sites + n];
-    if (asc_bias_type == PLL_ATTRIB_ASC_BIAS_STAMATAKIS)
+    if (asc_bias_type == PLL_ATTRIB_AB_STAMATAKIS)
     {
       /* 2a. site_lk is the lnl weighted by the number of occurences */
       site_lk = log(terma) * partition->pattern_weights[partition->sites + n];
@@ -299,7 +299,7 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
   }
 
   /* ascertainment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (partition->attributes & PLL_ATTRIB_AB_MASK)
   {
     /* Note the assertion must be done for all rate matrices
     assert(prop_invar == 0);
@@ -348,7 +348,7 @@ static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
 
   double logl_correction = 0;
   unsigned int sum_w_inv = 0;
-  int asc_bias_type = partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK;
+  int asc_bias_type = partition->attributes & PLL_ATTRIB_AB_MASK;
 
   /* 1. compute per-site logl for each state */
   for (n = 0; n < partition->states; ++n)
@@ -380,7 +380,7 @@ static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
     scale_factors += (child_scaler) ? child_scaler[n] : 0;
 
     sum_w_inv += pattern_weights[n];
-    if (asc_bias_type == PLL_ATTRIB_ASC_BIAS_STAMATAKIS)
+    if (asc_bias_type == PLL_ATTRIB_AB_STAMATAKIS)
     {
       /* 2a. site_lk is the lnl weighted by the number of occurences */
       site_lk = log(terma) * pattern_weights[n];
@@ -453,7 +453,7 @@ static double edge_loglikelihood(pll_partition_t * partition,
                                         partition->attributes);
 
   /* ascertainment bias correction */
-  if (partition->attributes & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (partition->attributes & PLL_ATTRIB_AB_MASK)
   {
     /* Note the assertion must be done for all rate matrices
     assert(prop_invar == 0);

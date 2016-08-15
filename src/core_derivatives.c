@@ -363,7 +363,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 
   /* For Stamatakis correction, the likelihood derivatives are computed in
      the usual way for the additional per-state sites. */
-  if ((attrib & PLL_ATTRIB_ASC_BIAS_MASK) == PLL_ATTRIB_ASC_BIAS_STAMATAKIS)
+  if ((attrib & PLL_ATTRIB_AB_MASK) == PLL_ATTRIB_AB_STAMATAKIS)
   {
     ef_sites = sites + states;
   }
@@ -449,14 +449,14 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
   }
 
   /* account for ascertainment bias correction */
-  if (attrib & PLL_ATTRIB_ASC_BIAS_MASK)
+  if (attrib & PLL_ATTRIB_AB_MASK)
   {
     double asc_Lk[3] = {0.0, 0.0, 0.0};
     unsigned int sum_w_inv = 0;
     double asc_scaling;
-    int asc_bias_type = attrib & PLL_ATTRIB_ASC_BIAS_MASK;
+    int asc_bias_type = attrib & PLL_ATTRIB_AB_MASK;
 
-    if (asc_bias_type != PLL_ATTRIB_ASC_BIAS_STAMATAKIS)
+    if (asc_bias_type != PLL_ATTRIB_AB_STAMATAKIS)
     {
       /* check that no additional sites have been evaluated */
       assert(ef_sites == sites);
@@ -492,7 +492,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 
       switch(asc_bias_type)
       {
-        case PLL_ATTRIB_ASC_BIAS_LEWIS:
+        case PLL_ATTRIB_AB_LEWIS:
         {
           // TODO: pattern_weight_sum should be stored somewhere!
           unsigned int pattern_weight_sum = 0;
@@ -506,7 +506,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                ((asc_Lk[0] - 1.0) * (asc_Lk[0] - 1.0)));
         }
         break;
-        case PLL_ATTRIB_ASC_BIAS_FELSENSTEIN:
+        case PLL_ATTRIB_AB_FELSENSTEIN:
           /* derivatives of log(sum Li(s) over states 's') */
           *d_f  += sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
           *dd_f += sum_w_inv *
@@ -514,7 +514,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                (asc_Lk[0] * asc_Lk[0]));
         break;
         default:
-          pll_errno = PLL_ERROR_ASC_BIAS;
+          pll_errno = PLL_ERROR_AB_INVALIDMETHOD;
           snprintf(pll_errmsg, 200, "Illegal ascertainment bias algorithm");
           return PLL_FAILURE;
       }

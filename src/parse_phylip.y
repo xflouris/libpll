@@ -108,6 +108,7 @@ msa: STRING STRING sequence_list
   if (!g_error)
     if (atoi($1) != seq_count)
     {
+      pll_errno = PLL_ERROR_PHYLIP_SYNTAX;
       snprintf(pll_errmsg, 200,
               "Number of sequences read is %d but expected %d\n",
               seq_count,
@@ -118,6 +119,7 @@ msa: STRING STRING sequence_list
   if (!g_error)
     if (atoi($2) != $3[seq_count-1]->len)
     {
+      pll_errno = PLL_ERROR_PHYLIP_SYNTAX;
       snprintf(pll_errmsg, 200,
               "Sequence length is %d but expected %d\n",
               $3[seq_count-1]->len,

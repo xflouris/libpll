@@ -41,7 +41,12 @@ PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename, const unsigned in
 {
   int i;
   pll_fasta_t * fd = (pll_fasta_t *)malloc(sizeof(pll_fasta_t));
-  if (!fd) return NULL;
+  if (!fd)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return NULL;
+  }
 
   /* allocate space */
 
@@ -58,7 +63,7 @@ PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename, const unsigned in
     pll_errno = PLL_ERROR_FILE_OPEN;
     snprintf(pll_errmsg, 200, "Unable to open file (%s)", filename);
     free(fd);
-    return PLL_FAILURE;
+    return NULL;
   }
 
   /* get filesize */
@@ -67,7 +72,7 @@ PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename, const unsigned in
     pll_errno = PLL_ERROR_FILE_SEEK;
     snprintf(pll_errmsg, 200, "Unable to seek in file (%s)", filename);
     free(fd);
-    return PLL_FAILURE;
+    return NULL;
   }
   fd->filesize = ftell(fd->fp);
 
@@ -84,7 +89,7 @@ PLL_EXPORT pll_fasta_t * pll_fasta_open(const char * filename, const unsigned in
     pll_errno = PLL_ERROR_FILE_SEEK;
     snprintf(pll_errmsg, 200, "Unable to read file (%s)", filename);
     free(fd);
-    return PLL_FAILURE;
+    return NULL;
   }
   fd->lineno = 1;
 
@@ -134,12 +139,18 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
   /* allocate sequence buffers */
   *head = (char *)malloc((size_t)(head_alloc));
   if (!(*head))
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return PLL_FAILURE;
+  }
 
   *seq = (char *)malloc((size_t)(seq_alloc));
   if (!(*seq))
   {
     free(*head);
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return PLL_FAILURE;
   }
 

@@ -236,7 +236,7 @@ PLL_EXPORT int pll_compute_gamma_cats(double alpha,
 
   if (alpha < ALPHA_MIN || categories < 1)
   {
-    pll_errno = PLL_ERROR_ALPHA;
+    pll_errno = PLL_ERROR_PARAM_INVALID;
     snprintf(pll_errmsg, 200, "Invalid alpha value (%f)", alpha);
     return PLL_FAILURE;
   }

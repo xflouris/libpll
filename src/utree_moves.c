@@ -164,6 +164,7 @@ PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
   if ((!branch_lengths && matrix_indices) ||
       (branch_lengths && !matrix_indices))
   {
+    pll_errno = PLL_ERROR_PARAM_INVALID;
     snprintf(pll_errmsg, 200, "Parameters 4,5 must be both NULL or both set");
     return PLL_FAILURE;
   }
@@ -171,6 +172,7 @@ PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
   /* if p is a tip node then prompt an error */
   if (!p->next)
   {
+    pll_errno = PLL_ERROR_SPR_TERMINALBRANCH;
     snprintf(pll_errmsg, 200, "Prune edge must be defined by an inner node");
     return PLL_FAILURE;
   }
@@ -180,6 +182,7 @@ PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
       r == p->next || r == p->next->back ||
       r == p->next->next || r == p->next->next->back)
   {
+    pll_errno = PLL_ERROR_SPR_NOCHANGE;
     snprintf(pll_errmsg, 200, "Proposed move yields the same tree");
     return PLL_FAILURE;
   }
@@ -257,6 +260,7 @@ static int utree_spr_rollback(pll_utree_rb_t * rb,
   if ((!branch_lengths && matrix_indices) ||
       (branch_lengths && !matrix_indices))
   {
+    pll_errno = PLL_ERROR_PARAM_INVALID;
     snprintf(pll_errmsg, 200, "Parameters 4,5 must be both NULL or both set");
     return PLL_FAILURE;
   }
@@ -309,18 +313,21 @@ PLL_EXPORT int pll_utree_spr_safe(pll_utree_t * p,
   /* check all possible scenarios of failure */
   if (!p)
   {
+    pll_errno = PLL_ERROR_PARAM_INVALID;
     snprintf(pll_errmsg, 200, "Node p is set to NULL");
     return PLL_FAILURE;
   }
 
   if (!r)
   {
+    pll_errno = PLL_ERROR_PARAM_INVALID;
     snprintf(pll_errmsg, 200, "Node r is set to NULL");
     return PLL_FAILURE;
   }
 
   if (!p->next)
   {
+    pll_errno = PLL_ERROR_SPR_TERMINALBRANCH;
     snprintf(pll_errmsg, 200, "Prune edge must be defined by an inner node");
     return PLL_FAILURE;
   }
@@ -330,6 +337,7 @@ PLL_EXPORT int pll_utree_spr_safe(pll_utree_t * p,
       r == p->next || r == p->next->back ||
       r == p->next->next || r == p->next->next->back)
   {
+    pll_errno = PLL_ERROR_SPR_NOCHANGE;
     snprintf(pll_errmsg, 200, "Proposed move yields the same tree");
     return PLL_FAILURE;
   }
@@ -337,6 +345,7 @@ PLL_EXPORT int pll_utree_spr_safe(pll_utree_t * p,
   /* node r must not be in the same subtree as the one that is to be pruned */
   if (utree_find(p->back, r))
   {
+    pll_errno = PLL_ERROR_PARAM_INVALID;
     snprintf(pll_errmsg, 200, "Node r is part of the subtree to be pruned");
     return PLL_FAILURE;
   }
@@ -350,6 +359,7 @@ PLL_EXPORT int pll_utree_rollback(pll_utree_rb_t * rollback,
 {
   if (!rollback)
   {
+    pll_errno = PLL_ERROR_PARAM_INVALID;
     snprintf(pll_errmsg, 200, "Provide a rollback");
     return PLL_FAILURE;
   }
@@ -359,6 +369,7 @@ PLL_EXPORT int pll_utree_rollback(pll_utree_rb_t * rollback,
   else if (rollback->move_type == PLL_UTREE_MOVE_NNI)
     return utree_nni_rollback(rollback);
 
+  pll_errno = PLL_ERROR_PARAM_INVALID;
   snprintf(pll_errmsg, 200, "Invalid move type");
   return PLL_FAILURE;
 }
