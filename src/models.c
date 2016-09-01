@@ -391,9 +391,17 @@ PLL_EXPORT int pll_update_prob_matrices(pll_partition_t * partition,
       else
       {
         /* exponentiate eigenvalues */
-        for (j = 0; j < states; ++j)
-          expd[j] = exp(eigenvals[j] * rates[n] * branch_lengths[i]
-                                     / (1.0 - prop_invar));
+        if (prop_invar > PLL_MISC_EPSILON)
+        {
+          for (j = 0; j < states; ++j)
+            expd[j] = exp(eigenvals[j] * rates[n] * branch_lengths[i]
+                                       / (1.0 - prop_invar));
+        }
+        else
+        {
+          for (j = 0; j < states; ++j)
+            expd[j] = exp(eigenvals[j] * rates[n] * branch_lengths[i]);
+        }
 
         for (j = 0; j < states; ++j)
           for (k = 0; k < states; ++k)
