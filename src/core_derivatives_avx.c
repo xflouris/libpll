@@ -383,7 +383,7 @@ static int core_update_sumtable_ti_4x4_avx(unsigned int sites,
 {
   const unsigned int states = 4;
 
-  unsigned int i, j, k, n;
+  unsigned int i, k, n;
   unsigned int tipstate;
 
   double * sum = sumtable;
@@ -406,14 +406,37 @@ static int core_update_sumtable_ti_4x4_avx(unsigned int sites,
   }
 
   /* transpose eigenvecs matrix -> for efficient vectorization */
+
+  __m256d xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7;
+  double * evecs;
+  double * transev = eigenvecs_trans;
   for (i = 0; i < rate_cats; ++i)
   {
-    for (j = 0; j < states; ++j)
-      for (k = 0; k < states; ++k)
-      {
-        eigenvecs_trans[i*states*states + j*states + k] =
-            (j < states && k < states) ? eigenvecs[i][k*states + j] : 0.;
-      }
+    evecs = eigenvecs[i];
+
+    /* load each row of the matrix */
+    xmm0 = _mm256_load_pd(evecs+0);
+    xmm1 = _mm256_load_pd(evecs+4);
+    xmm2 = _mm256_load_pd(evecs+8);
+    xmm3 = _mm256_load_pd(evecs+12);
+
+    /* transpose eigenvectors */
+    xmm4 = _mm256_unpacklo_pd(xmm0,xmm1);
+    xmm5 = _mm256_unpackhi_pd(xmm0,xmm1);
+    xmm6 = _mm256_unpacklo_pd(xmm2,xmm3);
+    xmm7 = _mm256_unpackhi_pd(xmm2,xmm3);
+
+    xmm0 = _mm256_permute2f128_pd(xmm4,xmm6,_MM_SHUFFLE(0,2,0,0));
+    xmm1 = _mm256_permute2f128_pd(xmm5,xmm7,_MM_SHUFFLE(0,2,0,0));
+    xmm2 = _mm256_permute2f128_pd(xmm4,xmm6,_MM_SHUFFLE(0,3,0,1));
+    xmm3 = _mm256_permute2f128_pd(xmm5,xmm7,_MM_SHUFFLE(0,3,0,1));
+
+    _mm256_store_pd(transev+0,  xmm0);
+    _mm256_store_pd(transev+4,  xmm1);
+    _mm256_store_pd(transev+8,  xmm2);
+    _mm256_store_pd(transev+12, xmm3);
+
+    transev += 16;
   }
 
   memset(precomp_left, 0, 16 * states * rate_cats * sizeof(double));
