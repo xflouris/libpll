@@ -1192,15 +1192,33 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
                                                      double * persite_lnl);
 /* functions in core_pmatrix.c */
 
-PLL_EXPORT int pll_core_update_pmatrix(double * pmatrix,
+PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
                                        unsigned int states,
-                                       double rate,
-                                       double prop_invar,
-                                       double branch_length,
-                                       double * eigenvals,
-                                       double * eigenvecs,
-                                       double * inv_eigenvecs,
+                                       unsigned int rate_cats,
+                                       double * rates,
+                                       const double * branch_lengths,
+                                       const unsigned int * matrix_indices,
+                                       const unsigned int * params_indices,
+                                       double * prop_invar,
+                                       double ** eigenvals,
+                                       double ** eigenvecs,
+                                       double ** inv_eigenvecs,
+                                       unsigned int count,
                                        unsigned int attrib);
+
+/* functions in core_pmatrix_avx.c */
+
+PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
+                                               unsigned int rate_cats,
+                                               double * rates,
+                                               const double * branch_lengths,
+                                               const unsigned int * matrix_indices,
+                                               const unsigned int * params_indices,
+                                               double * prop_invar,
+                                               double ** eigenvals,
+                                               double ** eigenvecs,
+                                               double ** inv_eigenvecs,
+                                               unsigned int count);
 
 /* functions in compress.c */
 

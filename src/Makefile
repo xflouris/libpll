@@ -53,7 +53,7 @@ OBJS=fasta.o gamma.o likelihood.o list.o maps.o models.o pll.o output.o \
      utree_moves.o parsimony.o core_derivatives.o core_partials.o \
      core_pmatrix.o core_partials_avx.o core_derivatives_avx.o \
      core_likelihood.o core_likelihood_avx.o core_partials_sse.o \
-     core_derivatives_sse.o core_likelihood_sse.o
+     core_derivatives_sse.o core_likelihood_sse.o core_pmatrix_avx.o
 
 $(PROG): $(OBJS)
 	$(CC) -shared $(SONAMEFLAGS) -o $@ $+

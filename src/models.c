@@ -328,22 +328,7 @@ PLL_EXPORT int pll_update_prob_matrices(pll_partition_t * partition,
                                         const double * branch_lengths,
                                         unsigned int count)
 {
-  unsigned int i,n,j,k,m;
-  double * expd;
-  double * temp;
-
-  double prop_invar;
-
-  double * eigenvecs;
-  double * inv_eigenvecs;
-  double * eigenvals;
-  double * rates = partition->rates;
-
-  double * pmatrix;
-
-
-  unsigned int states = partition->states;
-  unsigned int states_padded = partition->states_padded;
+  unsigned int n;
 
   /* check whether we have cached an eigen decomposition. If not, compute it */
   for (n = 0; n < partition->rate_cats; ++n)
@@ -355,74 +340,19 @@ PLL_EXPORT int pll_update_prob_matrices(pll_partition_t * partition,
     }
   }
 
-  expd = (double *)malloc(states * sizeof(double));
-  temp = (double *)malloc(states*states* sizeof(double));
-  if (!expd || !temp)
-  {
-    if (expd) free(expd);
-    if (temp) free(temp);
-
-    pll_errno = PLL_ERROR_MEM_ALLOC;
-    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
-    return PLL_FAILURE;
-  }
-
-  for (i = 0; i < count; ++i)
-  {
-    assert(branch_lengths[i] >= 0);
-
-    /* compute effective pmatrix location */
-    for (n = 0; n < partition->rate_cats; ++n)
-    {
-      pmatrix = partition->pmatrix[matrix_indices[i]] + n*states*states_padded;
-
-      prop_invar = partition->prop_invar[params_indices[n]];
-      eigenvecs = partition->eigenvecs[params_indices[n]];
-      inv_eigenvecs = partition->inv_eigenvecs[params_indices[n]];
-      eigenvals = partition->eigenvals[params_indices[n]];
-
-      /* if branch length is zero then set the p-matrix to identity matrix */
-      if (!branch_lengths[i])
-      {
-        for (j = 0; j < states; ++j)
-          for (k = 0; k < states; ++k)
-            pmatrix[j*states_padded + k] = (j == k) ? 1 : 0;
-      }
-      else
-      {
-        /* exponentiate eigenvalues */
-        if (prop_invar > PLL_MISC_EPSILON)
-        {
-          for (j = 0; j < states; ++j)
-            expd[j] = exp(eigenvals[j] * rates[n] * branch_lengths[i]
-                                       / (1.0 - prop_invar));
-        }
-        else
-        {
-          for (j = 0; j < states; ++j)
-            expd[j] = exp(eigenvals[j] * rates[n] * branch_lengths[i]);
-        }
-
-        for (j = 0; j < states; ++j)
-          for (k = 0; k < states; ++k)
-            temp[j*states+k] = inv_eigenvecs[j*states+k] * expd[k];
-
-        for (j = 0; j < states; ++j)
-          for (k = 0; k < states; ++k)
-          {
-            pmatrix[j*states_padded+k] = 0;
-            for (m = 0; m < states; ++m)
-            {
-              pmatrix[j*states_padded+k] +=
-                  temp[j*states+m] * eigenvecs[m*states+k];
-            }
-          }
-      }
-    }
-  }
-  free(expd);
-  free(temp);
-  return PLL_SUCCESS;
+  return pll_core_update_pmatrix(partition->pmatrix,
+                                 partition->states,
+                                 partition->rate_cats,
+                                 partition->rates,
+                                 branch_lengths,
+                                 matrix_indices,
+                                 params_indices,
+                                 partition->prop_invar,
+                                 partition->eigenvals,
+                                 partition->eigenvecs,
+                                 partition->inv_eigenvecs,
+                                 count,
+                                 partition->attributes);
 }
 
 PLL_EXPORT void pll_set_frequencies(pll_partition_t * partition,
