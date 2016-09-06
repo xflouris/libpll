@@ -21,6 +21,168 @@
 
 #include "pll.h"
 
+PLL_EXPORT double pll_core_root_loglikelihood_avx(unsigned int states,
+                                                  unsigned int sites,
+                                                  unsigned int rate_cats,
+                                                  const double * clv,
+                                                  const unsigned int * scaler,
+                                                  double ** frequencies,
+                                                  const double * rate_weights,
+                                                  const unsigned int * pattern_weights,
+                                                  const double * invar_proportion,
+                                                  const int * invar_indices,
+                                                  const unsigned int * freqs_indices,
+                                                  double * persite_lnl)
+{
+  unsigned int i,j,k,m = 0;
+  double logl = 0;
+  double prop_invar = 0;
+
+  const double * freqs = NULL;
+
+  double term, term_r;
+  double inv_site_lk;
+
+  unsigned int states_padded = (states+3) & 0xFFFFFFFC;
+
+  __m256d xmm0, xmm1, xmm2, xmm3;
+
+  for (i = 0; i < sites; ++i)
+  {
+    term = 0;
+    for (j = 0; j < rate_cats; ++j)
+    {
+      freqs = frequencies[freqs_indices[j]];
+      xmm3 = _mm256_setzero_pd();
+
+      for (k = 0; k < states_padded; k += 4)
+      {
+        /* load frequencies for current rate matrix */
+        xmm0 = _mm256_load_pd(freqs);
+
+        /* load clv */
+        xmm1 = _mm256_load_pd(clv);
+
+        /* multiply with frequencies */
+        xmm2 = _mm256_mul_pd(xmm0,xmm1);
+
+        xmm3 = _mm256_add_pd(xmm3,xmm2);
+
+        freqs += 4;
+        clv += 4;
+      }
+
+      /* add up the elements of xmm2 */
+      xmm1 = _mm256_hadd_pd(xmm3,xmm3);
+
+      term_r = ((double *)&xmm1)[0] + ((double *)&xmm1)[2];
+
+      /* account for invariant sites */
+      prop_invar = invar_proportion ? invar_proportion[freqs_indices[j]] : 0;
+      if (prop_invar > 0)
+      {
+        freqs = frequencies[freqs_indices[j]];
+        inv_site_lk = (invar_indices[i] == -1) ?
+                           0 : freqs[invar_indices[i]];
+        term += rate_weights[j] * (term_r * (1 - prop_invar) + 
+                                   inv_site_lk*prop_invar);
+      }
+      else
+      {
+        term += term_r * rate_weights[j];
+      }
+    }
+
+    /* compute site log-likelihood and scale if necessary */
+    term = log(term) * pattern_weights[i];
+    if (scaler && scaler[i])
+      term += scaler[i] * log(PLL_SCALE_THRESHOLD);
+
+    /* store per-site log-likelihood */
+    if (persite_lnl)
+      persite_lnl[m++] = term;
+
+    logl += term;
+  }
+  return logl;
+}
+
+PLL_EXPORT
+double pll_core_root_loglikelihood_4x4_avx(unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * clv,
+                                           const unsigned int * scaler,
+                                           double ** frequencies,
+                                           const double * rate_weights,
+                                           const unsigned int * pattern_weights,
+                                           const double * invar_proportion,
+                                           const int * invar_indices,
+                                           const unsigned int * freqs_indices,
+                                           double * persite_lnl)
+{
+  unsigned int i,j,m = 0;
+  double logl = 0;
+  double prop_invar = 0;
+
+  const double * freqs = NULL;
+
+  double term, term_r;
+  double inv_site_lk;
+
+  __m256d xmm0, xmm1, xmm2;
+
+  for (i = 0; i < sites; ++i)
+  {
+    term = 0;
+    for (j = 0; j < rate_cats; ++j)
+    {
+      freqs = frequencies[freqs_indices[j]];
+
+      /* load frequencies for current rate matrix */
+      xmm0 = _mm256_load_pd(freqs);
+
+      /* load clv */
+      xmm1 = _mm256_load_pd(clv);
+
+      /* multiply with frequencies */
+      xmm2 = _mm256_mul_pd(xmm0,xmm1);
+
+      /* add up the elements of xmm2 */
+      xmm1 = _mm256_hadd_pd(xmm2,xmm2);
+
+      term_r = ((double *)&xmm1)[0] + ((double *)&xmm1)[2];
+
+      /* account for invariant sites */
+      prop_invar = invar_proportion ? invar_proportion[freqs_indices[j]] : 0;
+      if (prop_invar > 0)
+      {
+        inv_site_lk = (invar_indices[i] == -1) ?
+                           0 : freqs[invar_indices[i]];
+        term += rate_weights[j] * (term_r * (1 - prop_invar) + 
+                                   inv_site_lk*prop_invar);
+      }
+      else
+      {
+        term += term_r * rate_weights[j];
+      }
+
+      clv += 4;
+    }
+
+    /* compute site log-likelihood and scale if necessary */
+    term = log(term) * pattern_weights[i];
+    if (scaler && scaler[i])
+      term += scaler[i] * log(PLL_SCALE_THRESHOLD);
+
+    /* store per-site log-likelihood */
+    if (persite_lnl)
+      persite_lnl[m++] = term;
+
+    logl += term;
+  }
+  return logl;
+}
+
 PLL_EXPORT
 double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
                                               unsigned int rate_cats,
