@@ -86,19 +86,24 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
       {
         term_r += clv[k] * freqs[k];
       }
-      term += term_r * weights[j];
+
+      /* account for invariant sites */
+      if (prop_invar > 0)
+      {
+        inv_site_lk = (partition->invariant[i] == -1) ?
+                           0 : freqs[partition->invariant[i]];
+        term += weights[j] * (term_r * (1 - prop_invar) + 
+                              inv_site_lk*prop_invar);
+      }
+      else
+      {
+        term += term_r * weights[j];
+      }
+
       clv += states_padded;
     }
 
     site_lk = term;
-
-    /* account for invariant sites */
-    if (prop_invar > 0)
-    {
-      inv_site_lk = (partition->invariant[i] == -1) ?
-                         0 : freqs[partition->invariant[i]];
-      site_lk = site_lk * (1 - prop_invar) + inv_site_lk*prop_invar;
-    }
 
     /* compute site log-likelihood and scale if necessary */
     site_lk = log(site_lk) * partition->pattern_weights[i];
