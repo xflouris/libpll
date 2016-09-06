@@ -21,6 +21,91 @@
 
 #include "pll.h"
 
+PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
+                                              unsigned int sites,
+                                              unsigned int rate_cats,
+                                              const double * clv,
+                                              const unsigned int * scaler,
+                                              double ** frequencies,
+                                              const double * rate_weights,
+                                              const unsigned int * pattern_weights,
+                                              const double * invar_proportion,
+                                              const int * invar_indices,
+                                              const unsigned int * freqs_indices,
+                                              double * persite_lnl,
+                                              unsigned int attrib)
+{
+  unsigned int i,j,k,m = 0;
+  double logl = 0;
+  const double * freqs = NULL;
+
+  double prop_invar = 0;
+
+  double term, term_r;
+  double site_lk, inv_site_lk;
+
+  unsigned int states_padded = states;
+
+  #ifdef HAVE_SSE
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    states_padded = (states+1) & 0xFFFFFFFE;
+  }
+  #endif
+  #ifdef HAVE_AVX
+  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    states_padded = (states+3) & 0xFFFFFFFC;
+  }
+  #endif
+
+
+  /* iterate through sites */
+  for (i = 0; i < sites; ++i)
+  {
+    term = 0;
+    for (j = 0; j < rate_cats; ++j)
+    {
+      freqs = frequencies[freqs_indices[j]];
+      term_r = 0;
+      for (k = 0; k < states; ++k)
+      {
+        term_r += clv[k] * freqs[k];
+      }
+
+      /* account for invariant sites */
+      prop_invar = invar_proportion ? invar_proportion[freqs_indices[j]] : 0;
+      if (prop_invar > 0)
+      {
+        inv_site_lk = (invar_indices[i] == -1) ?
+                           0 : freqs[invar_indices[i]];
+        term += rate_weights[j] * (term_r * (1 - prop_invar) + 
+                                   inv_site_lk*prop_invar);
+      }
+      else
+      {
+        term += term_r * rate_weights[j];
+      }
+
+      clv += states_padded;
+    }
+
+    site_lk = term;
+
+    /* compute site log-likelihood and scale if necessary */
+    site_lk = log(site_lk) * pattern_weights[i];
+    if (scaler && scaler[i])
+      site_lk += scaler[i] * log(PLL_SCALE_THRESHOLD);
+
+    /* store per-site log-likelihood */
+    if (persite_lnl)
+      persite_lnl[m++] = site_lk;
+
+    logl += site_lk;
+  }
+  return logl;
+}
+
 PLL_EXPORT
 double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
                                           unsigned int rate_cats,

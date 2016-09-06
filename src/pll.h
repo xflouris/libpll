@@ -628,7 +628,7 @@ PLL_EXPORT void pll_rtree_create_pars_recops(pll_rtree_t ** trav_buffer,
                                              pll_pars_recop_t * ops,
                                              unsigned int * ops_count);
 
-/* functions in core_likelihood.c */
+/* functions in core_partials.c */
 
 PLL_EXPORT void pll_core_create_lookup(unsigned int states,
                                        unsigned int rate_cats,
@@ -805,6 +805,20 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
                                                      const unsigned int * freqs_indices,
                                                      double * persite_lnl,
                                                      unsigned int attrib);
+
+PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
+                                              unsigned int sites,
+                                              unsigned int rate_cats,
+                                              const double * clv,
+                                              const unsigned int * scaler,
+                                              double ** frequencies,
+                                              const double * rate_weights,
+                                              const unsigned int * pattern_weights,
+                                              const double * invar_proportion,
+                                              const int * invar_indices,
+                                              const unsigned int * freqs_indices,
+                                              double * persite_lnl,
+                                              unsigned int attrib);
 
 /* functions in core_partials_sse.c */
 

@@ -47,24 +47,81 @@ static double compute_asc_bias_correction(double logl_base,
   return logl_correction;
 }
 
+static double root_loglikelihood_asc_bias(pll_partition_t * partition,
+                                          const double * clv,
+                                          unsigned int * scaler,
+                                          const unsigned int * freqs_indices)
+{
+   unsigned int i,j,k;
+   double logl = 0;
+   double term_r, term;
+   double site_lk;
+
+   const double * freqs = NULL;
+   unsigned int states = partition->states;
+   unsigned int states_padded = partition->states_padded;
+   unsigned int scale_factors;
+   unsigned int * pattern_weights = partition->pattern_weights;
+   double * rate_weights = partition->rate_weights;
+
+   double logl_correction = 0;
+   unsigned int sum_w_inv = 0;
+   int asc_bias_type = partition->attributes & PLL_ATTRIB_AB_MASK;
+
+   /* 1. compute per-site logl for each state */
+   for (i = 0; i < states; ++i)
+   {
+     term = 0;
+     for (j = 0; j < partition->rate_cats; ++j)
+     {
+       freqs = partition->frequencies[freqs_indices[j]];
+       term_r = 0;
+       for (k = 0; k < states; ++k)
+       {
+         term_r += clv[k] * freqs[k];
+       }
+       term += term_r * rate_weights[j];
+       clv += states_padded;
+     }
+
+     /* count number of scaling factors to acount for */
+     scale_factors = scaler ? scaler[partition->sites + i] : 0;
+
+     sum_w_inv += pattern_weights[partition->sites + i];
+     if (asc_bias_type == PLL_ATTRIB_AB_STAMATAKIS)
+     {
+       /* 2a. site_lk is the lnl weighted by the number of occurences */
+       site_lk = log(term) * partition->pattern_weights[partition->sites + i];
+       if (scale_factors)
+         site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+     }
+     else
+     {
+       /* 2b. site_lk is the actual likelihood */
+         site_lk = term * pow(PLL_SCALE_THRESHOLD, scale_factors);
+     }
+
+     /* logl_correction is the sum of weighted log likelihoods if
+        asc_bias_type = Stamatakis, or the sum of likelihoods otherwise */
+     logl_correction += site_lk;
+   }
+
+   /* 3. apply correction to the lnl score */
+   logl += compute_asc_bias_correction(logl_correction,
+                                       partition->pattern_weight_sum,
+                                       sum_w_inv,
+                                       asc_bias_type);
+
+   return logl;
+}
+
 PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
                                                  unsigned int clv_index,
                                                  int scaler_index,
                                                  const unsigned int * freqs_indices,
                                                  double * persite_lnl)
 {
-  unsigned int i,j,k,m = 0;
-
   double logl = 0;
-  double term, term_r;
-  const double * clv = partition->clv[clv_index];
-  unsigned int rates = partition->rate_cats;
-  double * weights = partition->rate_weights;
-  unsigned int states = partition->states;
-  unsigned int states_padded = partition->states_padded;
-  const double * freqs = NULL;
-  double prop_invar = 0;
-  double site_lk, inv_site_lk;
   unsigned int * scaler;
 
   /* get scaler array if specified */
@@ -73,104 +130,35 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
   else
     scaler = partition->scale_buffer[scaler_index];
 
-  /* iterate through sites */
-  for (i = 0; i < partition->sites; ++i)
-  {
-    term = 0;
-    for (j = 0; j < rates; ++j)
-    {
-      freqs = partition->frequencies[freqs_indices[j]];
-      prop_invar = partition->prop_invar[freqs_indices[j]];
-      term_r = 0;
-      for (k = 0; k < states; ++k)
-      {
-        term_r += clv[k] * freqs[k];
-      }
+  /* compute log-likelihood via the core function */
+  logl = pll_core_root_loglikelihood(partition->states,
+                                     partition->sites,
+                                     partition->rate_cats,
+                                     partition->clv[clv_index],
+                                     scaler,
+                                     partition->frequencies,
+                                     partition->rate_weights,
+                                     partition->pattern_weights,
+                                     partition->prop_invar,
+                                     partition->invariant,
+                                     freqs_indices,
+                                     persite_lnl,
+                                     partition->attributes);
 
-      /* account for invariant sites */
-      if (prop_invar > 0)
-      {
-        inv_site_lk = (partition->invariant[i] == -1) ?
-                           0 : freqs[partition->invariant[i]];
-        term += weights[j] * (term_r * (1 - prop_invar) + 
-                              inv_site_lk*prop_invar);
-      }
-      else
-      {
-        term += term_r * weights[j];
-      }
 
-      clv += states_padded;
-    }
-
-    site_lk = term;
-
-    /* compute site log-likelihood and scale if necessary */
-    site_lk = log(site_lk) * partition->pattern_weights[i];
-    if (scaler && scaler[i])
-      site_lk += scaler[i] * log(PLL_SCALE_THRESHOLD);
-
-    /* store per-site log-likelihood */
-    if (persite_lnl)
-      persite_lnl[m++] = site_lk;
-
-    logl += site_lk;
-
-  }
+                              
 
   /* ascertainment bias correction */
   if (partition->attributes & PLL_ATTRIB_AB_MASK)
   {
+    /* Note the assertion must be done for all rate matrices
     assert(prop_invar == 0);
-    double logl_correction = 0;
-    unsigned int sum_w_inv = 0;
-    unsigned int scale_factors;
-    int asc_bias_type = partition->attributes & PLL_ATTRIB_AB_MASK;
+    */
 
-    for (i = 0; i < partition->states; ++i)
-    {
-      /* 1. compute per-site logl for each state */
-      term = 0;
-      for (j = 0; j < rates; ++j)
-      {
-        freqs = partition->frequencies[freqs_indices[j]];
-        prop_invar = partition->prop_invar[freqs_indices[j]];
-        term_r = 0;
-        for (k = 0; k < states; ++k)
-        {
-          term_r += clv[k] * freqs[k];
-        }
-        term += term_r * weights[j];
-        clv += states_padded;
-      }
-
-      /* count number of scaling factors to acount for */
-      scale_factors = scaler?scaler[partition->sites + i]:0;
-
-      sum_w_inv += partition->pattern_weights[partition->sites + i];
-      if (asc_bias_type == PLL_ATTRIB_AB_STAMATAKIS)
-      {
-        /* 2a. site_lk is the lnl weighted by the number of occurences */
-        site_lk = log(term) * partition->pattern_weights[partition->sites + i];
-        if (scale_factors)
-          site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
-      }
-      else
-      {
-        /* 2b. site_lk is the actual likelihood */
-          site_lk = term * pow(PLL_SCALE_THRESHOLD, scale_factors);
-      }
-
-      /* logl_correction is the sum of weighted log likelihoods if
-         asc_bias_type = Stamatakis, or the sum of likelihoods otherwise */
-      logl_correction += site_lk;
-    }
-
-    /* 3. apply correction to the lnl score */
-    logl += compute_asc_bias_correction(logl_correction,
-                                        partition->pattern_weight_sum,
-                                        sum_w_inv,
-                                        asc_bias_type);
+    logl += root_loglikelihood_asc_bias(partition,
+                                        partition->clv[clv_index],
+                                        scaler,
+                                        freqs_indices);
   }
 
   return logl;
