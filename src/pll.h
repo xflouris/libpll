@@ -1285,6 +1285,20 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
                                                double ** inv_eigenvecs,
                                                unsigned int count);
 
+/* functions in core_pmatrix_avx.c */
+
+PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
+                                               unsigned int rate_cats,
+                                               double * rates,
+                                               const double * branch_lengths,
+                                               const unsigned int * matrix_indices,
+                                               const unsigned int * params_indices,
+                                               double * prop_invar,
+                                               double ** eigenvals,
+                                               double ** eigenvecs,
+                                               double ** inv_eigenvecs,
+                                               unsigned int count);
+
 /* functions in compress.c */
 
 PLL_EXPORT unsigned int * pll_compress_site_patterns(char ** sequence,

@@ -50,6 +50,22 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
   #ifdef HAVE_SSE
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
+    if (states == 4)
+    {
+      return pll_core_update_pmatrix_4x4_sse(pmatrix,
+                                             rate_cats,
+                                             rates,
+                                             branch_lengths,
+                                             matrix_indices,
+                                             params_indices,
+                                             prop_invar,
+                                             eigenvals,
+                                             eigenvecs,
+                                             inv_eigenvecs,
+                                             count);
+    }
+    /* this line is never called, but should we disable the else case above,
+       then states_padded must be set to this value */
     states_padded = (states+1) & 0xFFFFFFFE;
   }
   #endif
@@ -70,6 +86,8 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
                                              inv_eigenvecs,
                                              count);
     }
+    /* this line is never called, but should we disable the else case above,
+       then states_padded must be set to this value */
     states_padded = (states+3) & 0xFFFFFFFC;
   }
   #endif
