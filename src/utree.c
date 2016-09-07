@@ -459,52 +459,59 @@ PLL_EXPORT int pll_utree_check_integrity(pll_utree_t * root)
   return pll_utree_every(start_node->back, cb_check_integrity);
 }
 
-static pll_utree_t * clone_node( pll_utree_t * tree )
+/* TODO: Memory allocation checks were not implemented in this function!!! */
+static pll_utree_t * clone_node(pll_utree_t * node)
 {
-  pll_utree_t * new_tree = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
-  memcpy(new_tree, tree, sizeof(pll_utree_t));
-  if (tree->label)
+  pll_utree_t * new = (pll_utree_t *)malloc(sizeof(pll_utree_t));
+  memcpy(new, node, sizeof(pll_utree_t));
+
+  if (node->label)
   {
-    new_tree->label = (char *) malloc( strlen(tree->label) + 1);
-    strcpy(new_tree->label, tree->label);
+    new->label = (char *)malloc(strlen(node->label)+1);
+    strcpy(new->label,node->label);
   }
 
-  if (tree->next)
+  if (node->next)
   {
-    new_tree->next               = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
-    memcpy(new_tree->next, tree->next, sizeof(pll_utree_t));
-    new_tree->next->next         = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
-    memcpy(new_tree->next->next, tree->next->next, sizeof(pll_utree_t));
-    new_tree->next->next->next   = new_tree;
-    new_tree->next->label = new_tree->next->next->label = new_tree->label;
+    new->next = (pll_utree_t *)malloc(sizeof(pll_utree_t));
+    memcpy(new->next, node->next, sizeof(pll_utree_t));
+
+    new->next->next = (pll_utree_t *)malloc(sizeof(pll_utree_t));
+    memcpy(new->next->next, node->next->next, sizeof(pll_utree_t));
+
+    new->next->next->next = new;
+    new->next->label = new->next->next->label = new->label;
   }
-  return new_tree;
+  return new;
 }
 
-static void utree_recurse_clone(pll_utree_t * new_tree, pll_utree_t * root)
+static void utree_recurse_clone(pll_utree_t * new, pll_utree_t * root)
 {
-    if (root->back)
-      new_tree->back = clone_node(root->back);
-      new_tree->back->back = new_tree;
-      if (root->back->next)
-      {
-        utree_recurse_clone(new_tree->back->next, root->back->next);
-        utree_recurse_clone(new_tree->back->next->next, root->back->next->next);
-      }
+  if (root->back)
+  {
+    new->back = clone_node(root->back);
+    new->back->back = new;
+
+    if (root->back->next)
+    {
+      utree_recurse_clone(new->back->next,       root->back->next);
+      utree_recurse_clone(new->back->next->next, root->back->next->next);
+    }
+  }
 }
 
 PLL_EXPORT pll_utree_t * pll_utree_clone(pll_utree_t * root)
 {
-  pll_utree_t * new_tree = clone_node(root);
+  pll_utree_t * new = clone_node(root);
 
-  utree_recurse_clone(new_tree, root);
+  utree_recurse_clone(new, root);
   if (root->next)
   {
-    utree_recurse_clone(new_tree->next, root->next);
-    utree_recurse_clone(new_tree->next->next, root->next->next);
+    utree_recurse_clone(new->next, root->next);
+    utree_recurse_clone(new->next->next, root->next->next);
   }
 
-  return new_tree;
+  return new;
 }
 
 static pll_utree_t * rtree_unroot(pll_rtree_t * root, pll_utree_t * back)
