@@ -313,6 +313,25 @@ typedef struct pll_pars_recop_s
   unsigned int parent_ancestral_index;
 } pll_pars_recop_t;
 
+/* structures for SVG visualization */
+
+typedef struct pll_svg_attrib_s
+{
+  int precision;
+  long width;
+  long font_size;
+  long tip_spacing;
+  long stroke_width;
+  long legend_show;
+  long legend_spacing;
+  long margin_left;
+  long margin_right;
+  long margin_bottom;
+  long margin_top;
+  long node_radius;
+  double legend_ratio;
+} pll_svg_attrib_t;
+
 /* common data */
 
 PLL_EXPORT extern __thread int pll_errno;
@@ -1285,7 +1304,7 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
                                                double ** inv_eigenvecs,
                                                unsigned int count);
 
-/* functions in core_pmatrix_avx.c */
+/* functions in core_pmatrix_sse.c */
 
 PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
                                                unsigned int rate_cats,
@@ -1355,6 +1374,17 @@ PLL_EXPORT double pll_parsimony_score(pll_parsimony_t * pars,
                                       unsigned int score_buffer_index);
 
 PLL_EXPORT void pll_parsimony_destroy(pll_parsimony_t * pars);
+
+/* functions in svg.c */
+
+PLL_EXPORT pll_svg_attrib_t * pll_svg_attrib_create(void);
+
+PLL_EXPORT void pll_svg_attrib_destroy(pll_svg_attrib_t * attrib);
+
+PLL_EXPORT int pll_utree_export_svg(pll_utree_t * tree,
+                                    unsigned int tip_count, 
+                                    const pll_svg_attrib_t * attribs,
+                                    const char * filename);
 
 #ifdef __cplusplus
 } /* extern "C" */
