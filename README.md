@@ -35,7 +35,18 @@ and cross-platform library.
 
 The library can be compiled using the included Makefile:
 
-`make`
+```bash
+git clone https://github.com/xflouris/libpll.git
+cd libpll
+./autogen.sh
+./configure
+make
+make install    # as root, otherwise run: sudo make install
+```
+
+The library will be installed on the operating system's standard paths.  For
+some GNU/Linux distributions it might be necessary to add that standard path
+(typically `/usr/local/lib`) to `/etc/ld.so.conf` and run `ldconfig`.
 
 Microsoft Windows compatibility was tested with a cross-compiler and seems to
 work out-of-the-box using [MingW](http://www.mingw.org/).
