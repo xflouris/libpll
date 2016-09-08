@@ -1,0 +1,580 @@
+.\" -*- coding: utf-8 -*-
+.\" ============================================================================
+.TH libpll 3 "September 9, 2016" "libpll 0.1.0" "Library Functions Manual"
+.\" ============================================================================
+.SH NAME
+libpll \(em Phylogenetic Likelihood Library
+.\" ============================================================================
+.SH SYNOPSIS
+.\" left justified, ragged right
+.ad l
+Partition management
+.RS
+.BI "pll_partition_t * pll_partition_create(unsigned int " tips ", unsigned int\
+ " clv_buffers ", unsigned int " states ", unsigned int " sites ", unsigned int\
+ " rate_matrices ", unsigned int " prob_matrices ", unsigned int " rate_cats ",\
+ unsigned int " scale_buffers ", unsigned int " attributes ");"
+.PP
+.BI "void pll_partition_destroy(pll_partition_t * " partition ");"
+.PP
+.RE
+Partition parameters setup
+.RS
+.BI "int pll_set_tip_states(pll_partition_t * " partition ", unsigned int "\
+ tip_index ", const unsigned int * " map ", const char * " sequence ");"
+.PP
+.BI "int pll_set_tip_clv(pll_partition_t * " partition ", unsigned int "\
+ tip_index ", const double * " clv ");"
+.PP
+.BI "void pll_set_pattern_weights(pll_partition_t * " partition ", const\
+ unsigned int * " pattern_weights ");"
+.PP
+.BI "int pll_set_asc_bias_type(pll_partition_t * " partition ", int "\
+ asc_bias_type ");"
+.PP
+.BI "void pll_set_asc_state_weights(pll_partition_t * " partition ", const\
+ unsigned int * " state_weights ");"
+.PP
+.BI "void pll_set_subst_params(pll_partition_t * " partition ", unsigned int\
+ " params_index ", const double * " params ");"
+.PP
+.BI "void pll_set_frequencies(pll_partition_t * " partition ",  unsigned int\
+ " params_index ", const double * " frequencies ");"
+.PP
+.BI "void pll_set_category_rates(pll_partition_t * " partition ", const double\
+ * " rates ");"
+.PP
+.BI "void pll_set_category_weights(pll_partition_t * " partition ", const\
+ double * " rate_weights ");"
+.PP
+.RE
+Transition probability matrices
+.RS
+.BI "int pll_update_prob_matrices(pll_partition_t * " partition ", const\
+ unsigned int * " params_index ", const unsigned int * " matrix_indices ",\
+ const double * " branch_lengths ", unsigned int " count ");"
+.PP
+.BI "int pll_update_eigen(pll_partition_t * " partition ", unsigned int "\
+ params_index ");"
+.PP
+.BI "void pll_show_pmatrix(pll_partition_t * " partition ", unsigned int "\
+ index ", unsigned int " float_precision ");"
+.PP
+.RE
+Invariant sites
+.RS
+.BI "unsigned int pll_count_invariant_sites(pll_partition_t * " partition ",\
+ unsigned int * " state_inv_count ");"
+.PP
+.BI "int pll_update_invariant_sites(pll_partition_t * " partition ");"
+.PP
+.BI "int pll_update_invariant_sites_proportion(pll_partition_t * " partition ",\
+ unsigned int " params_index ", double " prop_invar ");"
+.PP
+.RE
+Conditional probability vectors
+.RS
+.BI "void pll_update_partials(pll_partition_t * " partition ", const\
+ pll_operation_t * " operations ", unsigned int " count ");"
+.PP
+.BI "void pll_show_clv(pll_partition_t * " partition ", unsigned int "\
+ clv_index ", int " scaler_index ", unsigned int " float_precision ");"
+.PP
+.RE
+Evaluation of log-Likelihood
+.RS
+.BI "double pll_compute_root_loglikelihood(pll_partition_t * " partition ",\
+ unsigned int " clv_index ", int " scaler_index ", const unsigned int * "\
+ freqs_index ", double * "persite_lnl ");"
+.PP
+.BI "double pll_compute_edge_loglikelihood(pll_partition_t * " partition ",\
+ unsigned int " parent_clv_index ", int " parent_scaler_index ", unsigned int\
+ " child_clv_index ", int " child_scaler_index ", unsigned int " matrix_index\
+ ", const unsigned int * " freqs_index ", double * " persite_lnl ");"
+.PP
+.RE
+Likelihood function derivatives
+.RS
+.BI "int pll_update_sumtable(pll_partition_t * " partition ", unsigned int "\
+ parent_clv_index ", unsigned int " child_clv_index ", const unsigned int * "\
+ params_indices ", double * " sumtable ");"
+.PP
+.BI "int pll_compute_likelihood_derivatives(pll_partition_t * " partition ",\
+ int " parent_scaler_index ", int " child_scaler_index ", double "\
+ branch_length ", const unsigned int * " params_indices ", const double * "\
+ sumtable ", double * " d_f ", double * " dd_f ");"
+.PP
+.RE
+FASTA file handling 
+.RS
+.BI "pll_fasta_t * pll_fasta_open(const char * " filename ", const unsigned\
+ int * " map ");"
+.PP
+.BI "int pll_fasta_getnext(pll_fasta_t * " fd ", char ** " head ", long * "\
+ head_len ", char ** " seq ", long * " seq_len ", long * " seqno ");"
+.PP
+.BI "void pll_fasta_close(pll_fasta_t * " fd ");"
+.PP
+.BI "long pll_fasta_getfilesize(pll_fasta_t * " fd ");"
+.PP
+.BI "long pll_fasta_getfilepos(pll_fasta_t * " fd ");"
+.PP 
+.BI "int pll_fasta_rewind(pll_fasta_t * " fd ");"
+.PP
+.RE
+PHYLIP file handling
+.RS
+.BI "pll_msa_t * pll_phylip_parse_msa(const char * " filename ", unsigned int\
+ * " msa_count ");"
+.PP
+.BI "void pll_msa_destroy(pll_msa_t * " msa ");"
+.PP
+.RE
+Newick handling
+.RS
+.BI "pll_rtree_t * pll_rtree_parse_newick(const char * " filename ", unsigned\
+ int * " tip_count ");"
+.PP
+.BI "pll_utree_t * pll_utree_parse_newick(const char * " filename ", unsigned\
+ int * " tip_count ");"
+.PP
+.BI "pll_utree_t * pll_utree_parse_newick_string(char * " s ", unsigned int *\
+ " tip_count ");"
+.PP
+.RE
+Unrooted tree structure manipulation
+.RS
+.BI "void pll_utree_destroy(pll_utree_t * " root ");"
+.PP
+.BI "void pll_utree_show_ascii(pll_utree_t * " tree ", int " options ");"
+.PP
+.BI "char * pll_utree_export_newick(pll_utree_t * " root ");"
+.PP
+.BI "int pll_utree_traverse(pll_utree_t * " root ", int (*" cbtrav\
+ ")(pll_utree_t *), pll_utree_t ** " outbuffer ", unsigned int * " trav_size\
+ ");"
+.PP
+.BI "unsigned int pll_utree_query_tipnodes(pll_utree_t * " root ", pll_utree_t\
+ ** " node_list ");"
+.PP 
+.BI "unsigned int pll_utree_query_innernodes(pll_utree_t * " root ",\
+ pll_utree_t ** " node_list ");"
+.PP
+.BI "void pll_utree_create_operations(pll_utree_t ** " trav_buffer ", unsigned\
+ int " trav_buffer_size ", double * " branches ", unsigned int * "\
+ pmatrix_indices ", pll_operation_t * " ops ", unsigned int * " matrix_count ",\
+ unsigned int * " ops_count ");"
+.PP
+.BI "int pll_utree_check_integrity(pll_utree_t * " root ");"
+.PP
+.BI "pll_utree_t * pll_utree_clone(pll_utree_t * " root ");"
+.PP
+.BI "pll_utree_t * pll_rtree_unroot(pll_rtree_t * " root ");"
+.PP
+.BI "int pll_utree_every(pll_utree_t * " node ", int (*" cb\
+ ")(pll_utree_t *));"
+.PP
+.RE
+Rooted tree structure manipulation
+.RS
+.BI "void pll_rtree_destroy(pll_rtree_t * " root ");"
+.PP
+.BI "void pll_rtree_show_ascii(pll_rtree_t * " tree ", int " options ");"
+.PP
+.BI "char * pll_rtree_export_newick(pll_rtree_t * " root ");"
+.PP
+.BI "int pll_rtree_traverse(pll_rtree_t * " root ", int (*"\
+ cbtrav ")(pll_rtree_t *), pll_rtree_t ** " outbuffer ", unsigned int * "\
+ trav_size ");"
+.PP
+.BI "unsigned int pll_rtree_query_tipnodes(pll_rtree_t * " root ",\
+ pll_rtree_t ** " node_list ");"
+.PP
+.BI "unsigned int pll_rtree_query_innernodes(pll_rtree_t * " root ",\
+ pll_rtree_t ** " node_list ");"
+.PP
+.BI "void pll_rtree_create_operations(pll_rtree_t ** " trav_buffer ",\
+ unsigned int " trav_buffer_size ", double * " branches ", unsigned int * "\
+ pmatrix_indices ", pll_operation_t * " ops ", unsigned int * " matrix_count\
+ ", unsigned int * " ops_count ");"
+.PP
+.BI "void pll_rtree_create_pars_buildops(pll_rtree_t ** " trav_buffer ",\
+ unsigned int " trav_buffer_size ", pll_pars_buildop_t * " ops ",\
+ unsigned int * " ops_count ");"
+.PP
+.BI "void pll_rtree_create_pars_recops(pll_rtree_t ** " trav_buffer ",\
+ unsigned int " trav_buffer_size ", pll_pars_recop_t * " ops ", unsigned int *\
+ " ops_count ");"
+.PP
+.RE
+Topological rearrangement moves
+.RS
+.BI "int pll_utree_spr(pll_utree_t * " p ", pll_utree_t * " r ",\
+ pll_utree_rb_t * " rb ", double * " branch_lengths ", unsigned int * "\
+ matrix_indices ");"
+.PP
+.BI "int pll_utree_spr_safe(pll_utree_t * " p ", pll_utree_t * " r ",\
+ pll_utree_rb_t * " rb ", double * " branch_lengths ", unsigned int * "\
+ matrix_indices ");"
+.PP
+.BI "int pll_utree_nni(pll_utree_t * " p ", int " type ", pll_utree_rb_t * "\
+ rb ");"
+.PP
+.BI "int pll_utree_rollback(pll_utree_rb_t * " rollback ",\
+ double * " branch_lengths ", unsigned int * " matrix_indices ");"
+.PP
+.RE
+Parsimony functions
+.RS
+.BI "int pll_set_parsimony_sequence(pll_parsimony_t * " pars ", unsigned int "\
+ tip_index ", const unsigned int * " map ", const char * " sequence ");"
+.PP
+.BI "pll_parsimony_t * pll_parsimony_create(unsigned int * " tips ", unsigned\
+ int " states ", unsigned int " sites ", double * " score_matrix ", unsigned\
+ int " score_buffers ", unsigned int " ancestral_buffers ");"
+.PP
+.BI "double pll_parsimony_build(pll_parsimony_t * " pars ", pll_pars_buildop_t\
+ * " operations ", unsigned int " count ");"
+.PP
+.BI "void pll_parsimony_reconstruct(pll_parsimony_t * " pars ", const unsigned\
+ int * " map ", pll_pars_recop_t * " operations ", unsigned int " count ");"
+.PP
+.BI "double pll_parsimony_score(pll_parsimony_t * " pars ", unsigned int "\
+ score_buffer_index ");"
+.PP
+.BI "void pll_parsimony_destroy(pll_parsimony_t * " pars ");"
+.PP
+.RE
+Auxiliary functions
+.RS
+.BI "int pll_compute_gamma_cats(double " alpha ", unsigned int " categories ",\
+ double * " output_rates ");"
+.PP
+.BI "void * pll_aligned_alloc(size_t " size ", size_t " alignment ");"
+.PP
+.BI "void pll_aligned_free(void * " ptr ");"
+.PP
+.BI "unsigned int * pll_compress_site_patterns(char ** " sequence ",\
+ const unsigned int * " map ", int " count ", int * " length ");"
+.PP
+.RE
+Core functions
+.RS
+.BI "void pll_core_create_lookup(unsigned int " states ", unsigned int "\
+ rate_cats ", double * " lookup ", const double * " left_matrix ",\
+ const double * " right_matrix ", unsigned int * " tipmap ", unsigned int "\
+ tipmap_size ", unsigned int " attrib ");"
+.PP
+.BI "void pll_core_update_partial_tt(unsigned int " states ", unsigned int "\
+ sites ", unsigned int " rate_cats ", double * " parent_clv ", unsigned int * "\
+ parent_scaler ", const unsigned char * " left_tipchars ", const unsigned char\
+ * " right_tipchars ", const unsigned int * " tipmap ", unsigned int "\
+ tipmap_size ", const double * " lookup ", unsigned int " attrib ");"
+.PP
+.BI "void pll_core_update_partial_ti(unsigned int " states ", unsigned int\
+ " sites ", unsigned int " rate_cats ", double * " parent_clv ", unsigned int *\
+ " parent_scaler ", const unsigned char * " left_tipchars ", const double * "\
+ right_clv ", const double * " left_matrix ", const double * " right_matrix ",\
+ const unsigned int * " right_scaler ", const unsigned int * " tipmap ",\
+ unsigned int " attrib ");"
+.PP
+.BI "void pll_core_update_partial_ii(unsigned int " states ", unsigned int "\
+ sites ", unsigned int " rate_cats ", double * " parent_clv ", unsigned int * "\
+ parent_scaler ", const double * " left_clv ", const double * " right_clv ",\
+ const double * " left_matrix ", const double * " right_matrix ", const\
+ unsigned int * " left_scaler ", const unsigned int * " right_scaler ", unsigned\
+ int " attrib ");"
+.PP
+.BI "int pll_core_update_sumtable_ti(unsigned int " states ", unsigned int "\
+ sites ", unsigned int " rate_cats ", const double * " parent_clv ", const\
+ unsigned char * " left_tipchars ", double ** " eigenvecs ", double ** "\
+ inv_eigenvecs ", double ** " freqs ", unsigned int * " tipmap ", double * "\
+ sumtable ", unsigned int " attrib ");"
+.PP
+.BI "int pll_core_likelihood_derivatives(unsigned int " states ", unsigned int"\
+ sites ", unsigned int " rate_cats ", const double * " rate_weights ", const\
+ unsigned int * " parent_scaler ", const unsigned int * " child_scaler ", const\
+ int * " invariant ", const unsigned int * " pattern_weights ", double "\
+ branch_length ", const double * " prop_invar ", double ** " freqs ", const\
+ double * " rates ", double ** " eigenvals ", const double * " sumtable ",\
+ double  * " d_f ", double * " dd_f ", unsigned int " attrib ");"
+.PP
+.BI "double pll_core_edge_loglikelihood_ii(unsigned int " states ", unsigned\
+ int " sites ", unsigned int " rate_cats ", const double * " parent_clv ",\
+ const unsigned int * " parent_scaler ", const double * " child_clv ", const\
+ unsigned int * " child_scaler ", const double * " pmatrix ", double ** "\
+ frequencies ", const double * " rate_weights ", const unsigned int * "\
+ pattern_weights ", const double * " invar_proportion ", const int * "\
+ invar_indices ", const unsigned int * " freqs_indices ", double * "\
+ persite_lnl ", unsigned int " attrib ");"
+.PP
+.BI "double pll_core_edge_loglikelihood_ti(unsigned int " states ", unsigned\
+ int " sites ", unsigned int " rate_cats ", const double * " parent_clv ",\
+ const unsigned int * " parent_scaler ", const unsigned char * " tipchars ",\
+ const unsigned int * " tipmap ", const double * " pmatrix ", double ** "\
+ frequencies ", const double * " rate_weights ", const unsigned int * "\
+ pattern_weights ", const double * " invar_proportion ", const int * "\
+ invar_indices ", const unsigned int * " freqs_indices ", double * "\
+ persite_lnl ", unsigned int " attrib ");"
+.PP
+.BI "int pll_core_update_pmatrix(double * " pmatrix ", unsigned int " states ",\
+ double " rate ", double " prop_invar ", double " branch_length ", double * "\
+ eigenvals ", double * " eigenvecs ", double * " inv_eigenvecs ", unsigned int\
+ " attrib ");"
+.PP
+.RE
+.\" left and right justified (default)
+.ad b
+.\" ============================================================================
+.SH DESCRIPTION
+\fBlibpll\fR is a library for phylogenetics.
+.PP
+.TP
+.BI "pll_partition_t * pll_partition_create(unsigned int " tips ", unsigned int\
+ " clv_buffers ", unsigned int " states ", unsigned int " sites ", unsigned int\
+ " rate_matrices ", unsigned int " prob_matrices ", unsigned int " rate_cats ",\
+ unsigned int " scale_buffers ", unsigned int " attributes ");"
+Creates a partition with either \fItips\fR character arrays or \fItips\fR CLV
+arrays (depending on \fIattributes\fR, see \fBPartition Attributes\fR), and,
+additionally, \fIclv_buffers\fR CLV vectors, for storing conditional
+probabilities at inner nodes.  The partition structure is constructed for
+\fIstates\fR number of states (e.g. 4 for nucleotide and 20 for amino-acid
+data) and sufficient space is allocated to host an alignment of size
+\fIsites\fR*\fItips\fR. The number of rate matrices that can be used is given
+by \fIrate_matrices\fR. Additionally, the function allocates space for hosting
+\fIrate_matrices\fR arrays of substitution parameters, frequencies, and
+auxiliary eigen-decomposition arrays (transparent to the user). The parameter
+\fIprob_matrices\fR dictates the number of probability matrices for which space
+will be allocated. This parameter is typically set to the number of branches
+the tree has (e.g., 2n-3 for unrooted and 2n-2 for rooted, where n is the
+number of tips/leaves). libpll will automatically create space for
+\fIprob_matrices\fR*\fIrate_cats\fR, where \fIrate_cats\fR is the number of
+different rate categories. The array of probability matrices is indexed from 0
+to \fIprob_matrices\fR-1. Each matrix entry consists of sufficient space to
+accommodate \fIrate_cats\fR matrices, which are stored consecutively in memory.
+Note that libpll will not allocate space for the different substitution
+matrices specified by \fIrate_matrices\fR. The user must indicate that to
+libpll by multiplying \fIprob_matrices\fR with the corresponding factor.
+Finally, \fIscale_buffers\fR sets the number of scaling buffers to be
+allocated, and attributes states the hardware acceleration options to be used
+(see \fBPartition Attributes\fR). The function returns a pointer to the
+allocated \fBpll_partition_t\fR structure. Note that, \fIrate_matrices\fR are
+used to address heterotachy, i.e. transition probability matrices computed from
+different rate matrices. For more information, see \fBUpdating transition
+probability matrices\fR.
+.PP
+.TP
+.BI "void pll_partition_destroy(pll_partition_t * " partition ");"
+Deallocates all data associated with the partition pointed by \fIpartition\fR.
+.PP
+.TP
+.BI "int pll_set_tip_states(pll_partition_t * " partition ", unsigned int "\
+ tip_index ", const unsigned int * " map ", const char * " sequence ");"
+Set the tip CLV (or tip character array) with index \fItip_index\fR of instance
+partition, according to the character sequence \fIsequence\fR and the
+conversion table \fImap\fR, which translates (or maps) characters to states.
+For an example see \fBSetting CLV vectors at tips from sequences and maps\fR.
+.PP
+.TP
+.BI "int pll_set_tip_clv(pll_partition_t * " partition ", unsigned int "\
+ tip_index ", const double * " clv ");"
+Set the tip CLV with index \fItip_index\fR of instance \fIpartition\fR, to the
+contents of the array \fIclv\fR. For an example see \fBSetting CLV vectors
+manually\fR. Note, this function cannot be used in conjuction with the
+\fBPLL_ATTRIB_PATTERN_TIP\fR (see \fBPartition Attributes\fR).
+.PP
+.TP
+.BI "void pll_set_subst_params(pll_partition_t * " partition ", unsigned int\
+ " params_index ", const double * " params ");"
+Sets the parameters for substitution model with index \fIparams_index\fR, where
+\fIparams_index\fR ranges from 0 to \fIrate_matrices\fR-1, as specified in the
+\fBpll_partition_create()\fR call. Array \fIparams\fR should contain exactly
+(\fIstates\fR*\fIstates\fR-\fIstates\fR)/2 parameters of type \fBdouble\fR.
+These values correspond to the upper triangle elements (above the main
+diagonal) of the rate matrix.
+.PP
+.TP
+.BI "void pll_set_frequencies(pll_partition_t * " partition ",  unsigned int\
+ " params_index ", const double * " frequencies ");"
+Sets the base frequencies for the substitution model with index
+\fIparams_index\fR, where \fIparams_index\fR ranges from 0 to
+\fIrate_matrices\fR-1, as specified in the \fBpll_partition_create()\fR call.
+The array of base frequencies (frequencies) is copied into the instance. The
+order of bases in the array depends on the encoding used when converting tip
+sequences to CLV. For example, if the \fBpll_map_nt\fR map was used with the
+\fBpll_set_tip_states()\fR function to describe nucleotide data, then the order
+is A, C, G, T. However, this can be arbitrarily set by adjusting the provided
+map.
+.PP
+.TP
+.BI "void pll_set_pattern_weights(pll_partition_t * " partition ", const\
+ unsigned int * " pattern_weights ");"
+Sets the vector of pattern weights (\fIpattern_weights\fR) for partition. The
+function reads and copies the first \fIpartition\fR->sites elements of
+\fIpattern_weights\fR into \fIpartition\fR->pattern_weights.
+.PP
+.TP
+.BI "void pll_set_category_rates(pll_partition_t * " partition ", const double\
+ * " rates ");"
+Sets the rate categories for \fIpartition\fR. The function reads and copies the
+first \fIpartition\fR->rate_cats elements of array rates into
+\fIpartition\fR->rates.
+.PP
+.TP
+.BI "int pll_update_invariant_sites(pll_partition_t * " partition ");"
+Updates the invariant sites array \fIpartition\fR->invariant, according to the
+sequences in the partition. This function is implicitly called by
+\fBpll_update_invariant_sites_proportion()\fR when the specified proportion of
+invariant sites is greater than zero, but it must be explicitly called by the
+client code if the sequences change.
+.PP
+.TP
+.BI "int pll_update_invariant_sites_proportion(pll_partition_t * " partition ",\
+ unsigned int " params_index ", double " prop_invar ");"
+Updates the proportion of invariant sites for the \fIpartition\fR rate matrix
+with with index \fIparams_index\fR. Note that, this call will not implicitly
+update the transition probability matrices computed from the particular rate
+matrix, but must be done explicitly for example with a call to
+\fBpll_update_prob_matrices()\fR.
+.PP
+.TP
+.BI "int pll_update_prob_matrices(pll_partition_t * " partition ", const\
+ unsigned int * " params_index ", const unsigned int * " matrix_indices ",\
+ const double * " branch_lengths ", unsigned int " count ");"
+Computes the transition probability matrices specified by the \fIcount\fR
+indices in \fImatrix_indices\fR, for all rate categories. A matrix with index
+\fImatrix_indices\fR[i] will be computed using the branch length
+\fIbranch_lengths\fR[i]. To compute the matrix for rate category j, the
+function uses the rate matrix with index \fIparams_indices\fR[j]. Matrices are
+stored in \fIpartition\fR->pmatrix[\fImatrix_indices\fR[i]]. Note that, each
+such entry holds the matrices for all rate categories, stored consecutively in
+memory.
+.PP
+.TP
+.BI "int pll_update_eigen(pll_partition_t * " partition ", unsigned int "\
+ params_index ");"
+Updates the eigenvectors (\fIpartition\fR->eigenvecs[\fIparams_index\fR]),
+inverse eigenvectors (\fIpartition\fR->eigenvecs[\fIparams_index\fR]), and
+eigenvalues (\fIpartition\fR->eigenvals[\fIparams_index\fR]) using the
+substitution parameters (\fIpartition\fR->subst_params[\fIparams_index\fR]) and
+base frequencies (\fIpartition\fR->frequencies[\fIparams_index\fR]) specified
+by \fIparams_index\fR.
+.PP
+.TP
+.BI "void pll_show_pmatrix(pll_partition_t * " partition ", unsigned int "\
+ index ", unsigned int " float_precision ");"
+Prints the transition probability matrices for each rate category of
+\fIpartition\fR associated with \fIindex\fR to standard output. The floating
+point precision is dictated by \fIfloat_precision\fR.
+.PP
+.TP
+.BI "unsigned int pll_count_invariant_sites(pll_partition_t * " partition ",\
+ unsigned int * " state_inv_count ");"
+Returns the number of invariant sites in the sequence alignment from
+\fIpartition\fR.  The array \fIstate_inv_count\fR must be of size
+\fIpartition\fR->states and is filled such that entry i contains the count of
+invariant sites for state i.
+.PP
+.TP
+.BI "int pll_update_invariant_sites(pll_partition_t * " partition ");"
+Updates the invariant sites array \fIpartition\fR->invariant, according to the
+sequences in the partition. This function is implicitly called by
+\fBpll_update_invariant_sites_proportion()\fR when the specified proportion of
+invariant sites is greater than zero, but it must be explicitly called by the
+client code if the sequences change.
+.PP
+.TP
+.BI "int pll_update_invariant_sites_proportion(pll_partition_t * " partition ",\
+ unsigned int " params_index ", double " prop_invar ");"
+Updates the proportion of invariant sites for the rate matrix of
+\fIpartition\fR with index \fIparams_index\fR. Note that, this call will not
+implicitly update the transition probability matrices computed from the
+particular rate matrix, but must be done explicitly for example with a call to
+\fBpll_update_prob_matrices()\fR.
+.PP
+.TP
+.BI "void pll_update_partials(pll_partition_t * " partition ", const\
+ pll_operation_t * " operations ", unsigned int " count ");"
+Updates the \fIcount\fR conditional probability vectors (CPV) defined by the
+entries of \fIoperations\fR, in the order they appear in the array. Each
+\fIoperations\fR entry describes one CPV from \fIpartition\fR. See also
+\fBpll_operation_t\fR.
+.PP
+.TP
+.BI "void pll_show_clv(pll_partition_t * " partition ", unsigned int "\
+ clv_index ", int " scaler_index ", unsigned int " float_precision ");"
+Prints to standard output the conditional probability vector for index
+\fIclv_index\fR from \fIpartition\fR, using the scale buffer with index
+\fIscaler_index\fR.  If no scale buffer was used, then \fIscaler_index\fR must
+be passed the value \fBPLL_SCALE_BUFFER_NONE\fR. The floating precision (number
+of digits after decimal point) is dictated by \fIfloat_precision\fR. The output
+contains brackets, curly braces and round brackets to separate the values as
+sites, rate categories and states related, respectively. 
+.PP
+.TP
+.BI "double pll_compute_root_loglikelihood(pll_partition_t * " partition ",\
+ unsigned int " clv_index ", int " scaler_index ", const unsigned int * "\
+ freqs_index ", double * "persite_lnl ");"
+Evaluates the log-likelihood of a rooted tree, for the vector of conditional
+probabilities (partials) with index \fIclv_index\fR, scale buffer with index
+\fIscaler_index\fR (or \fBPLL_SCALE_BUFFER_NONE\fR), and base frequencies
+arrays with indices \fIfreqs_index\fR (one per rate category). If
+\fIpersite_lnl\fR is not \fBNULL\fR, then it must be large enough to hold
+\fIpartition\fR->sites double-precision values, and will be filled with the
+per-site log-likelihoods.
+.PP
+.TP
+.BI "double pll_compute_edge_loglikelihood(pll_partition_t * " partition ",\
+ unsigned int " parent_clv_index ", int " parent_scaler_index ", unsigned int\
+ " child_clv_index ", int " child_scaler_index ", unsigned int " matrix_index\
+ ", const unsigned int * " freqs_index ", double * " persite_lnl ");"
+Evaluates the log-likelihood of an unrooted tree, by providing the conditional
+probability vectors (partials) for two nodes that share an edge  with indices
+\fIparent_clv_index\fR resp. \fIchild_clv_index\fR, scale buffers with indices
+\fIparent_scaler_index\fR resp. \fIchild_clv_index\fR (or
+\fBPLL_SCALE_BUFFER_NONE\fR), the transition probability matrix with index
+\fImatrix_index\fR and base frequencies arrays with indices \fIfreqs_index\fR
+(one per rate category). If \fIpersite_lnl\fR is not \fBNULL\fR, then it must
+be large enough to hold \fIpartition\fR>sites` double-precision values, and
+will be filled with the per-site log-likelihoods.
+.PP
+.\" ============================================================================
+.SH AVAILABILITY 
+Source code and binaries are available at
+<https://github.com/xflouris/libpll>.
+.\" ============================================================================
+.SH COPYRIGHT
+Copyright (C) 2015-2016, Tomas Flouri, Diego Darriba
+.PP
+All rights reserved.
+.PP
+Contact: Tomas Flouri <Tomas.Flouri@h-its.org>,
+Scientific Computing, Heidelberg Insititute for Theoretical Studies,
+69118 Heidelberg, Germany
+.PP
+This software is licensed under the terms of the GNU Affero General Public
+License version 3.
+.PP
+\fBGNU Affero General Public License version 3\fR
+.PP
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+.PP
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
+details.
+.PP
+You should have received a copy of the GNU Affero General Public License along
+with this program.  If not, see <http://www.gnu.org/licenses/>.
+.SH VERSION HISTORY
+New features and important modifications of \fBlibpll\fR (short lived or minor
+bug releases may not be mentioned):
+.RS
+.TP
+.BR v0.1.0\~ "released September 9th, 2016"
+First public release.
+.RE
+.LP
