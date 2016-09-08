@@ -1,20 +1,21 @@
 # libpll
 
-[![Build Status](https://magnum.travis-ci.com/xflouris/libpll.svg?token=rjft2y6GBHow4SDyjuoy&branch=master)](https://magnum.travis-ci.com/xflouris/libpll)
+[![Build Status](https://travis-ci.org/xflouris/libpll.svg?branch=dev)](https://magnum.travis-ci.com/xflouris/libpll)
 [![License](https://img.shields.io/badge/license-AGPL-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html)
 
 ## Introduction
 
 The aim of this project is to implement a versatile high-performance software
 library for phylogenetic analysis. The library should serve as a lower-level
-interface of the PLL (Flouri et al. 2014) and should have the following
+interface of PLL (Flouri et al. 2014) and should have the following
 properties:
 
-* have an open source code with an appropriate open source license.
+* open source code with an appropriate open source license.
 * 64-bit multi-threaded design that handles very large datasets.
 * easy to use and well-documented.
 * SIMD implementations of time-consuming parts.
-* comparably fast likelihood computations as RAxML (Stamatakis 2014).
+* as fast or faster likelihood computations than RAxML (Stamatakis 2014).
+* fast implementation of the site repeats algorithm (Kobert 2016).
 * generic and clean design.
 * Linux, Mac, and Microsoft Windows compatibility.
 
@@ -45,7 +46,19 @@ libpll currently implements the General Time Reversible (GTR) model (Tavare
 1986) which can be used for nucleotide and amino acid data. It supports models
 of variable rates among sites, the Inv+&Gamma; (Gu et al. 1995) and has
 functions for computing the discretized rate categories for the gamma model
-(Yang 1994).
+(Yang 1994). Furthermore, it supports several methods for [pascertainment bias
+correction](https://github.com/xflouris/libpll/wiki/Ascertainment-bias-correction)
+(Kuhner et al. 2000, McGill et al. 2013, Lewis 2011, Leach&eacute; et al.
+2015). Additional functionality includes tree visualization, functions for
+parsimony (minimum mutation cost) calculation and ancestral state
+reconstruction using Sankoff's method (Sankoff 1975, Sankof and Rousseau 1975).
+The functions for computing partials, evaluating the log-likelihood and
+updating transition probability matrices are vectorized using both SSE3 and AVX
+instruction sets.
+
+## Documentation
+
+Please refer to the [wiki page](https://github.com/xflouris/libpll/wiki).
 
 Below is a list of available functions in the current version.
 
@@ -158,10 +171,6 @@ Below is a list of available functions in the current version.
 
 Please refer to the [wiki page](https://github.com/xflouris/libpll/wiki) and/or the [examples directory](https://github.com/xflouris/libpll/tree/master/examples).
 
-## Documentation
-
-Please refer to the [wiki page](https://github.com/xflouris/libpll/wiki).
-
 ## libpll license and third party licenses
 
 The code is currently licensed under the [GNU Affero General Public License version 3](http://www.gnu.org/licenses/agpl-3.0.en.html).
@@ -170,25 +179,43 @@ The code is currently licensed under the [GNU Affero General Public License vers
 
 The code is written in C.
 
-    File              | Description
-----------------------|----------------
-**fasta.c**           | Functions for parsing FASTA files.
-**gamma.c**           | Functions related to Gamma (&Gamma;) function.
-**lex_rtree.l**       | Lexical analyzer parsing newick rooted trees.
-**lex_utree.l**       | Lexical analyzer parsing newick unrooted trees.
-**likelihood.c**      | Likelihood computation functions.
-**compress.c**        | Functions for compressing alignment into site patterns.
-**core_likelihood.c** | Core likelihood functions that do not require partition instances.
-**list.c**            | (Doubly) Linked-list implementations.
-**Makefile**          | Makefile.
-**maps.c**            | Character mapping arrays for converting sequences to the internal representation.
-**models.c**          | Model parameters related functions.
-**output.c**          | Functions for output in terminal (i.e. conditional likelihood arrays, probability matrices).
-**pll.c**             | Functions for setting PLL partitions (instances).
-**rtree.c**           | Rooted tree manipulation functions.
-**utree.c**           | Unrooted tree manipulation functions.
-**parse_rtree.y**     | Functions for parsing rooted trees in newick format.
-**parse_utree.y**     | Functions for parsing unrooted trees in newick format.
+    File                   | Description
+---------------------------|----------------
+**compress.c**             | Functions for compressing alignment into site patterns.
+**core_derivatives_avx.c** | AVX vectorized core functions for computing derivatives of the likelihood function.
+**core_derivatives.c**     | Core functions for computing derivatives of the likelihood function.
+**core_derivatives_sse.c** | SSE vectorized core functions for computing derivatives of the likelihood function.
+**core_likelihood_avx.c**  | AVX vectorized core functions for computing the log-likelihood.
+**core_likelihood.c**      | Core functions for computing the log-likelihood, that do not require partition instances.
+**core_likelihood_sse.c**  | SSE vectorized core functions for computing the log-likelihood.
+**core_partials_avx.c**    | AVX vectorized core functions for updating vectors of conditional probabilities (partials).
+**core_partials.c**        | Core functions for updating vectors of conditional probabilities (partials).
+**core_partials_sse.c**    | SSE vectorized core functions for updating vectors of conditional probabilities (partials).
+**core_pmatrix_avx.c**     | AVX vectorized core functions for updating transition probability matrices.
+**core_pmatrix.c**         | Core functions for updating transition probability matrices.
+**core_pmatrix_sse.c**     | SSE vectorized core functions for updating transition probability matrices.
+**derivatives.c**          | Functions for computing derivatives of the likelihood function.
+**fasta.c**                | Functions for parsing FASTA files.
+**gamma.c**                | Functions related to Gamma (&Gamma;) function and distribution.
+**lex_phylip.l**           | Lexical analyzer for parsing phylip files.
+**lex_rtree.l**            | Lexical analyzer for parsing newick rooted trees.
+**lex_utree.l**            | Lexical analyzer for parsing newick unrooted trees.
+**likelihood.c**           | Functions ofr computing the log-likelihood of a tree given a partition instance.
+**list.c**                 | (Doubly) Linked-list implementations.
+**Makefile**               | Makefile.
+**maps.c**                 | Character mapping arrays for converting sequences to the internal representation.
+**models.c**               | Model parameters related functions.
+**output.c**               | Functions for output in terminal (i.e. conditional likelihood arrays, probability matrices).
+**parse_phylip.y**         | Functions for parsing phylip files.
+**parse_rtree.y**          | Functions for parsing rooted trees in newick format.
+**parse_utree.y**          | Functions for parsing unrooted trees in newick format.
+**parsimony.c**            | Parsimony functions.
+**partials.c**             | Functions for updating vectors of conditional probabilities (partials).
+**pll.c**                  | Functions for setting PLL partitions (instances).
+**rtree.c**                | Rooted tree manipulation functions.
+**utree.c**                | Unrooted tree manipulation functions.
+**utree_moves.c**          | Functions for topological rearrangements on unrooted trees.
+**utree_svg.c**            | Functions for SVG visualization of unrooted trees.
 
 ## Bugs
 
@@ -218,6 +245,31 @@ doi:[10.1093/sysbio/syu084](http://dx.doi.org/10.1093/sysbio/syu084)
 * Gu X., Fu YX, Li WH. (1995)
 **Maximum Likelihood Estimation of the Heterogeneity of Substitution Rate among Nucleotide Sites.**
 *Molecular Biology and Evolution*, 12(4): 546-557.
+
+* Kobert K., Stamatakis A., Flouri T. (2016)
+**Efficient detection of repeating sites to accelerate phylogenetic likelihood calculations.**
+*Systematic Biology*, in press.
+doi:[10.1093/sysbio/syw075](http://dx.doi.org/10.1093/sysbio/syw075)
+
+* Leach&eacute; AL, Banbury LB, Felsenstein J., de Oca ANM, Stamatakis A. (2015)
+**Short Tree, Long Tree, Right Tree, Wrong Tree: New Acquisition Bias Corrections for Inferring SNP Phylogenies.**
+*Systematic Biology*, 64(6): 1032-1047.
+doi:[10.1093/sysbio/syv053](http://dx.doi.org/10.1093/sysbio/syv053)
+
+* Lewis LO. (2001)
+**A Likelihood Approach to Estimating Phylogeny from Discrete Morphological Character Data.**
+*Systematic Biology*, 50(6): 913-925.
+doi:[10.1080/106351501753462876](http://dx.doi.org/10.1080/106351501753462876)
+
+* Sankoff D. (1975)
+**Minimal Mutation Trees of Sequences.**
+*SIAM Journal on Applied Mathematics*, 28(1): 35-42.
+doi:[10.1137/0128004](http://dx.doi.org/10.1137/0128004)
+
+* Sankoff D, Rousseau P. (1975)
+**Locating the Vertices of a Steiner Tree in Arbitrary Metric Space.**
+*Mathematical Programming*, 9: 240-246.
+doi:[10.1007/BF01681346](http://dx.doi.org/10.1007/BF01681346)
 
 * Stamatakis A. (2014)
 **RAxML version 8: a tool for phylogenetic analysis and post-analysis of large phylogenies.**

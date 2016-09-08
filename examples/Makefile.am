@@ -1,0 +1,13 @@
+include heterotachy/target.mk
+include lg4/target.mk
+include load-utree/target.mk
+include newick-fasta-rooted/target.mk
+include newick-fasta-unrooted/target.mk
+include newick-phylip-unrooted/target.mk
+include newton/target.mk
+include parsimony/target.mk
+include partial-traversal/target.mk
+include protein-list/target.mk
+include rooted/target.mk
+include rooted-tacg/target.mk
+include unrooted/target.mk
