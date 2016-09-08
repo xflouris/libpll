@@ -75,7 +75,8 @@ corresponding branch lengths specified in `branch_lengths` and the
 corresponding rate matrices whose index is specified with `params_indices`
 (second parameter). The last argument indicates the size of the two arrays.
 Note that the function will compute probability matrices for all available rate
-categories. For more information on this function check the documentation.
+categories. For more information on this function check the
+[documentation](https://github.com/xflouris/libpll/wiki/Updating-transition-probability-matrices).
 
 The next step is to create a traversal descriptor for driving the likelihood
 computation. This is done by allocating a `pll_operation_t` structure which we

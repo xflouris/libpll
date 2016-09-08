@@ -65,7 +65,7 @@ length in the tree by calling the function
 unsigned int params_indices[4] = {0,0,0,0};
 
 pll_update_prob_matrices(partition,
-                         0,
+                         params_indices,
                          matrix_indices,
                          branch_lengths,
                          5);
@@ -73,9 +73,10 @@ pll_update_prob_matrices(partition,
 which computes the probability matrices at indices `matrix_indices` from the
 corresponding branch lengths specified in `branch_lengths` and the
 corresponding rate matrices whose index is specified with `params_indices`
-(second parameter). The last argument indicates the size of the two arrays.
-Note that the function will compute probability matrices for all available rate
-categories. For more information on this function check the documentation.
+(second parameter). The last argument indicates the size of the last two
+arrays. Note that the function will compute probability matrices for all
+available rate categories. For more information on this function check the
+[documentation](https://github.com/xflouris/libpll/wiki/Updating-transition-probability-matrices).
 
 The next step is to create a traversal descriptor for driving the likelihood
 computation. This is done by allocating a `pll_operation_t` structure which we
