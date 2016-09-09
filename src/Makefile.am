@@ -35,6 +35,7 @@ derivatives.c \
 partials.c \
 compress.c \
 utree_moves.c \
+utree_svg.c \
 parsimony.c \
 core_derivatives.c \
 core_partials.c \
