@@ -1305,6 +1305,17 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
                                                double ** inv_eigenvecs,
                                                unsigned int count);
 
+PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
+                                                 unsigned int rate_cats,
+                                                 double * rates,
+                                                 const double * branch_lengths,
+                                                 const unsigned int * matrix_indices,
+                                                 const unsigned int * params_indices,
+                                                 double * prop_invar,
+                                                 double ** eigenvals,
+                                                 double ** eigenvecs,
+                                                 double ** inv_eigenvecs,
+                                                 unsigned int count);
 /* functions in core_pmatrix_sse.c */
 
 PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
@@ -1386,7 +1397,6 @@ PLL_EXPORT int pll_utree_export_svg(pll_utree_t * tree,
                                     unsigned int tip_count, 
                                     const pll_svg_attrib_t * attribs,
                                     const char * filename);
-
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
