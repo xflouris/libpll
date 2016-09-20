@@ -1018,7 +1018,8 @@ PLL_EXPORT void pll_core_update_partial_ti_sse(unsigned int states,
                                                const double * left_matrix,
                                                const double * right_matrix,
                                                const unsigned int * right_scaler,
-                                               const unsigned int * tipmap)
+                                               const unsigned int * tipmap,
+                                               unsigned int tipmap_size)
 {
   int scaling;
   unsigned int i,j,k,n;

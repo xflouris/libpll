@@ -271,6 +271,7 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
                                            const double * right_matrix,
                                            const unsigned int * right_scaler,
                                            const unsigned int * tipmap,
+                                           unsigned int tipmap_size,
                                            unsigned int attrib)
 {
   int scaling;
@@ -304,7 +305,8 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
                                      left_matrix,
                                      right_matrix,
                                      right_scaler,
-                                     tipmap);
+                                     tipmap,
+                                     tipmap_size);
     return;
   }
 #endif
@@ -332,7 +334,8 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
                                      left_matrix,
                                      right_matrix,
                                      right_scaler,
-                                     tipmap);
+                                     tipmap,
+                                     tipmap_size);
     return;
   }
 #endif

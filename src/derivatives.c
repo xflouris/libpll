@@ -80,6 +80,7 @@ static int sumtable_tipinner(pll_partition_t * partition,
                                        inv_eigenvecs,
                                        freqs,
                                        partition->tipmap,
+                                       partition->maxstates,
                                        sumtable,
                                        partition->attributes);
 

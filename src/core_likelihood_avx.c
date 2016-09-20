@@ -344,6 +344,167 @@ double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
 }
 
 PLL_EXPORT
+double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
+                                                unsigned int rate_cats,
+                                                const double * parent_clv,
+                                                const unsigned int * parent_scaler,
+                                                const unsigned char * tipchars,
+                                                const unsigned int * tipmap,
+                                                unsigned int tipmap_size,
+                                                const double * pmatrix,
+                                                double ** frequencies,
+                                                const double * rate_weights,
+                                                const unsigned int * pattern_weights,
+                                                const double * invar_proportion,
+                                                const int * invar_indices,
+                                                const unsigned int * freqs_indices,
+                                                double * persite_lnl)
+{
+  unsigned int n,i,j,m = 0;
+  double logl = 0;
+  double prop_invar = 0;
+
+  const double * clvp = parent_clv;
+  const double * pmat;
+  const double * freqs = NULL;
+
+  double terma, terma_r;
+  double site_lk, inv_site_lk;
+
+  unsigned int cstate;
+  unsigned int scale_factors;
+  unsigned int states = 20;
+  unsigned int states_padded = states;
+
+  __m256d xmm0, xmm1, xmm2;
+
+  size_t displacement = (states_padded - states) * (states_padded);
+
+  unsigned int span = states_padded * rate_cats;
+  unsigned int maxstates = tipmap_size;
+
+  /* precompute a lookup table of four values per entry (one for each state),
+     for all 16 states (including ambiguities) and for each rate category. */
+  double * lookup = pll_aligned_alloc(maxstates*span*sizeof(double),
+                                      PLL_ALIGNMENT_AVX);
+  if (!lookup)
+  {
+    /* TODO: in the highly unlikely event that allocation fails, we should
+       resort to a non-lookup-precomputation version of this function,
+       available at commit e.g.  a4fc873fdc65741e402cdc1c59919375143d97d1 */
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Cannot allocate space for precomputation.");
+    return 0.;
+  }
+
+  double * ptr = lookup;
+
+  /* precompute left-side values and store them in lookup table */
+  for (j = 0; j < maxstates; ++j)
+  {
+    pmat = pmatrix;
+
+    unsigned int state = tipmap[j];
+
+    int ss = __builtin_popcount(state) == 1 ? __builtin_ctz(state) : -1;
+
+    for (n = 0; n < rate_cats; ++n)
+    {
+      freqs = frequencies[freqs_indices[n]];
+
+      for (i = 0; i < states; ++i)
+      {
+        double terml;
+        if (ss != -1)
+        {
+          /* special case for non-ambiguous states */
+          terml = pmat[ss];
+        }
+        else
+        {
+          terml = 0;
+          for (m = 0; m < states; ++m)
+          {
+            if ((state>>m) & 1)
+            {
+              terml += pmat[m];
+            }
+          }
+        }
+
+        pmat += states;
+
+        ptr[i] = terml * freqs[i];
+      }
+
+      ptr += states;
+    }
+  }
+
+  for (n = 0; n < sites; ++n)
+  {
+    terma = 0;
+
+    cstate = (unsigned int) tipchars[n];
+    unsigned int loffset = cstate*span;
+
+    for (i = 0; i < rate_cats; ++i)
+    {
+      terma_r = 0;
+
+      /* iterate over quadruples of rows */
+      for (j = 0; j < states_padded; j += 4)
+      {
+        /* load value from lookup table */
+        xmm2 = _mm256_load_pd(lookup+loffset);
+
+        /* multiply with clvp */
+        xmm0 = _mm256_load_pd(clvp);
+        xmm1 = _mm256_mul_pd(xmm2,xmm0);
+
+        /* add up the elements of xmm1 */
+        xmm0 = _mm256_hadd_pd(xmm1,xmm1);
+        terma_r += ((double *)&xmm0)[0] + ((double *)&xmm0)[2];
+
+        clvp += 4;
+        loffset += 4;
+      }
+
+      /* account for invariant sites */
+      prop_invar = invar_proportion ? invar_proportion[freqs_indices[i]] : 0;
+      if (prop_invar > 0)
+      {
+        freqs = frequencies[freqs_indices[i]];
+        inv_site_lk = (invar_indices[n] == -1) ?
+                          0 : freqs[invar_indices[n]];
+        terma += rate_weights[i] * (terma_r * (1 - prop_invar) +
+                 inv_site_lk * prop_invar);
+      }
+      else
+      {
+        terma += terma_r * rate_weights[i];
+      }
+
+      pmat -= displacement;
+    }
+    /* count number of scaling factors to acount for */
+    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
+
+    /* compute site log-likelihood and scale if necessary */
+    site_lk = log(terma) * pattern_weights[n];
+    if (scale_factors)
+      site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+
+    /* store per-site log-likelihood */
+    if (persite_lnl)
+      persite_lnl[m++] = site_lk;
+
+    logl += site_lk;
+  }
+  return logl;
+}
+
+PLL_EXPORT
 double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
                                           unsigned int sites,
                                           unsigned int rate_cats,

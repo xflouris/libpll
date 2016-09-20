@@ -305,6 +305,7 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
                                       const unsigned int * parent_scaler,
                                       const unsigned char * tipchars,
                                       const unsigned int * tipmap,
+                                      unsigned int tipmap_size,
                                       const double * pmatrix,
                                       double ** frequencies,
                                       const double * rate_weights,
@@ -391,6 +392,24 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
                                                     invar_indices,
                                                     freqs_indices,
                                                     persite_lnl);
+    }
+    else if (states == 20)
+    {
+      return pll_core_edge_loglikelihood_ti_20x20_avx(sites,
+                                                      rate_cats,
+                                                      parent_clv,
+                                                      parent_scaler,
+                                                      tipchars,
+                                                      tipmap,
+                                                      tipmap_size,
+                                                      pmatrix,
+                                                      frequencies,
+                                                      rate_weights,
+                                                      pattern_weights,
+                                                      invar_proportion,
+                                                      invar_indices,
+                                                      freqs_indices,
+                                                      persite_lnl);
     }
     else
     {

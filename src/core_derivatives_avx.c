@@ -512,6 +512,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
                                                double ** inv_eigenvecs,
                                                double ** freqs,
                                                unsigned int * tipmap,
+                                               unsigned int tipmap_size,
                                                double *sumtable,
                                                unsigned int attrib)
 {
@@ -527,115 +528,170 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
                                            sumtable);
   }
 
-  // TODO: we can use the same pre-computation technique as in 4x4 case,
-  // but we need to know maxstates here
-
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
+  unsigned int span = states_padded * rate_cats;
+  unsigned int maxstates = tipmap_size;
 
   unsigned int i, j, k, n;
   unsigned int tipstate;
 
   double * sum = sumtable;
   const double * t_clvc = parent_clv;
-  const double * t_eigenvecs_trans;
+  const double * t_eigenvecs_padded;
 
-  double * eigenvecs_trans = (double *) pll_aligned_alloc (
+  double * eigenvecs_padded = (double *) pll_aligned_alloc (
       (states_padded * states_padded * rate_cats) * sizeof(double),
       PLL_ALIGNMENT_AVX);
 
   double * precomp_left = (double *) pll_aligned_alloc (
-      (states_padded * states_padded * rate_cats) * sizeof(double),
+      (maxstates * states_padded * rate_cats) * sizeof(double),
       PLL_ALIGNMENT_AVX);
 
-  if (!eigenvecs_trans || !precomp_left)
+  if (!eigenvecs_padded || !precomp_left)
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf (pll_errmsg, 200, "Cannot allocate memory for tt_inv_eigenvecs");
     return PLL_FAILURE;
   }
 
-  /* transpose eigenvecs matrix -> for efficient vectorization */
+  /* add padding to eigenvecs matrix -> for efficient vectorization */
   for (i = 0; i < rate_cats; ++i)
   {
     for (j = 0; j < states_padded; ++j)
       for (k = 0; k < states_padded; ++k)
       {
-        eigenvecs_trans[i*states_padded*states_padded + j*states_padded + k] =
-            (j < states && k < states) ? eigenvecs[i][k*states + j] : 0.;
+        eigenvecs_padded[i*states_padded*states_padded + j*states_padded + k] =
+            (j < states && k < states) ? eigenvecs[i][j*states + k] : 0.;
       }
   }
 
   /* precompute left terms since they are the same for every site */
   double * t_precomp = precomp_left;
-  for (i = 0; i < rate_cats; ++i)
+  for (n = 0; n < maxstates; ++n)
   {
-        for (k = 0; k < states_padded; ++k)
-        {
-            for (j = 0; j < states_padded; j += 4)
-            {
-              if (k < states && j < states)
-                {
-                  __m256d v_freqs = _mm256_set1_pd(freqs[i][k]);
-                  __m256d v_eigen = _mm256_load_pd(inv_eigenvecs[i] +
-                                                               k*states + j);
-                  __m256d v_lefterm =  _mm256_mul_pd(v_eigen, v_freqs);
-                  _mm256_store_pd(t_precomp, v_lefterm);
-                }
-              else
-                memset(t_precomp, 0, 4 * sizeof(double));
+    unsigned int state = tipmap ? tipmap[n] : n;
 
-              t_precomp += 4;
-            }
+    int ss = __builtin_popcount(state) == 1 ? __builtin_ctz(state) : -1;
+
+    for (i = 0; i < rate_cats; ++i)
+    {
+      for (j = 0; j < states_padded; j += 4)
+      {
+        __m256d v_lefterm;
+
+        if (ss != -1)
+        {
+          /* special case for non-ambiguous state */
+          __m256d v_freqs = _mm256_set1_pd(freqs[i][ss]);
+          __m256d v_eigen = _mm256_load_pd(inv_eigenvecs[i] +
+                                                       ss*states + j);
+          v_lefterm =  _mm256_mul_pd(v_eigen, v_freqs);
         }
+        else
+        {
+          v_lefterm = _mm256_setzero_pd();
+          for (k = 0; k < states; ++k)
+          {
+            if ((state>>k) & 1)
+            {
+              __m256d v_freqs = _mm256_set1_pd(freqs[i][k]);
+              __m256d v_eigen = _mm256_load_pd(inv_eigenvecs[i] +
+                                                           k*states + j);
+
+              v_lefterm = _mm256_add_pd(v_lefterm,
+                                        _mm256_mul_pd(v_eigen, v_freqs));
+            }
+          }
+        }
+
+        _mm256_store_pd(t_precomp, v_lefterm);
+        t_precomp += 4;
+      }
+    }
   }
 
   /* build sumtable */
   for (n = 0; n < sites; n++)
   {
-    // TODO: There should be a proper way to decide (tipmap == NULL?)
-    if (states == 4)
-      tipstate = (unsigned int) left_tipchars[n];
-    else
-      tipstate = tipmap[(unsigned int)left_tipchars[n]];
+    tipstate = (unsigned int) left_tipchars[n];
 
-    t_eigenvecs_trans = eigenvecs_trans;
-    t_precomp = precomp_left;
+    unsigned int loffset = tipstate * span;
+
+    t_eigenvecs_padded = eigenvecs_padded;
+    t_precomp = precomp_left + loffset;
 
     for (i = 0; i < rate_cats; ++i)
     {
       for (j = 0; j < states_padded; j += 4)
+      {
+        /* point to the four rows of the eigenvec matrix */
+        const double * em0 = t_eigenvecs_padded;
+        const double * em1 = em0 + states_padded;
+        const double * em2 = em1 + states_padded;
+        const double * em3 = em2 + states_padded;
+        t_eigenvecs_padded += 4*states_padded;
+
+        __m256d v_righterm0 = _mm256_setzero_pd();
+        __m256d v_righterm1 = _mm256_setzero_pd();
+        __m256d v_righterm2 = _mm256_setzero_pd();
+        __m256d v_righterm3 = _mm256_setzero_pd();
+
+        for (k = 0; k < states_padded; k += 4)
         {
-          __m256d v_lefterm = _mm256_setzero_pd();
-          __m256d v_righterm = _mm256_setzero_pd();
+          /* load 4 entries of CLV */
+          __m256d v_clvc = _mm256_load_pd(t_clvc + k);
 
-          for (k = 0; k < states; ++k)
-            {
-              __m256d v_clvc = _mm256_set1_pd(t_clvc[k]);
-              __m256d v_eigen = _mm256_load_pd(t_eigenvecs_trans +
-                                                          k*states_padded + j);
-              v_righterm =  _mm256_add_pd(v_righterm,
-                                          _mm256_mul_pd(v_eigen, v_clvc));
+          /* row 0 */
+          __m256d v_eigen = _mm256_load_pd(em0 + k);
+          v_righterm0 =  _mm256_add_pd(v_righterm0,
+                                      _mm256_mul_pd(v_eigen, v_clvc));
 
-              if ((tipstate >> k) & 1)
-                {
-                  v_lefterm = _mm256_add_pd(v_lefterm,
-                                 _mm256_load_pd(t_precomp +
-                                                         k*states_padded + j));
-                }
-            }
+          /* row 1 */
+          v_eigen = _mm256_load_pd(em1 + k);
+          v_righterm1 =  _mm256_add_pd(v_righterm1,
+                                      _mm256_mul_pd(v_eigen, v_clvc));
 
-          __m256d v_sum = _mm256_mul_pd(v_lefterm, v_righterm);
-          _mm256_store_pd(sum + j, v_sum);
+          /* row 2 */
+          v_eigen = _mm256_load_pd(em2 + k);
+          v_righterm2 =  _mm256_add_pd(v_righterm2,
+                                      _mm256_mul_pd(v_eigen, v_clvc));
+
+          /* row 3 */
+          v_eigen = _mm256_load_pd(em3 + k);
+          v_righterm3 =  _mm256_add_pd(v_righterm3,
+                                      _mm256_mul_pd(v_eigen, v_clvc));
         }
 
+        /* reduce righterm */
+        __m256d xmm0, xmm1, xmm2, xmm3;
+        xmm0 = _mm256_unpackhi_pd(v_righterm0,v_righterm1);
+        xmm1 = _mm256_unpacklo_pd(v_righterm0,v_righterm1);
+
+        xmm2 = _mm256_unpackhi_pd(v_righterm2,v_righterm3);
+        xmm3 = _mm256_unpacklo_pd(v_righterm2,v_righterm3);
+
+        xmm0 = _mm256_add_pd(xmm0,xmm1);
+        xmm1 = _mm256_add_pd(xmm2,xmm3);
+
+        xmm2 = _mm256_permute2f128_pd(xmm0,xmm1, _MM_SHUFFLE(0,2,0,1));
+
+        xmm3 = _mm256_blend_pd(xmm0,xmm1,12);
+
+        __m256d v_righterm = _mm256_add_pd(xmm2,xmm3);
+
+        __m256d v_lefterm = _mm256_load_pd(t_precomp + j);
+
+        __m256d v_sum = _mm256_mul_pd(v_lefterm, v_righterm);
+        _mm256_store_pd(sum + j, v_sum);
+      }
+
       t_clvc += states_padded;
-      t_eigenvecs_trans += states_padded * states_padded;
-      t_precomp += states_padded * states_padded;
+      t_precomp += states_padded;
       sum += states_padded;
     }
   }
 
-  pll_aligned_free(eigenvecs_trans);
+  pll_aligned_free(eigenvecs_padded);
   pll_aligned_free(precomp_left);
 
   return PLL_SUCCESS;

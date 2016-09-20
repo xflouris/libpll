@@ -122,6 +122,7 @@ static void case_tipinner(pll_partition_t * partition,
                              partition->pmatrix[inner_matrix_index],
                              right_scaler,
                              partition->tipmap,
+                             partition->maxstates,
                              partition->attributes);
 }
 

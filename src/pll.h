@@ -682,6 +682,7 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
                                            const double * right_matrix,
                                            const unsigned int * right_scaler,
                                            const unsigned int * tipmap,
+                                           unsigned int tipmap_size,
                                            unsigned int attrib);
 
 PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
@@ -754,6 +755,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
                                            unsigned int * tipmap,
+                                           unsigned int tipmap_size,
                                            double *sumtable,
                                            unsigned int attrib);
 
@@ -801,6 +803,7 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti(unsigned int states,
                                                  const unsigned int * parent_scaler,
                                                  const unsigned char * tipchars,
                                                  const unsigned int * tipmap,
+                                                 unsigned int tipmap_size,
                                                  const double * pmatrix,
                                                  double ** frequencies,
                                                  const double * rate_weights,
@@ -883,7 +886,8 @@ PLL_EXPORT void pll_core_update_partial_ti_sse(unsigned int states,
                                                const double * left_matrix,
                                                const double * right_matrix,
                                                const unsigned int * right_scaler,
-                                               const unsigned int * tipmap);
+                                               const unsigned int * tipmap,
+                                               unsigned int tipmap_size);
 
 
 PLL_EXPORT void pll_core_update_partial_ti_4x4_sse(unsigned int sites,
@@ -934,6 +938,13 @@ PLL_EXPORT void pll_core_create_lookup_4x4_avx(unsigned int rate_cats,
                                                const double * left_matrix,
                                                const double * right_matrix);
 
+PLL_EXPORT void pll_core_create_lookup_20x20_avx(unsigned int rate_cats,
+                                               double * ttlookup,
+                                               const double * left_matrix,
+                                               const double * right_matrix,
+                                               unsigned int * tipmap,
+                                               unsigned int tipmap_size);
+
 PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
                                                unsigned int sites,
                                                unsigned int rate_cats,
@@ -962,7 +973,8 @@ PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
                                                const double * left_matrix,
                                                const double * right_matrix,
                                                const unsigned int * right_scaler,
-                                               const unsigned int * tipmap);
+                                               const unsigned int * tipmap,
+                                               unsigned int tipmap_size);
 
 PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
                                                    unsigned int rate_cats,
@@ -973,6 +985,18 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
                                                    const double * left_matrix,
                                                    const double * right_matrix,
                                                    const unsigned int * right_scaler);
+
+PLL_EXPORT void pll_core_update_partial_ti_20x20_avx(unsigned int sites,
+                                                     unsigned int rate_cats,
+                                                     double * parent_clv,
+                                                     unsigned int * parent_scaler,
+                                                     const unsigned char * left_tipchar,
+                                                     const double * right_clv,
+                                                     const double * left_matrix,
+                                                     const double * right_matrix,
+                                                     const unsigned int * right_scaler,
+                                                     const unsigned int * tipmap,
+                                                     unsigned int tipmap_size);
 
 PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
                                                unsigned int sites,
@@ -1060,6 +1084,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
                                                double ** inv_eigenvecs,
                                                double ** freqs,
                                                unsigned int * tipmap,
+                                               unsigned int tipmap_size,
                                                double * sumtable,
                                                unsigned int attrib);
 
@@ -1233,6 +1258,22 @@ PLL_EXPORT double pll_core_edge_loglikelihood_ti_4x4_avx(unsigned int sites,
                                                          const int * invar_indices,
                                                          const unsigned int * freqs_indices,
                                                          double * persite_lnl);
+
+PLL_EXPORT double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
+                                                           unsigned int rate_cats,
+                                                           const double * parent_clv,
+                                                           const unsigned int * parent_scaler,
+                                                           const unsigned char * tipchars,
+                                                           const unsigned int * tipmap,
+                                                           unsigned int tipmap_size,
+                                                           const double * pmatrix,
+                                                           double ** frequencies,
+                                                           const double * rate_weights,
+                                                           const unsigned int * pattern_weights,
+                                                           const double * invar_proportion,
+                                                           const int * invar_indices,
+                                                           const unsigned int * freqs_indices,
+                                                           double * persite_lnl);
 
 PLL_EXPORT double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
                                                      unsigned int sites,

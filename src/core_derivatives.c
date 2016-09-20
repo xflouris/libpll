@@ -166,6 +166,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
                                            unsigned int * tipmap,
+                                           unsigned int tipmap_size,
                                            double *sumtable,
                                            unsigned int attrib)
 {
@@ -209,6 +210,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
                                            inv_eigenvecs,
                                            freqs,
                                            tipmap,
+                                           tipmap_size,
                                            sumtable,
                                            attrib);
   }
