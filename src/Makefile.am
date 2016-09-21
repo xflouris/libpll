@@ -40,21 +40,29 @@ parsimony.c \
 core_derivatives.c \
 core_partials.c \
 core_pmatrix.c \
-core_partials_avx.c \
-core_derivatives_avx.c \
 core_likelihood.c \
-core_likelihood_avx.c \
-core_partials_sse.c \
-core_derivatives_sse.c \
-core_likelihood_sse.c \
-core_pmatrix_avx.c \
-core_pmatrix_sse.c \
 parse_utree.y \
 parse_rtree.y \
 parse_phylip.y \
 lex_utree.l \
 lex_rtree.l \
 lex_phylip.l
+
+if HAVE_AVX
+libpll_la_SOURCES+=\
+core_partials_avx.c \
+core_derivatives_avx.c \
+core_pmatrix_avx.c \
+core_likelihood_avx.c 
+endif
+
+if HAVE_SSE
+libpll_la_SOURCES+=\
+core_partials_sse.c \
+core_derivatives_sse.c \
+core_likelihood_sse.c \
+core_pmatrix_sse.c 
+endif
 
 libpll_la_CFLAGS = $(AM_CFLAGS) $(AVXFLAGS) $(SSEFLAGS)
 
