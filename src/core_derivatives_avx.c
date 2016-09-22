@@ -798,12 +798,12 @@ PLL_EXPORT int core_likelihood_derivatives_avx(unsigned int states,
                                                double * d_f,
                                                double * dd_f)
 {
-
-  unsigned int i,j,n;
+  unsigned int i,j,k,n;
 
   double * invar_lk = (double *) pll_aligned_alloc(
                                     rate_cats * states * sizeof(double),
                                     PLL_ALIGNMENT_AVX);
+
   if (!invar_lk)
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -811,6 +811,24 @@ PLL_EXPORT int core_likelihood_derivatives_avx(unsigned int states,
     return PLL_FAILURE;
   }
 
+  unsigned int span_padded = rate_cats * states_padded;
+  double * t_diagp = (double *) pll_aligned_alloc(
+                                    3 * span_padded * sizeof(double),
+                                    PLL_ALIGNMENT_AVX);
+  memset(t_diagp, 0, 3 * span_padded * sizeof(double));
+
+  /* transpose diagptable */
+  for(i = 0; i < rate_cats; ++i)
+  {
+    for(j = 0; j < states; ++j)
+    {
+      for(k = 0; k < 3; ++k)
+      {
+        t_diagp[i * states_padded * 3 + k * states_padded  + j] =
+            diagptable[i * states * 4 + j * 4 + k];
+      }
+    }
+  }
 
   /* pre-compute invariant site likelihoods*/
   for(i = 0; i < states; ++i)
@@ -846,7 +864,7 @@ PLL_EXPORT int core_likelihood_derivatives_avx(unsigned int states,
   unsigned int offset = 0;
   for (n = 0; n < ef_sites; ++n)
   {
-    const double * diagp = diagptable;
+    const double * diagp = states == 4 ? diagptable : t_diagp;
 
     __m256d v_sitelk = _mm256_setzero_pd ();
     for (i = 0; i < rate_cats; ++i)
@@ -877,15 +895,50 @@ PLL_EXPORT int core_likelihood_derivatives_avx(unsigned int states,
       }
       else
       {
-        for (j = 0; j < states; j++)
-        {
-          __m256d v_diagp = _mm256_load_pd(diagp);
-          __m256d v_sum = _mm256_set1_pd(sum[j]);
-          v_cat_sitelk = _mm256_add_pd (v_cat_sitelk, _mm256_mul_pd(v_sum, v_diagp));
+        /* pointer to 3 "rows" of diagp with values for lk0, lk1 and lk2 */
+        const double * r0 = diagp;
+        const double * r1 = r0 + states_padded;
+        const double * r2 = r1 + states_padded;
 
-          diagp += 4;
+        /* unroll 1st iteration to save a couple of adds */
+        __m256d v_sum = _mm256_load_pd(sum);
+        __m256d v_diagp = _mm256_load_pd(r0);
+        __m256d v_lk0 = _mm256_mul_pd(v_sum, v_diagp);
+
+        v_diagp = _mm256_load_pd(r1);
+        __m256d v_lk1 = _mm256_mul_pd(v_sum, v_diagp);
+
+        v_diagp = _mm256_load_pd(r2);
+        __m256d v_lk2 = _mm256_mul_pd(v_sum, v_diagp);
+
+        /* iterate over remaining states (if any) */
+        for (j = 4; j < states_padded; j+= 4)
+        {
+          v_sum = _mm256_load_pd(sum + j);
+          v_diagp = _mm256_load_pd(r0 + j);
+          v_lk0 = _mm256_add_pd (v_lk0, _mm256_mul_pd(v_sum, v_diagp));
+
+          v_diagp = _mm256_load_pd(r1 + j);
+          v_lk1 = _mm256_add_pd (v_lk1, _mm256_mul_pd(v_sum, v_diagp));
+
+          v_diagp = _mm256_load_pd(r2 + j);
+          v_lk2 = _mm256_add_pd (v_lk2, _mm256_mul_pd(v_sum, v_diagp));
         }
+
+        /* reduce lk0 (=LH), lk1 (=1st deriv) and v_lk2 (=2nd deriv) */
+        v_lk0 = _mm256_hadd_pd(v_lk0, v_lk0);
+        double lk0 = ((double *)&v_lk0)[0] + ((double *)&v_lk0)[2];
+
+        v_lk1 = _mm256_hadd_pd(v_lk1, v_lk1);
+        double lk1 = ((double *)&v_lk1)[0] + ((double *)&v_lk1)[2];
+
+        v_lk2 = _mm256_hadd_pd(v_lk2, v_lk2);
+        double lk2 = ((double *)&v_lk2)[0] + ((double *)&v_lk2)[2];
+
+        v_cat_sitelk = _mm256_setr_pd (lk0, lk1, lk2, 0.);
+
         sum += states_padded;
+        diagp += 3 * states_padded;
       }
 
       /* account for invariant sites */
@@ -979,6 +1032,7 @@ PLL_EXPORT int core_likelihood_derivatives_avx(unsigned int states,
   *dd_f += site_lk[0] + site_lk[1] + site_lk[2] + site_lk[3];
 
   pll_aligned_free(invar_lk);
+  pll_aligned_free(t_diagp);
 
   return PLL_SUCCESS;
 }
