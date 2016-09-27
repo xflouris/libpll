@@ -845,6 +845,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
 
 /* functions in core_partials_sse.c */
 
+#ifdef HAVE_SSE
 PLL_EXPORT void pll_core_create_lookup_sse(unsigned int states,
                                            unsigned int rate_cats,
                                            double * ttlookup,
@@ -922,9 +923,11 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_sse(unsigned int sites,
                                                    const double * right_matrix,
                                                    const unsigned int * left_scaler,
                                                    const unsigned int * right_scaler);
+#endif
 
 /* functions in core_partials_avx.c */
 
+#ifdef HAVE_AVX
 PLL_EXPORT void pll_core_create_lookup_avx(unsigned int states,
                                            unsigned int rate_cats,
                                            double * lookup,
@@ -1020,9 +1023,11 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
                                                    const double * right_matrix,
                                                    const unsigned int * left_scaler,
                                                    const unsigned int * right_scaler);
+#endif
 
 /* functions in core_derivatives_sse.c */
 
+#ifdef HAVE_SSE
 PLL_EXPORT int pll_core_update_sumtable_ii_sse(unsigned int states,
                                                unsigned int sites,
                                                unsigned int rate_cats,
@@ -1053,9 +1058,11 @@ PLL_EXPORT int pll_core_update_sumtable_ti_4x4_sse(unsigned int sites,
                                                    double ** freqs,
                                                    unsigned int * tipmap,
                                                    double *sumtable);
+#endif
 
 /* functions in core_derivatives_avx.c */
 
+#ifdef HAVE_AVX
 PLL_EXPORT int pll_core_update_sumtable_ii_4x4_avx(unsigned int sites,
                                                    unsigned int rate_cats,
                                                    const double * clvp,
@@ -1119,9 +1126,11 @@ PLL_EXPORT int core_likelihood_derivatives_avx(unsigned int states,
                                                const double * diagptable,
                                                double * d_f,
                                                double * dd_f);
+#endif
 
 /* functions in core_likelihood_sse.c */
 
+#ifdef HAVE_SSE
 PLL_EXPORT
 double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
                                           unsigned int sites,
@@ -1211,9 +1220,11 @@ PLL_EXPORT double pll_core_root_loglikelihood_sse(unsigned int states,
                                                   const int * invar_indices,
                                                   const unsigned int * freqs_indices,
                                                   double * persite_lnl);
+#endif
 
 /* functions in core_likelihood_avx.c */
 
+#ifdef HAVE_AVX
 PLL_EXPORT double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
                                                      unsigned int sites,
                                                      unsigned int rate_cats,
@@ -1315,6 +1326,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_avx(unsigned int states,
                                                   const int * invar_indices,
                                                   const unsigned int * freqs_indices,
                                                   double * persite_lnl);
+#endif
 
 /* functions in core_pmatrix.c */
 
@@ -1334,6 +1346,7 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
 
 /* functions in core_pmatrix_avx.c */
 
+#ifdef HAVE_AVX
 PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
                                                unsigned int rate_cats,
                                                double * rates,
@@ -1357,8 +1370,11 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
                                                  double ** eigenvecs,
                                                  double ** inv_eigenvecs,
                                                  unsigned int count);
+#endif
+
 /* functions in core_pmatrix_sse.c */
 
+#ifdef HAVE_SSE
 PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
                                                unsigned int rate_cats,
                                                double * rates,
@@ -1370,6 +1386,7 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
                                                double ** eigenvecs,
                                                double ** inv_eigenvecs,
                                                unsigned int count);
+#endif
 
 /* functions in compress.c */
 
