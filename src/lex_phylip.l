@@ -84,7 +84,7 @@ static char * append(size_t * dstlen, const char * src, size_t srclen)
 
 \"                                           {string_length =0; pll_phylip_lval.s = NULL; ;BEGIN(quot);}
 \'                                           {string_length =0; pll_phylip_lval.s = NULL; ;BEGIN(apos);}
-([a-zA-Z_0-9]|(\.|\-|\^|\?))+                {pll_phylip_lval.s = xstrndup(pll_phylip_text, pll_phylip_leng); return STRING;}
+([^\t\n\r ])+                {pll_phylip_lval.s = xstrndup(pll_phylip_text, pll_phylip_leng); return STRING;}
 [ \t\n\r]*\#[^\n]*                           ;
 [ \t\n\r]                                    ;
 .                                            {snprintf(pll_errmsg, 200, "Syntax error (%c)\n", pll_phylip_text[0]);
