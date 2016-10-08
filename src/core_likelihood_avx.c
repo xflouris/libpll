@@ -501,6 +501,9 @@ double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
 
     logl += site_lk;
   }
+
+  pll_aligned_free(lookup);
+
   return logl;
 }
 
