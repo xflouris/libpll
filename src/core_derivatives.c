@@ -392,8 +392,8 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
   for(i = 0; i < rate_cats; ++i)
   {
     t_eigenvals = eigenvals[i];
-    ki = rates[i];
-    t_branch_length = branch_length/(1.0 - prop_invar[i]);
+    ki = rates[i]/(1.0 - prop_invar[i]);
+    t_branch_length = branch_length;
     for(j = 0; j < states; ++j)
     {
       diagp[0] = exp(t_eigenvals[j] * ki * t_branch_length);
