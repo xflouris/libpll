@@ -407,19 +407,19 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
-    core_likelihood_derivatives_avx(states,
-                                   states_padded,
-                                   rate_cats,
-                                   ef_sites,
-                                   pattern_weights,
-                                   rate_weights,
-                                   invariant,
-                                   prop_invar,
-                                   freqs,
-                                   sumtable,
-                                   diagptable,
-                                   d_f,
-                                   dd_f);
+    pll_core_likelihood_derivatives_avx(states,
+                                        states_padded,
+                                        rate_cats,
+                                        ef_sites,
+                                        pattern_weights,
+                                        rate_weights,
+                                        invariant,
+                                        prop_invar,
+                                        freqs,
+                                        sumtable,
+                                        diagptable,
+                                        d_f,
+                                        dd_f);
   }
   else
 #endif

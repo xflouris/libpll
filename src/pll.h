@@ -1049,28 +1049,11 @@ PLL_EXPORT int pll_core_update_sumtable_ti_sse(unsigned int states,
                                                unsigned int * tipmap,
                                                double *sumtable);
 
-PLL_EXPORT int pll_core_update_sumtable_ti_4x4_sse(unsigned int sites,
-                                                   unsigned int rate_cats,
-                                                   const double * parent_clv,
-                                                   const unsigned char * left_tipchars,
-                                                   double ** eigenvecs,
-                                                   double ** inv_eigenvecs,
-                                                   double ** freqs,
-                                                   unsigned int * tipmap,
-                                                   double *sumtable);
 #endif
 
 /* functions in core_derivatives_avx.c */
 
 #ifdef HAVE_AVX
-PLL_EXPORT int pll_core_update_sumtable_ii_4x4_avx(unsigned int sites,
-                                                   unsigned int rate_cats,
-                                                   const double * clvp,
-                                                   const double * clvc,
-                                                   double ** eigenvecs,
-                                                   double ** inv_eigenvecs,
-                                                   double ** freqs,
-                                                   double * sumtable);
 
 PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
                                                unsigned int sites,
@@ -1095,37 +1078,19 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
                                                double * sumtable,
                                                unsigned int attrib);
 
-PLL_EXPORT void core_site_likelihood_derivatives_avx(unsigned int states,
-                                                     unsigned int states_padded,
-                                                     unsigned int rate_cats,
-                                                     const double * rate_weights,
-                                                     const double * prop_invar,
-                                                     const double * lk_invar,
-                                                     const double * sumtable,
-                                                     const double * diagptable,
-                                                     double * site_lk);
-
-PLL_EXPORT void core_site_likelihood_derivatives_4x4_avx(unsigned int rate_cats,
-                                                         const double * rate_weights,
-                                                         const double * prop_invar,
-                                                         const double * lk_invar,
-                                                         const double * sumtable,
-                                                         const double * diagptable,
-                                                         double * site_lk);
-
-PLL_EXPORT int core_likelihood_derivatives_avx(unsigned int states,
-                                               unsigned int states_padded,
-                                               unsigned int rate_cats,
-                                               unsigned int ef_sites,
-                                               const unsigned int * pattern_weights,
-                                               const double * rate_weights,
-                                               const int * invariant,
-                                               const double * prop_invar,
-                                               double ** freqs,
-                                               const double * sumtable,
-                                               const double * diagptable,
-                                               double * d_f,
-                                               double * dd_f);
+PLL_EXPORT int pll_core_likelihood_derivatives_avx(unsigned int states,
+                                                   unsigned int states_padded,
+                                                   unsigned int rate_cats,
+                                                   unsigned int ef_sites,
+                                                   const unsigned int * pattern_weights,
+                                                   const double * rate_weights,
+                                                   const int * invariant,
+                                                   const double * prop_invar,
+                                                   double ** freqs,
+                                                   const double * sumtable,
+                                                   const double * diagptable,
+                                                   double * d_f,
+                                                   double * dd_f);
 #endif
 
 /* functions in core_likelihood_sse.c */
@@ -1452,7 +1417,7 @@ PLL_EXPORT pll_svg_attrib_t * pll_svg_attrib_create(void);
 PLL_EXPORT void pll_svg_attrib_destroy(pll_svg_attrib_t * attrib);
 
 PLL_EXPORT int pll_utree_export_svg(pll_utree_t * tree,
-                                    unsigned int tip_count, 
+                                    unsigned int tip_count,
                                     const pll_svg_attrib_t * attribs,
                                     const char * filename);
 #ifdef __cplusplus

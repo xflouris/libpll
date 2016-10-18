@@ -26,6 +26,61 @@
           work with SSE (states_padded is set to the corresponding value)
 */
 
+static int core_update_sumtable_ti_4x4_sse(unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * parent_clv,
+                                           const unsigned char * left_tipchars,
+                                           double ** eigenvecs,
+                                           double ** inv_eigenvecs,
+                                           double ** freqs_indices,
+                                           unsigned int * tipmap,
+                                           double * sumtable)
+{
+  unsigned int i,j,k,n;
+  unsigned int tipstate;
+  unsigned int states = 4;
+  double lterm = 0;
+  double rterm = 0;
+
+  const double * clvc = parent_clv;
+  const double * ev;
+  const double * invei;
+  const double * freqs;
+
+  double * sum = sumtable;
+
+
+  /* build sumtable */
+  for (n = 0; n < sites; n++)
+  {
+    for (i = 0; i < rate_cats; ++i)
+    {
+      ev    = eigenvecs[i];
+      invei = inv_eigenvecs[i];
+      freqs = freqs_indices[i];
+
+      for (j = 0; j < states; ++j)
+      {
+        tipstate = (unsigned int)left_tipchars[n];
+        lterm = 0;
+        rterm = 0;
+
+        for (k = 0; k < states; ++k)
+        {
+          lterm += (tipstate & 1) * freqs[k] * invei[k*states+j];
+          rterm += ev[j*states+k] * clvc[k];
+          tipstate >>= 1;
+        }
+        sum[j] = lterm*rterm;
+      }
+
+      clvc += states;
+      sum += states;
+    }
+  }
+  return PLL_SUCCESS;
+}
+
 PLL_EXPORT int pll_core_update_sumtable_ii_sse(unsigned int states,
                                                unsigned int sites,
                                                unsigned int rate_cats,
@@ -106,15 +161,15 @@ PLL_EXPORT int pll_core_update_sumtable_ti_sse(unsigned int states,
 
   if (states == 4)
   {
-    return pll_core_update_sumtable_ti_4x4_sse(sites,
-                                               rate_cats,
-                                               parent_clv,
-                                               left_tipchars,
-                                               eigenvecs,
-                                               inv_eigenvecs,
-                                               freqs_indices,
-                                               tipmap,
-                                               sumtable);
+    return core_update_sumtable_ti_4x4_sse(sites,
+                                           rate_cats,
+                                           parent_clv,
+                                           left_tipchars,
+                                           eigenvecs,
+                                           inv_eigenvecs,
+                                           freqs_indices,
+                                           tipmap,
+                                           sumtable);
   }
 
   unsigned int states_padded = (states+1) & 0xFFFFFFFE;
@@ -145,61 +200,6 @@ PLL_EXPORT int pll_core_update_sumtable_ti_sse(unsigned int states,
 
       clvc += states_padded;
       sum += states_padded;
-    }
-  }
-  return PLL_SUCCESS;
-}
-
-PLL_EXPORT int pll_core_update_sumtable_ti_4x4_sse(unsigned int sites,
-                                                   unsigned int rate_cats,
-                                                   const double * parent_clv,
-                                                   const unsigned char * left_tipchars,
-                                                   double ** eigenvecs,
-                                                   double ** inv_eigenvecs,
-                                                   double ** freqs_indices,
-                                                   unsigned int * tipmap,
-                                                   double * sumtable)
-{
-  unsigned int i,j,k,n;
-  unsigned int tipstate;
-  unsigned int states = 4;
-  double lterm = 0;
-  double rterm = 0;
-
-  const double * clvc = parent_clv;
-  const double * ev;
-  const double * invei;
-  const double * freqs;
-
-  double * sum = sumtable;
-
-
-  /* build sumtable */
-  for (n = 0; n < sites; n++)
-  {
-    for (i = 0; i < rate_cats; ++i)
-    {
-      ev    = eigenvecs[i];
-      invei = inv_eigenvecs[i];
-      freqs = freqs_indices[i];
-
-      for (j = 0; j < states; ++j)
-      {
-        tipstate = (unsigned int)left_tipchars[n];
-        lterm = 0;
-        rterm = 0;
-
-        for (k = 0; k < states; ++k)
-        {
-          lterm += (tipstate & 1) * freqs[k] * invei[k*states+j];
-          rterm += ev[j*states+k] * clvc[k];
-          tipstate >>= 1;
-        }
-        sum[j] = lterm*rterm;
-      }
-
-      clvc += states;
-      sum += states;
     }
   }
   return PLL_SUCCESS;

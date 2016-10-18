@@ -21,14 +21,14 @@
 
 #include "pll.h"
 
-PLL_EXPORT int pll_core_update_sumtable_ii_4x4_avx(unsigned int sites,
-                                                   unsigned int rate_cats,
-                                                   const double * clvp,
-                                                   const double * clvc,
-                                                   double ** eigenvecs,
-                                                   double ** inv_eigenvecs,
-                                                   double ** freqs,
-                                                   double *sumtable)
+static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * clvp,
+                                           const double * clvc,
+                                           double ** eigenvecs,
+                                           double ** inv_eigenvecs,
+                                           double ** freqs,
+                                           double *sumtable)
 {
   unsigned int i, j, k, n;
 
@@ -180,14 +180,14 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
   /* dedicated functions for 4x4 matrices */
   if (states == 4)
   {
-    return pll_core_update_sumtable_ii_4x4_avx(sites,
-                                       rate_cats,
-                                       clvp,
-                                       clvc,
-                                       eigenvecs,
-                                       inv_eigenvecs,
-                                       freqs,
-                                       sumtable);
+    return core_update_sumtable_ii_4x4_avx(sites,
+                                           rate_cats,
+                                           clvp,
+                                           clvc,
+                                           eigenvecs,
+                                           inv_eigenvecs,
+                                           freqs,
+                                           sumtable);
   }
 
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
@@ -675,128 +675,19 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
   return PLL_SUCCESS;
 }
 
-PLL_EXPORT void core_site_likelihood_derivatives_avx(unsigned int states,
-                                             unsigned int states_padded,
-                                             unsigned int rate_cats,
-                                             const double * rate_weights,
-                                             const double * prop_invar,
-                                             const double * lk_invar,
-                                             const double * sumtable,
-                                             const double * diagptable,
-                                             double * site_lk)
-{
-  unsigned int i,j;
-  const double *sum = sumtable;
-  const double * diagp = diagptable;
-
-  __m256d v_sitelk = _mm256_setzero_pd ();
-  for (i = 0; i < rate_cats; ++i)
-  {
-    __m256d v_cat_sitelk = _mm256_setzero_pd ();
-    for (j = 0; j < states_padded; j++)
-    {
-      __m256d v_diagp = _mm256_load_pd(diagp);
-      __m256d v_sum = _mm256_set1_pd(sum[j]);
-      v_cat_sitelk = _mm256_add_pd (v_cat_sitelk, _mm256_mul_pd(v_sum, v_diagp));
-
-//      v_sitelk = _mm256_add_pd (v_sitelk, _mm256_mul_pd(v_sum, v_diagp));
-
-      diagp += 4;
-    }
-
-    /* account for invariant sites */
-    const double t_prop_invar = prop_invar[i];
-    if (t_prop_invar > 0)
-    {
-      __m256d v_inv_prop = _mm256_set1_pd(1. - t_prop_invar);
-      v_cat_sitelk = _mm256_mul_pd(v_cat_sitelk, v_inv_prop);
-
-      if (lk_invar)
-        {
-          __m256d v_inv_lk = _mm256_setr_pd(lk_invar[i], 0., 0., 0.);
-          v_cat_sitelk = _mm256_add_pd(v_cat_sitelk, v_inv_lk);
-        }
-    }
-
-    __m256d v_weight = _mm256_set1_pd(rate_weights[i]);
-    v_sitelk = _mm256_add_pd (v_sitelk, _mm256_mul_pd(v_cat_sitelk, v_weight));
-
-    sum += states_padded;
-  }
-
-  _mm256_store_pd(site_lk, v_sitelk);
-}
-
-PLL_EXPORT void core_site_likelihood_derivatives_4x4_avx(unsigned int rate_cats,
-                                             const double * rate_weights,
-                                             const double * prop_invar,
-                                             const double * lk_invar,
-                                             const double * sumtable,
-                                             const double * diagptable,
-                                             double * site_lk)
-{
-  unsigned int i;
-  const double *sum = sumtable;
-  const double * diagp = diagptable;
-
-  __m256d v_sitelk = _mm256_setzero_pd ();
-  for (i = 0; i < rate_cats; ++i)
-  {
-      __m256d v_cat_sitelk = _mm256_setzero_pd ();
-
-      __m256d v_diagp = _mm256_load_pd(diagp);
-      __m256d v_sum = _mm256_set1_pd(sum[0]);
-      v_cat_sitelk = _mm256_add_pd (v_cat_sitelk, _mm256_mul_pd(v_sum, v_diagp));
-//      v_cat_sitelk = _mm256_fmadd_pd (v_sum, v_diagp, v_cat_sitelk);
-
-      v_diagp = _mm256_load_pd(diagp + 4);
-      v_sum = _mm256_set1_pd(sum[1]);
-      v_cat_sitelk = _mm256_add_pd (v_cat_sitelk, _mm256_mul_pd(v_sum, v_diagp));
-
-      v_diagp = _mm256_load_pd(diagp + 8);
-      v_sum = _mm256_set1_pd(sum[2]);
-      v_cat_sitelk = _mm256_add_pd (v_cat_sitelk, _mm256_mul_pd(v_sum, v_diagp));
-
-      v_diagp = _mm256_load_pd(diagp + 12);
-      v_sum = _mm256_set1_pd(sum[3]);
-      v_cat_sitelk = _mm256_add_pd (v_cat_sitelk, _mm256_mul_pd(v_sum, v_diagp));
-
-      /* account for invariant sites */
-      const double t_prop_invar = prop_invar[i];
-      if (t_prop_invar > 0)
-      {
-        __m256d v_inv_prop = _mm256_set1_pd(1. - t_prop_invar);
-        v_cat_sitelk = _mm256_mul_pd(v_cat_sitelk, v_inv_prop);
-
-        if (lk_invar)
-          {
-            __m256d v_inv_lk = _mm256_setr_pd(lk_invar[i], 0., 0., 0.);
-            v_cat_sitelk = _mm256_add_pd(v_cat_sitelk, v_inv_lk);
-          }
-      }
-
-      __m256d v_weight = _mm256_set1_pd(rate_weights[i]);
-      v_sitelk = _mm256_add_pd (v_sitelk, _mm256_mul_pd(v_cat_sitelk, v_weight));
-
-      diagp += 16;
-      sum += 4;
-  }
-  _mm256_store_pd(site_lk, v_sitelk);
-}
-
-PLL_EXPORT int core_likelihood_derivatives_avx(unsigned int states,
-                                               unsigned int states_padded,
-                                               unsigned int rate_cats,
-                                               unsigned int ef_sites,
-                                               const unsigned int * pattern_weights,
-                                               const double * rate_weights,
-                                               const int * invariant,
-                                               const double * prop_invar,
-                                               double ** freqs,
-                                               const double * sumtable,
-                                               const double * diagptable,
-                                               double * d_f,
-                                               double * dd_f)
+PLL_EXPORT int pll_core_likelihood_derivatives_avx(unsigned int states,
+                                                   unsigned int states_padded,
+                                                   unsigned int rate_cats,
+                                                   unsigned int ef_sites,
+                                                   const unsigned int * pattern_weights,
+                                                   const double * rate_weights,
+                                                   const int * invariant,
+                                                   const double * prop_invar,
+                                                   double ** freqs,
+                                                   const double * sumtable,
+                                                   const double * diagptable,
+                                                   double * d_f,
+                                                   double * dd_f)
 {
   unsigned int i,j,k,n;
 
