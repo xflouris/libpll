@@ -1025,6 +1025,49 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
                                                    const unsigned int * right_scaler);
 #endif
 
+/* functions in core_partials_avx2.c */
+
+#ifdef HAVE_AVX2
+PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
+                                                unsigned int sites,
+                                                unsigned int rate_cats,
+                                                double * parent_clv,
+                                                unsigned int * parent_scaler,
+                                                const unsigned char * left_tipchars,
+                                                const double * right_clv,
+                                                const double * left_matrix,
+                                                const double * right_matrix,
+                                                const unsigned int * right_scaler,
+                                                const unsigned int * tipmap,
+                                                unsigned int tipmap_size);
+
+PLL_EXPORT
+void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
+                                           unsigned int rate_cats,
+                                           double * parent_clv,
+                                           unsigned int * parent_scaler,
+                                           const unsigned char * left_tipchar,
+                                           const double * right_clv,
+                                           const double * left_matrix,
+                                           const double * right_matrix,
+                                           const unsigned int * right_scaler,
+                                           const unsigned int * tipmap,
+                                           unsigned int tipmap_size);
+
+PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
+                                                unsigned int sites,
+                                                unsigned int rate_cats,
+                                                double * parent_clv,
+                                                unsigned int * parent_scaler,
+                                                const double * left_clv,
+                                                const double * right_clv,
+                                                const double * left_matrix,
+                                                const double * right_matrix,
+                                                const unsigned int * left_scaler,
+                                                const unsigned int * right_scaler);
+#endif
+
+
 /* functions in core_derivatives_sse.c */
 
 #ifdef HAVE_SSE
@@ -1091,6 +1134,49 @@ PLL_EXPORT int pll_core_likelihood_derivatives_avx(unsigned int states,
                                                    const double * diagptable,
                                                    double * d_f,
                                                    double * dd_f);
+#endif
+
+/* functions in core_derivatives_avx2.c */
+
+#ifdef HAVE_AVX2
+
+PLL_EXPORT int pll_core_update_sumtable_ii_avx2(unsigned int states,
+                                                unsigned int sites,
+                                                unsigned int rate_cats,
+                                                const double * clvp,
+                                                const double * clvc,
+                                                double ** eigenvecs,
+                                                double ** inv_eigenvecs,
+                                                double ** freqs,
+                                                double *sumtable);
+
+PLL_EXPORT int pll_core_update_sumtable_ti_avx2(unsigned int states,
+                                                unsigned int sites,
+                                                unsigned int rate_cats,
+                                                const double * parent_clv,
+                                                const unsigned char * left_tipchars,
+                                                double ** eigenvecs,
+                                                double ** inv_eigenvecs,
+                                                double ** freqs,
+                                                unsigned int * tipmap,
+                                                unsigned int tipmap_size,
+                                                double *sumtable,
+                                                unsigned int attrib);
+
+PLL_EXPORT
+int pll_core_likelihood_derivatives_avx2(unsigned int states,
+                                         unsigned int states_padded,
+                                         unsigned int rate_cats,
+                                         unsigned int ef_sites,
+                                         const unsigned int * pattern_weights,
+                                         const double * rate_weights,
+                                         const int * invariant,
+                                         const double * prop_invar,
+                                         double ** freqs,
+                                         const double * sumtable,
+                                         const double * diagptable,
+                                         double * d_f,
+                                         double * dd_f);
 #endif
 
 /* functions in core_likelihood_sse.c */
@@ -1293,6 +1379,60 @@ PLL_EXPORT double pll_core_root_loglikelihood_avx(unsigned int states,
                                                   double * persite_lnl);
 #endif
 
+
+/* functions in core_likelihood_avx2.c */
+
+#ifdef HAVE_AVX2
+PLL_EXPORT
+double pll_core_root_loglikelihood_avx2(unsigned int states,
+                                        unsigned int sites,
+                                        unsigned int rate_cats,
+                                        const double * clv,
+                                        const unsigned int * scaler,
+                                        double ** frequencies,
+                                        const double * rate_weights,
+                                        const unsigned int * pattern_weights,
+                                        const double * invar_proportion,
+                                        const int * invar_indices,
+                                        const unsigned int * freqs_indices,
+                                        double * persite_lnl);
+
+PLL_EXPORT
+double pll_core_edge_loglikelihood_ti_20x20_avx2(unsigned int sites,
+                                                 unsigned int rate_cats,
+                                                 const double * parent_clv,
+                                                 const unsigned int * parent_scaler,
+                                                 const unsigned char * tipchars,
+                                                 const unsigned int * tipmap,
+                                                 unsigned int tipmap_size,
+                                                 const double * pmatrix,
+                                                 double ** frequencies,
+                                                 const double * rate_weights,
+                                                 const unsigned int * pattern_weights,
+                                                 const double * invar_proportion,
+                                                 const int * invar_indices,
+                                                 const unsigned int * freqs_indices,
+                                                 double * persite_lnl);
+
+
+PLL_EXPORT
+double pll_core_edge_loglikelihood_ii_avx2(unsigned int states,
+                                           unsigned int sites,
+                                           unsigned int rate_cats,
+                                           const double * parent_clv,
+                                           const unsigned int * parent_scaler,
+                                           const double * child_clv,
+                                           const unsigned int * child_scaler,
+                                           const double * pmatrix,
+                                           double ** frequencies,
+                                           const double * rate_weights,
+                                           const unsigned int * pattern_weights,
+                                           const double * invar_proportion,
+                                           const int * invar_indices,
+                                           const unsigned int * freqs_indices,
+                                           double * persite_lnl);
+#endif
+
 /* functions in core_pmatrix.c */
 
 PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
@@ -1308,6 +1448,22 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
                                        double ** inv_eigenvecs,
                                        unsigned int count,
                                        unsigned int attrib);
+
+/* functions in core_pmatrix_avx2.c */
+
+#ifdef HAVE_AVX2
+PLL_EXPORT int pll_core_update_pmatrix_20x20_avx2(double ** pmatrix,
+                                                  unsigned int rate_cats,
+                                                  double * rates,
+                                                  const double * branch_lengths,
+                                                  const unsigned int * matrix_indices,
+                                                  const unsigned int * params_indices,
+                                                  double * prop_invar,
+                                                  double ** eigenvals,
+                                                  double ** eigenvecs,
+                                                  double ** inv_eigenvecs,
+                                                  unsigned int count);
+#endif
 
 /* functions in core_pmatrix_avx.c */
 

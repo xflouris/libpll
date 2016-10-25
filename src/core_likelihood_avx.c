@@ -450,7 +450,7 @@ double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
 
     for (i = 0; i < rate_cats; ++i)
     {
-      terma_r = 0;
+      xmm1 = _mm256_setzero_pd();
 
       /* iterate over quadruples of rows */
       for (j = 0; j < states_padded; j += 4)
@@ -460,15 +460,17 @@ double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
 
         /* multiply with clvp */
         xmm0 = _mm256_load_pd(clvp);
-        xmm1 = _mm256_mul_pd(xmm2,xmm0);
+        xmm0 = _mm256_mul_pd(xmm2,xmm0);
 
-        /* add up the elements of xmm1 */
-        xmm0 = _mm256_hadd_pd(xmm1,xmm1);
-        terma_r += ((double *)&xmm0)[0] + ((double *)&xmm0)[2];
+        /* add up the elements of xmm1 to the accumulator */
+        xmm1 = _mm256_add_pd(xmm1,xmm0);
 
         clvp += 4;
         loffset += 4;
       }
+
+      xmm0 = _mm256_hadd_pd(xmm1,xmm1);
+      terma_r = ((double *)&xmm0)[0] + ((double *)&xmm0)[2];
 
       /* account for invariant sites */
       prop_invar = invar_proportion ? invar_proportion[freqs_indices[i]] : 0;

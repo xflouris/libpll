@@ -141,6 +141,31 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
     return;
   }
   #endif
+  #ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  {
+    if (states == 4)
+      pll_core_update_partial_tt_4x4_avx(sites,
+                                         rate_cats,
+                                         parent_clv,
+                                         parent_scaler,
+                                         left_tipchars,
+                                         right_tipchars,
+                                         lookup);
+    else
+      pll_core_update_partial_tt_avx(states,
+                                     sites,
+                                     rate_cats,
+                                     parent_clv,
+                                     parent_scaler,
+                                     left_tipchars,
+                                     right_tipchars,
+                                     lookup,
+                                     tipmap_size);
+
+    return;
+  }
+  #endif
 
   unsigned int span = states * rate_cats;
   unsigned int log2_maxstates = (unsigned int)ceil(log2(tipmap_size));
@@ -198,6 +223,21 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
   #endif
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    pll_core_update_partial_ti_4x4_avx(sites,
+                                       rate_cats,
+                                       parent_clv,
+                                       parent_scaler,
+                                       left_tipchars,
+                                       right_clv,
+                                       left_matrix,
+                                       right_matrix,
+                                       right_scaler);
+    return;
+  }
+  #endif
+  #ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
   {
     pll_core_update_partial_ti_4x4_avx(sites,
                                        rate_cats,
@@ -313,29 +353,36 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
 #ifdef HAVE_AVX
   if ((attrib & PLL_ATTRIB_ARCH_AVX))
   {
-    if (states == 4)
-      pll_core_update_partial_ti_4x4_avx(sites,
-                                         rate_cats,
-                                         parent_clv,
-                                         parent_scaler,
-                                         left_tipchars,
-                                         right_clv,
-                                         left_matrix,
-                                         right_matrix,
-                                         right_scaler);
-    else
-      pll_core_update_partial_ti_avx(states,
-                                     sites,
-                                     rate_cats,
-                                     parent_clv,
-                                     parent_scaler,
-                                     left_tipchars,
-                                     right_clv,
-                                     left_matrix,
-                                     right_matrix,
-                                     right_scaler,
-                                     tipmap,
-                                     tipmap_size);
+    pll_core_update_partial_ti_avx(states,
+                                   sites,
+                                   rate_cats,
+                                   parent_clv,
+                                   parent_scaler,
+                                   left_tipchars,
+                                   right_clv,
+                                   left_matrix,
+                                   right_matrix,
+                                   right_scaler,
+                                   tipmap,
+                                   tipmap_size);
+    return;
+  }
+#endif
+#ifdef HAVE_AVX2
+  if ((attrib & PLL_ATTRIB_ARCH_AVX2))
+  {
+    pll_core_update_partial_ti_avx(states,
+                                   sites,
+                                   rate_cats,
+                                   parent_clv,
+                                   parent_scaler,
+                                   left_tipchars,
+                                   right_clv,
+                                   left_matrix,
+                                   right_matrix,
+                                   right_scaler,
+                                   tipmap,
+                                   tipmap_size);
     return;
   }
 #endif
@@ -445,6 +492,23 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
     pll_core_update_partial_ii_avx(states,
+                                   sites,
+                                   rate_cats,
+                                   parent_clv,
+                                   parent_scaler,
+                                   left_clv,
+                                   right_clv,
+                                   left_matrix,
+                                   right_matrix,
+                                   left_scaler,
+                                   right_scaler);
+    return;
+  }
+#endif
+#ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  {
+    pll_core_update_partial_ii_avx2(states,
                                    sites,
                                    rate_cats,
                                    parent_clv,
@@ -595,6 +659,25 @@ PLL_EXPORT void pll_core_create_lookup(unsigned int states,
   #endif
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    if (states == 4)
+      pll_core_create_lookup_4x4_avx(rate_cats,
+                                     lookup,
+                                     left_matrix,
+                                     right_matrix);
+    else
+      pll_core_create_lookup_avx(states,
+                                 rate_cats,
+                                 lookup,
+                                 left_matrix,
+                                 right_matrix,
+                                 tipmap,
+                                 tipmap_size);
+    return;
+  }
+  #endif
+  #ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
   {
     if (states == 4)
       pll_core_create_lookup_4x4_avx(rate_cats,

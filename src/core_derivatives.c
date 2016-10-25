@@ -127,6 +127,20 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
                                            sumtable);
   }
 #endif
+#ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  {
+    return pll_core_update_sumtable_ii_avx2(states,
+                                           sites,
+                                           rate_cats,
+                                           parent_clv,
+                                           child_clv,
+                                           eigenvecs,
+                                           inv_eigenvecs,
+                                           freqs,
+                                           sumtable);
+  }
+#endif
 
   /* build sumtable */
   for (n = 0; n < sites; n++)
@@ -202,6 +216,23 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
     return pll_core_update_sumtable_ti_avx(states,
+                                           sites,
+                                           rate_cats,
+                                           parent_clv,
+                                           left_tipchars,
+                                           eigenvecs,
+                                           inv_eigenvecs,
+                                           freqs,
+                                           tipmap,
+                                           tipmap_size,
+                                           sumtable,
+                                           attrib);
+  }
+#endif
+#ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  {
+    return pll_core_update_sumtable_ti_avx2(states,
                                            sites,
                                            rate_cats,
                                            parent_clv,
@@ -350,19 +381,6 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 
   unsigned int states_padded = states;
 
-#ifdef HAVE_SSE
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
-  {
-    states_padded = (states+1) & 0xFFFFFFFE;
-  }
-#endif
-#ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
-  {
-    states_padded = (states+3) & 0xFFFFFFFC;
-  }
-#endif
-
   /* For Stamatakis correction, the likelihood derivatives are computed in
      the usual way for the additional per-state sites. */
   if ((attrib & PLL_ATTRIB_AB_MASK) == PLL_ATTRIB_AB_STAMATAKIS)
@@ -404,9 +422,40 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
     }
   }
 
+// SSE3 vectorization in missing as of now
+#ifdef HAVE_SSE3
+  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  {
+    states_padded = (states+1) & 0xFFFFFFFE;
+  }
+#endif
+
+#ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  {
+    states_padded = (states+3) & 0xFFFFFFFC;
+
+    pll_core_likelihood_derivatives_avx2(states,
+                                        states_padded,
+                                        rate_cats,
+                                        ef_sites,
+                                        pattern_weights,
+                                        rate_weights,
+                                        invariant,
+                                        prop_invar,
+                                        freqs,
+                                        sumtable,
+                                        diagptable,
+                                        d_f,
+                                        dd_f);
+  }
+  else
+#endif
 #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
   {
+    states_padded = (states+3) & 0xFFFFFFFC;
+
     pll_core_likelihood_derivatives_avx(states,
                                         states_padded,
                                         rate_cats,

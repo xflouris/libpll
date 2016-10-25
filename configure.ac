@@ -50,11 +50,16 @@ AC_FUNC_ALLOCA
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([asprintf memcpy memset posix_memalign])
 
+have_avx2=no
 have_avx=no
 have_sse=no
 have_ps2pdf=no
 
 AX_EXT
+
+if test "x${ax_cv_have_fma3_ext}" = "xyes"; then
+  have_avx2=yes
+fi
 
 if test "x${ax_cv_have_avx_ext}" = "xyes"; then
   have_avx=yes
@@ -63,6 +68,11 @@ fi
 if test "x${ax_cv_have_sse3_ext}" = "xyes"; then
   have_sse=yes
 fi
+
+AC_ARG_ENABLE(avx2, AS_HELP_STRING([--disable-avx2], [Build without AVX2/FMA support]))
+AS_IF([test "x${ax_cv_have_fma3_ext}" = "xyes"], [
+  have_avx2=yes
+])
 
 AC_ARG_ENABLE(avx, AS_HELP_STRING([--disable-avx], [Build without AVX support]))
 AS_IF([test "x${ax_cv_have_avx_ext}" = "xyes"], [
@@ -84,6 +94,7 @@ AS_IF([test "x$enable_pdfman" != "xno"], [
   fi
 ])
 
+AM_CONDITIONAL(HAVE_AVX2, test "x${have_avx2}" = "xyes")
 AM_CONDITIONAL(HAVE_AVX, test "x${have_avx}" = "xyes")
 AM_CONDITIONAL(HAVE_SSE, test "x${have_sse}" = "xyes")
 AM_CONDITIONAL(HAVE_PS2PDF, test "x${have_ps2pdf}" = "xyes")

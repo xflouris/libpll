@@ -438,6 +438,14 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
     partition->states_padded = (states+3) & 0xFFFFFFFC;
   }
 #endif
+#ifdef HAVE_AVX2
+  if (attributes & PLL_ATTRIB_ARCH_AVX2)
+  {
+    partition->alignment = PLL_ALIGNMENT_AVX;
+    partition->states_padded = (states+3) & 0xFFFFFFFC;
+  }
+#endif
+
   unsigned int states_padded = partition->states_padded;
 
   /* initialize properties */

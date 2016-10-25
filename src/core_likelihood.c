@@ -120,6 +120,43 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
     states_padded = (states+3) & 0xFFFFFFFC;
   }
   #endif
+  #ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  {
+    if (states == 4)
+    {
+      return pll_core_root_loglikelihood_4x4_avx(sites,
+                                                 rate_cats,
+                                                 clv,
+                                                 scaler,
+                                                 frequencies,
+                                                 rate_weights,
+                                                 pattern_weights,
+                                                 invar_proportion,
+                                                 invar_indices,
+                                                 freqs_indices,
+                                                 persite_lnl);
+    }
+    else
+    {
+      return pll_core_root_loglikelihood_avx2(states,
+                                             sites,
+                                             rate_cats,
+                                             clv,
+                                             scaler,
+                                             frequencies,
+                                             rate_weights,
+                                             pattern_weights,
+                                             invar_proportion,
+                                             invar_indices,
+                                             freqs_indices,
+                                             persite_lnl);
+    }
+    /* this line is never called, but should we disable the else case above,
+       then states_padded must be set to this value */
+    states_padded = (states+3) & 0xFFFFFFFC;
+  }
+  #endif
 
 
   /* iterate through sites */
@@ -221,6 +258,24 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
   #endif
   #ifdef HAVE_AVX
   if (attrib & PLL_ATTRIB_ARCH_AVX)
+  {
+    return pll_core_edge_loglikelihood_ti_4x4_avx(sites,
+                                                  rate_cats,
+                                                  parent_clv,
+                                                  parent_scaler,
+                                                  tipchars,
+                                                  pmatrix,
+                                                  frequencies,
+                                                  rate_weights,
+                                                  pattern_weights,
+                                                  invar_proportion,
+                                                  invar_indices,
+                                                  freqs_indices,
+                                                  persite_lnl);
+  }
+  #endif
+  #ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
   {
     return pll_core_edge_loglikelihood_ti_4x4_avx(sites,
                                                   rate_cats,
@@ -434,6 +489,66 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
     states_padded = (states+3) & 0xFFFFFFFC;
   }
   #endif
+  #ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  {
+    if (states == 4)
+    {
+      return pll_core_edge_loglikelihood_ti_4x4_avx(sites,
+                                                    rate_cats,
+                                                    parent_clv,
+                                                    parent_scaler,
+                                                    tipchars,
+                                                    pmatrix,
+                                                    frequencies,
+                                                    rate_weights,
+                                                    pattern_weights,
+                                                    invar_proportion,
+                                                    invar_indices,
+                                                    freqs_indices,
+                                                    persite_lnl);
+    }
+    else if (states == 20)
+    {
+      return pll_core_edge_loglikelihood_ti_20x20_avx2(sites,
+                                                      rate_cats,
+                                                      parent_clv,
+                                                      parent_scaler,
+                                                      tipchars,
+                                                      tipmap,
+                                                      tipmap_size,
+                                                      pmatrix,
+                                                      frequencies,
+                                                      rate_weights,
+                                                      pattern_weights,
+                                                      invar_proportion,
+                                                      invar_indices,
+                                                      freqs_indices,
+                                                      persite_lnl);
+    }
+    else
+    {
+      return pll_core_edge_loglikelihood_ti_avx(states,
+                                                sites,
+                                                rate_cats,
+                                                parent_clv,
+                                                parent_scaler,
+                                                tipchars,
+                                                tipmap,
+                                                pmatrix,
+                                                frequencies,
+                                                rate_weights,
+                                                pattern_weights,
+                                                invar_proportion,
+                                                invar_indices,
+                                                freqs_indices,
+                                                persite_lnl);
+    }
+    /* this line is never called, but should we disable the else case above,
+       then states_padded must be set to this value */
+    states_padded = (states+3) & 0xFFFFFFFC;
+  }
+  #endif
 
   for (n = 0; n < sites; ++n)
   {
@@ -595,6 +710,49 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
     else
     {
       return pll_core_edge_loglikelihood_ii_avx(states,
+                                                sites,
+                                                rate_cats,
+                                                clvp,
+                                                parent_scaler,
+                                                clvc,
+                                                child_scaler,
+                                                pmatrix,
+                                                frequencies,
+                                                rate_weights,
+                                                pattern_weights,
+                                                invar_proportion,
+                                                invar_indices,
+                                                freqs_indices,
+                                                persite_lnl);
+    }
+    /* this line is never called, but should we disable the else case above,
+       then states_padded must be set to this value */
+    states_padded = (states+3) & 0xFFFFFFFC;
+  }
+  #endif
+  #ifdef HAVE_AVX2
+  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  {
+    if (states == 4)
+    {
+      return pll_core_edge_loglikelihood_ii_4x4_avx(sites,
+                                                    rate_cats,
+                                                    clvp,
+                                                    parent_scaler,
+                                                    clvc,
+                                                    child_scaler,
+                                                    pmatrix,
+                                                    frequencies,
+                                                    rate_weights,
+                                                    pattern_weights,
+                                                    invar_proportion,
+                                                    invar_indices,
+                                                    freqs_indices,
+                                                    persite_lnl);
+    }
+    else
+    {
+      return pll_core_edge_loglikelihood_ii_avx2(states,
                                                 sites,
                                                 rate_cats,
                                                 clvp,

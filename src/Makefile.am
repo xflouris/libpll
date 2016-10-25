@@ -1,18 +1,6 @@
 lib_LTLIBRARIES=libpll.la
 
-if HAVE_AVX
-AVXFLAGS=-mavx
-else
-AVXFLAGS=
-endif
-
-if HAVE_SSE
-SSEFLAGS=-msse3
-else
-SSEFLAGS=
-endif
-
-AM_CFLAGS=-Wall -Wsign-compare -D_GNU_SOURCE -std=c99 -O3
+AM_CFLAGS=-Wall -Wsign-compare -D_GNU_SOURCE -std=c99 -O3 -fPIC
 
 LIBPLLHEADERS=\
 pll.h
@@ -48,8 +36,29 @@ lex_utree.l \
 lex_rtree.l \
 lex_phylip.l
 
+libpll_la_CFLAGS = $(AM_CFLAGS)
+
+# To allow cross-compilation, those SIMD flags will be used for the respective source files only  
+AVX2FLAGS=-mfma -mavx2
+AVXFLAGS=-mavx
+SSEFLAGS=-msse3
+
+SIMD_KERNELS=
+
+if HAVE_AVX2
+ SIMD_KERNELS+=libsimd_avx2.la
+ libsimd_avx2_la_CFLAGS=$(AM_CFLAGS) $(AVX2FLAGS)
+ libsimd_avx2_la_SOURCES=\
+ core_partials_avx2.c \
+ core_derivatives_avx2.c \
+ core_pmatrix_avx2.c \
+ core_likelihood_avx2.c
+endif
+
 if HAVE_AVX
-libpll_la_SOURCES+=\
+SIMD_KERNELS+=libsimd_avx.la
+libsimd_avx_la_CFLAGS=$(AM_CFLAGS) $(AVXFLAGS)
+libsimd_avx_la_SOURCES=\
 core_partials_avx.c \
 core_derivatives_avx.c \
 core_pmatrix_avx.c \
@@ -57,14 +66,17 @@ core_likelihood_avx.c
 endif
 
 if HAVE_SSE
-libpll_la_SOURCES+=\
+SIMD_KERNELS+=libsimd_sse.la
+libsimd_sse_la_CFLAGS=$(AM_CFLAGS) $(SSEFLAGS)
+libsimd_sse_la_SOURCES=\
 core_partials_sse.c \
 core_derivatives_sse.c \
 core_likelihood_sse.c \
 core_pmatrix_sse.c 
 endif
 
-libpll_la_CFLAGS = $(AM_CFLAGS) $(AVXFLAGS) $(SSEFLAGS)
+libpll_la_LIBADD = $(SIMD_KERNELS)
+noinst_LTLIBRARIES = $(SIMD_KERNELS) 
 
 # This is the version information for libtool and not the libpll version. For
 #  more information see:
