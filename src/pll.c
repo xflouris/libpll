@@ -424,7 +424,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   partition->alignment = PLL_ALIGNMENT_CPU;
   partition->attributes = attributes;
   partition->states_padded = states;
-#ifdef HAVE_SSE
+#ifdef HAVE_SSE3
   if (attributes & PLL_ATTRIB_ARCH_SSE)
   {
     partition->alignment = PLL_ALIGNMENT_SSE;

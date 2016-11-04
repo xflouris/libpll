@@ -845,7 +845,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
 
 /* functions in core_partials_sse.c */
 
-#ifdef HAVE_SSE
+#ifdef HAVE_SSE3
 PLL_EXPORT void pll_core_create_lookup_sse(unsigned int states,
                                            unsigned int rate_cats,
                                            double * ttlookup,
@@ -1070,7 +1070,7 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
 
 /* functions in core_derivatives_sse.c */
 
-#ifdef HAVE_SSE
+#ifdef HAVE_SSE3
 PLL_EXPORT int pll_core_update_sumtable_ii_sse(unsigned int states,
                                                unsigned int sites,
                                                unsigned int rate_cats,
@@ -1181,7 +1181,7 @@ int pll_core_likelihood_derivatives_avx2(unsigned int states,
 
 /* functions in core_likelihood_sse.c */
 
-#ifdef HAVE_SSE
+#ifdef HAVE_SSE3
 PLL_EXPORT
 double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
                                           unsigned int sites,
@@ -1495,7 +1495,7 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
 
 /* functions in core_pmatrix_sse.c */
 
-#ifdef HAVE_SSE
+#ifdef HAVE_SSE3
 PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
                                                unsigned int rate_cats,
                                                double * rates,

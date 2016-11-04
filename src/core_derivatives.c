@@ -99,7 +99,7 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
   const double * t_inv_eigenvecs;
   const double * t_freqs;
 
-#ifdef HAVE_SSE
+#ifdef HAVE_SSE3
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     return pll_core_update_sumtable_ii_sse(states,
@@ -197,7 +197,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
 
   unsigned int states_padded = states;
 
-#ifdef HAVE_SSE
+#ifdef HAVE_SSE3
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     return pll_core_update_sumtable_ti_sse(states,

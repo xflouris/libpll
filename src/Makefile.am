@@ -65,7 +65,7 @@ core_pmatrix_avx.c \
 core_likelihood_avx.c 
 endif
 
-if HAVE_SSE
+if HAVE_SSE3
 SIMD_KERNELS+=libsimd_sse.la
 libsimd_sse_la_CFLAGS=$(AM_CFLAGS) $(SSEFLAGS)
 libsimd_sse_la_SOURCES=\

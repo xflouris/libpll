@@ -46,7 +46,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
 
   unsigned int states_padded = states;
 
-  #ifdef HAVE_SSE
+  #ifdef HAVE_SSE3
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     if (states == 4)
@@ -238,7 +238,7 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
   unsigned int states = 4;
   unsigned int states_padded = states;
 
-  #ifdef HAVE_SSE
+  #ifdef HAVE_SSE3
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     return pll_core_edge_loglikelihood_ti_4x4_sse(sites,
@@ -387,7 +387,7 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
 
   unsigned int states_padded = states;
 
-  #ifdef HAVE_SSE
+  #ifdef HAVE_SSE3
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     if (states == 4)
@@ -644,7 +644,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   */
   unsigned int states_padded = states;
 
-  #ifdef HAVE_SSE
+  #ifdef HAVE_SSE3
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     if (states == 4)

@@ -47,7 +47,7 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
   double * pmat;
 
 
-  #ifdef HAVE_SSE
+  #ifdef HAVE_SSE3
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     if (states == 4)

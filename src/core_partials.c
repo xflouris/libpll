@@ -90,7 +90,7 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
   unsigned int j,k,n;
   const double * offset;
 
-  #ifdef HAVE_SSE
+  #ifdef HAVE_SSE3
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     if (states == 4)
@@ -206,7 +206,7 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
   const double * lmat;
   const double * rmat;
 
-  #ifdef HAVE_SSE
+  #ifdef HAVE_SSE3
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     pll_core_update_partial_ti_4x4_sse(sites,
@@ -321,7 +321,7 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
   const double * lmat;
   const double * rmat;
 
-#ifdef HAVE_SSE
+#ifdef HAVE_SSE3
   if ((attrib & PLL_ATTRIB_ARCH_SSE))
   {
     if (states == 4)
@@ -471,7 +471,7 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
 
   unsigned int span = states * rate_cats;
 
-#ifdef HAVE_SSE
+#ifdef HAVE_SSE3
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     pll_core_update_partial_ii_sse(states,
@@ -638,7 +638,7 @@ PLL_EXPORT void pll_core_create_lookup(unsigned int states,
                                        unsigned int attrib)
 {
 
-  #ifdef HAVE_SSE
+  #ifdef HAVE_SSE3
   if (attrib & PLL_ATTRIB_ARCH_SSE)
   {
     if (states == 4)
