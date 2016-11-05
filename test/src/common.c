@@ -26,6 +26,11 @@ unsigned int get_attributes(int argc, char **argv)
       /* sse3 vectorization */
       attributes |= PLL_ATTRIB_ARCH_SSE;
     }
+    else if (!strcmp (argv[i], "avx2"))
+    {
+      /* avx2 vectorization */
+      attributes |= PLL_ATTRIB_ARCH_AVX2;
+    }
     else
     {
       printf("Unrecognised attribute: %s\n", argv[i]);
