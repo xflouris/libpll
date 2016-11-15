@@ -445,14 +445,13 @@ PLL_EXPORT int pll_update_invariant_sites_proportion(pll_partition_t * partition
 PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
                                                   unsigned int * state_inv_count)
 {
-  int inv_site;
   unsigned int i,j,k;
   unsigned int invariant_count = 0;
   unsigned int tips = partition->tips;
   unsigned int sites = partition->sites;
   unsigned int states = partition->states;
   unsigned int gap_state = 0;
-  unsigned int state;
+  unsigned int cur_state;
   int * invariant = partition->invariant;
   double * tipclv;
 
@@ -473,15 +472,15 @@ PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
     {
       if (invariant[i] > -1)
       {
-        state = invariant[i];
+        cur_state = invariant[i];
         /* since the invariant sites array is generated in the library,
            it should not contain invalid values */
-        assert (state < states);
+        assert (cur_state < states);
 
         /* increase the counter and per-state count */
-        invariant_count++;
+        invariant_count += partition->pattern_weights[i];
         if (state_inv_count)
-          state_inv_count[state]++;
+          state_inv_count[cur_state]++;
       }
     }
   }
@@ -489,52 +488,22 @@ PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
   {
     if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
     {
-      if (states == 4)
+      for (j = 0; j < sites; ++j)
       {
-        for (j = 0; j < sites; ++j)
+        cur_state = gap_state;
+        for (i = 0; i < tips; ++i)
         {
-          state = (unsigned int)(partition->tipchars[0][j]);
-          if (state >= gap_state || __builtin_popcount(state) > 1)
-            continue;
-          inv_site = 1;
-          for (i = 1; i < tips; ++i)
+          cur_state &= ((unsigned int)(partition->tipchars[i][j]));
+          if  (!cur_state)
           {
-            if ((unsigned int)(partition->tipchars[i][j]) != state)
-            {
-              inv_site = 0;
-              break;
-            }
-          }
-          if (inv_site)
-          {
-            invariant_count++;
-            if (state_inv_count)
-              state_inv_count[__builtin_ctz(state)]++;
+            break;
           }
         }
-      }
-      else
-      {
-        for (j = 0; j < sites; ++j)
+        if (__builtin_popcount(cur_state) == 1)
         {
-          state = partition->tipmap[(int)(partition->tipchars[0][j])];
-          if (state >= gap_state || __builtin_popcount(state) > 1)
-            continue;
-          inv_site = 1;
-          for (i = 1; i < tips; ++i)
-          {
-            if (partition->tipmap[(int)(partition->tipchars[i][j])] != state)
-            {
-              inv_site = 0;
-              break;
-            }
-          }
-          if (inv_site)
-          {
-            invariant_count++;
-            if (state_inv_count)
-              state_inv_count[__builtin_ctz(state)]++;
-          }
+          invariant_count += partition->pattern_weights[j];
+          if (state_inv_count)
+            state_inv_count[__builtin_ctz(cur_state)]++;
         }
       }
     }
@@ -551,31 +520,24 @@ PLL_EXPORT unsigned int pll_count_invariant_sites(pll_partition_t * partition,
       {
         unsigned int clv_shift = j*span_padded;
         tipclv = partition->clv[0] + clv_shift;
-        state = 0;
-        for (k = 0; k < states; ++k)
-        {
-          state |= ((unsigned int)tipclv[k] << k);
-        }
-        if (__builtin_popcount(state) > 1)
-          continue;
-        inv_site = 1;
+        unsigned int state = gap_state;
         for (i = 0; i < tips; ++i)
         {
-          unsigned int cur_state = 0;
           tipclv = partition->clv[i] + clv_shift;
+          cur_state = 0;
           for (k = 0; k < states; ++k)
           {
             cur_state |= ((unsigned int)tipclv[k] << k);
           }
-          if (cur_state != state)
+          state &= cur_state;
+          if (!state)
           {
-            inv_site = 0;
             break;
           }
         }
-        if (inv_site)
+        if (__builtin_popcount(state) == 1)
         {
-          invariant_count++;
+          invariant_count += partition->pattern_weights[j];
           if (state_inv_count)
             state_inv_count[__builtin_ctz(state)]++;
         }
@@ -620,10 +582,10 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
   invariant = partition->invariant;
 
   /* initialize all elements to zero */
-  memset(partition->invariant, 0, sites*sizeof(int));
+  memset(partition->invariant, gap_state, sites*sizeof(int));
 
   /* depending on the attribute flag, fill each element of the invariant array
-     with the bitwise OR of all states in the corresponding site */
+     with the bitwise AND of gap and all states in the corresponding site */
   if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
   {
     if (states == 4)
@@ -632,8 +594,7 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
         for (j = 0; j < sites; ++j)
         {
           state = (unsigned int)(partition->tipchars[i][j]);
-          if (state < gap_state)
-            invariant[j] |= state;
+            invariant[j] &= state;
         }
     }
     else
@@ -642,15 +603,13 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
         for (j = 0; j < sites; ++j)
         {
           state = partition->tipmap[(int)(partition->tipchars[i][j])];
-          if (state < gap_state)
-            invariant[j] |= state;
+            invariant[j] &= state;
         }
     }
   }
   else
   {
     unsigned int span_padded = rate_cats * states_padded;
-
     for (i = 0; i < tips; ++i)
     {
       tipclv = partition->clv[i];
@@ -661,8 +620,7 @@ PLL_EXPORT int pll_update_invariant_sites(pll_partition_t * partition)
         {
           state |= ((unsigned int)tipclv[k] << k);
         }
-        if (state < gap_state)
-          invariant[j] |= state;
+          invariant[j] &= state;
         tipclv += span_padded;
       }
     }
