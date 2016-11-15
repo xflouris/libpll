@@ -107,7 +107,7 @@ static char * append(size_t * dstlen, const char * src, size_t srclen)
 \'                                               {string_length = 0; BEGIN(apos);}
 \n                                               {pll_rtree_colstart = pll_rtree_colend = 0;}
 [\+|\-]?[0-9]+                                   {pll_rtree_lval.d = xstrndup(pll_rtree_text, pll_rtree_leng); return NUMBER;}
-[\+|\-]?[0-9]+\.[0-9]+([e|E][\+|\-]?[0-9]+)?     {pll_rtree_lval.d = xstrndup(pll_rtree_text, pll_rtree_leng); return NUMBER;}
+[\+|\-]?[0-9]*[\.]?[0-9]+([e|E][\+|\-]?[0-9]+)?  {pll_rtree_lval.d = xstrndup(pll_rtree_text, pll_rtree_leng); return NUMBER;}
 [^ \'\",\(\):;\[\]\t\n\r][^ \t\n\r\)\(\[\]\,:;]* {pll_rtree_lval.s = xstrndup(pll_rtree_text, pll_rtree_leng); return STRING;}
 [ \t\r]                                        ;
 .                                                {snprintf(pll_errmsg, 200, "Syntax error (%c)\n", pll_rtree_text[0]);
