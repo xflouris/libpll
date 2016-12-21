@@ -110,6 +110,7 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
   size_t displacement = (states_padded - states) * (states_padded);
 
   __m256i mask;
+  __m256d v_scale_threshold = _mm256_set1_pd(PLL_SCALE_THRESHOLD);
 
   /* compute CLV */
   for (n = 0; n < sites; ++n)
@@ -117,7 +118,7 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
     lmat = left_matrix;
     rmat = right_matrix;
 
-    scaling = (parent_scaler) ? 1 : 0;
+    scaling = (parent_scaler) ? 0xF : 0;
 
     lstate = tipmap[left_tipchars[n]];
 
@@ -248,6 +249,10 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
 
         __m256d v_prod = _mm256_mul_pd(v_terma_sum,v_termb_sum);
 
+        /* check for scaling */
+        __m256d v_cmp = _mm256_cmp_pd(v_prod, v_scale_threshold, _CMP_LT_OS);
+        scaling = scaling & _mm256_movemask_pd(v_cmp);
+
         _mm256_store_pd(parent_clv+i, v_prod);
 
       }
@@ -258,20 +263,14 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
       lmat -= displacement;
       rmat -= displacement;
 
-      for (j = 0; j < states; ++j)
-        scaling = scaling && (parent_clv[j] < PLL_SCALE_THRESHOLD);
-
       parent_clv += states_padded;
       right_clv  += states_padded;
     }
     /* if *all* entries of the site CLV were below the threshold then scale
        (all) entries by PLL_SCALE_FACTOR */
-    if (scaling)
+    if (scaling == 0xF)
     {
-      __m256d v_scale_factor = _mm256_set_pd(PLL_SCALE_FACTOR,
-                                             PLL_SCALE_FACTOR,
-                                             PLL_SCALE_FACTOR,
-                                             PLL_SCALE_FACTOR);
+      __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
 
       parent_clv -= span_padded;
       for (i = 0; i < span_padded; i += 4)
@@ -382,7 +381,7 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
   {
     rmat = right_matrix;
 
-    __m256d v_scale = _mm256_setzero_pd();
+    scaling = (parent_scaler) ? 0xF : 0;
 
     lstate = (unsigned int) left_tipchar[n];
 
@@ -459,8 +458,9 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
 
         __m256d v_prod = _mm256_mul_pd(v_terma_sum,v_termb_sum);
 
-        v_scale = _mm256_add_pd(v_scale, _mm256_cmp_pd(v_prod, v_scale_threshold,
-                                                       _CMP_LT_OS));
+        /* check for scaling */
+        __m256d v_cmp = _mm256_cmp_pd(v_prod, v_scale_threshold, _CMP_LT_OS);
+        scaling = scaling & _mm256_movemask_pd(v_cmp);
 
         _mm256_store_pd(parent_clv+i, v_prod);
       }
@@ -474,18 +474,11 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
       right_clv  += states_padded;
     }
 
-    /* reduce scaling flags */
-    v_scale = _mm256_hadd_pd(v_scale, v_scale);
-    scaling = ((double *)&v_scale)[0] + ((double *)&v_scale)[2] > 0.;
-
     /* if *all* entries of the site CLV were below the threshold then scale
        (all) entries by PLL_SCALE_FACTOR */
-    if (parent_scaler && scaling)
+    if (scaling == 0xF)
     {
-      __m256d v_scale_factor = _mm256_set_pd(PLL_SCALE_FACTOR,
-                                             PLL_SCALE_FACTOR,
-                                             PLL_SCALE_FACTOR,
-                                             PLL_SCALE_FACTOR);
+      __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
 
       parent_clv -= span;
       for (i = 0; i < span; i += 4)
@@ -525,6 +518,7 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
   /* dedicated functions for 4x4 matrices */
   if (states == 4)
   {
+    /* TODO: Implement avx2 4x4 case */
     pll_core_update_partial_ii_4x4_avx(sites,
                                        rate_cats,
                                        parent_clv,
@@ -551,8 +545,7 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
   {
     lmat = left_matrix;
     rmat = right_matrix;
-
-    __m256d v_scale = _mm256_setzero_pd();
+    scaling = (parent_scaler) ? 0xF : 0;
 
     for (k = 0; k < rate_cats; ++k)
     {
@@ -667,8 +660,9 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
 
         __m256d v_prod = _mm256_mul_pd(v_terma_sum,v_termb_sum);
 
-        v_scale = _mm256_add_pd(v_scale, _mm256_cmp_pd(v_prod, v_scale_threshold,
-                                                       _CMP_LT_OS));
+        /* check for scaling */
+        __m256d v_cmp = _mm256_cmp_pd(v_prod, v_scale_threshold, _CMP_LT_OS);
+        scaling = scaling & _mm256_movemask_pd(v_cmp);
 
         _mm256_store_pd(parent_clv+i, v_prod);
       }
@@ -684,18 +678,11 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
       right_clv  += states_padded;
     }
 
-    /* reduce scaling flags */
-    v_scale = _mm256_hadd_pd(v_scale, v_scale);
-    scaling = ((double *)&v_scale)[0] + ((double *)&v_scale)[2] > 0.;
-
     /* if *all* entries of the site CLV were below the threshold then scale
        (all) entries by PLL_SCALE_FACTOR */
-    if (parent_scaler && scaling)
+    if (scaling == 0xF)
     {
-      __m256d v_scale_factor = _mm256_set_pd(PLL_SCALE_FACTOR,
-                                             PLL_SCALE_FACTOR,
-                                             PLL_SCALE_FACTOR,
-                                             PLL_SCALE_FACTOR);
+      __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
 
       parent_clv -= span_padded;
       for (i = 0; i < span_padded; i += 4)
