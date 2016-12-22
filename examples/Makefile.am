@@ -11,3 +11,4 @@ include protein-list/target.mk
 include rooted/target.mk
 include rooted-tacg/target.mk
 include unrooted/target.mk
+include stepwise/target.mk
