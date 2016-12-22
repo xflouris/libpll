@@ -462,7 +462,7 @@ PLL_EXPORT int pll_utree_export_svg(pll_utree_t * tree,
      and compute the height of each node */
   if (!utree_set_height(cloned))
   {
-    pll_utree_destroy(cloned);
+    pll_utree_destroy(cloned,NULL);
     return PLL_FAILURE;
   }
 
@@ -470,7 +470,7 @@ PLL_EXPORT int pll_utree_export_svg(pll_utree_t * tree,
   FILE * fp = fopen(filename, "w");
   if (!fp)
   {
-    pll_utree_destroy(cloned);
+    pll_utree_destroy(cloned,NULL);
     return PLL_FAILURE;
   }
 
@@ -480,7 +480,7 @@ PLL_EXPORT int pll_utree_export_svg(pll_utree_t * tree,
   /* destroy data element from nodes in the cloned tree, and deallocate
      the tree */
   data_destroy(cloned);
-  pll_utree_destroy(cloned);
+  pll_utree_destroy(cloned,NULL);
 
   fclose(fp);
 

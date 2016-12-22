@@ -416,7 +416,7 @@ int main(int argc, char * argv[])
   free(operations);
 
   /* we will no longer need the tree structure */
-  pll_utree_destroy(tree);
+  pll_utree_destroy(tree,NULL);
 
   return (EXIT_SUCCESS);
 }

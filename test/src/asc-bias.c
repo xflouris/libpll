@@ -245,7 +245,7 @@ int main(int argc, char * argv[])
   free(branch_lengths);
   free(operations);
   free(matrix_indices);
-  pll_utree_destroy(tree);
+  pll_utree_destroy(tree,NULL);
   pll_partition_destroy(partition);
 
   return 0;

@@ -76,7 +76,7 @@ int main(int argc, char * argv[])
 
   free(newick);
 
-  pll_utree_destroy(utree);
+  pll_utree_destroy(utree,NULL);
 
   return 0;
 }

@@ -30,12 +30,19 @@ extern int pll_rtree_colend;
 
 static unsigned int tip_cnt = 0;
 
-PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root)
+PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root,
+                                  void (*cb_destroy)(void *))
 {
   if (!root) return;
 
-  pll_rtree_destroy(root->left);
-  pll_rtree_destroy(root->right);
+  pll_rtree_destroy(root->left, cb_destroy);
+  pll_rtree_destroy(root->right, cb_destroy);
+
+  if (root->data)
+  {
+    if (cb_destroy)
+      cb_destroy(root->data);
+  }
 
   free(root->label);
   free(root);
@@ -64,7 +71,7 @@ static void pll_rtree_error(pll_rtree_t * tree, const char * s)
 
 %error-verbose
 %parse-param {struct pll_rtree * tree}
-%destructor { pll_rtree_destroy($$); } subtree
+%destructor { pll_rtree_destroy($$,NULL); } subtree
 
 %token OPAR
 %token CPAR
@@ -202,14 +209,14 @@ PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
   pll_rtree_in = fopen(filename, "r");
   if (!pll_rtree_in)
   {
-    pll_rtree_destroy(tree);
+    pll_rtree_destroy(tree,NULL);
     pll_errno = PLL_ERROR_FILE_OPEN;
     snprintf(pll_errmsg, 200, "Unable to open file (%s)", filename);
     return PLL_FAILURE;
   }
   else if (pll_rtree_parse(tree))
   {
-    pll_rtree_destroy(tree);
+    pll_rtree_destroy(tree,NULL);
     tree = NULL;
     fclose(pll_rtree_in);
     pll_rtree_lex_destroy();
@@ -242,14 +249,14 @@ PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(char * s,
   pll_rtree_in = fmemopen(s, strlen(s), "r");
   if (!pll_rtree_in)
   {
-    pll_rtree_destroy(tree);
+    pll_rtree_destroy(tree,NULL);
     pll_errno = PLL_ERROR_FILE_OPEN;
     snprintf(pll_errmsg, 200, "Unable to map string (%s)", s);
     return PLL_FAILURE;
   }
   else if (pll_rtree_parse(tree))
   {
-    pll_rtree_destroy(tree);
+    pll_rtree_destroy(tree,NULL);
     tree = NULL;
     fclose(pll_rtree_in);
     pll_rtree_lex_destroy();

@@ -120,7 +120,9 @@
 #define PLL_ERROR_SPR_NOCHANGE             120
 #define PLL_ERROR_NNI_INVALIDMOVE          121
 #define PLL_ERROR_NNI_TERMINALBRANCH       122
-
+#define PLL_ERROR_STEPWISE_STRUCT          123
+#define PLL_ERROR_STEPWISE_TIPS            124
+#define PLL_ERROR_STEPWISE_UNSUPPORTED     125
 
 /* utree specific */
 
@@ -178,7 +180,6 @@ typedef struct pll_partition
   int asc_bias_alloc;
 } pll_partition_t;
 
-
 /* Structure for driving likelihood operations */
 
 typedef struct pll_operation
@@ -192,7 +193,6 @@ typedef struct pll_operation
   unsigned int child2_matrix_index;
   int child2_scaler_index;
 } pll_operation_t;
-
 
 /* Doubly-linked list */
 
@@ -288,16 +288,30 @@ typedef struct pll_utree_rb_s
 
 typedef struct pll_parsimony_s
 {
+  /* common information */
   unsigned int tips;
-  unsigned int states;
+  unsigned int inner_nodes;
   unsigned int sites;
+  unsigned int states;
+  unsigned int alignment;
+  unsigned int attributes;
+
+  /* fast unweighted parsimony */
+  unsigned int ** packedvector;
+  unsigned int * node_cost;
+  unsigned int packedvector_count;
+  unsigned int const_cost;
+  int * informative;
+  int informative_count;
+
+  /* weighted parsimony */
   unsigned int score_buffers;
   unsigned int ancestral_buffers;
-
   double * score_matrix;
   double ** sbuffer;
   unsigned int ** anc_states;
 } pll_parsimony_t;
+
 
 typedef struct pll_pars_buildop_s
 {
@@ -552,7 +566,8 @@ PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(char * s,
                                                        unsigned int * tip_count);
 #endif
 
-PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root);
+PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root,
+                                  void (*cb_destroy)(void *));
 
 /* functions in parse_utree.y */
 
@@ -564,7 +579,8 @@ PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(char * s,
                                                        unsigned int * tip_count);
 #endif
 
-PLL_EXPORT void pll_utree_destroy(pll_utree_t * root);
+PLL_EXPORT void pll_utree_destroy(pll_utree_t * root,
+                                  void (*cb_destroy)(void *));
 
 PLL_EXPORT void pll_utree_reset_template_indices(pll_utree_t * node,
                                                  unsigned int tip_count);
@@ -600,7 +616,10 @@ PLL_EXPORT pll_utree_t * pll_utree_clone(pll_utree_t * root);
 PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * root);
 PLL_EXPORT int pll_utree_every(pll_utree_t * node,
                                int (*cb)(pll_utree_t *));
-
+PLL_EXPORT void pll_utree_create_pars_buildops(pll_utree_t ** trav_buffer,
+                                               unsigned int trav_buffer_size,
+                                               pll_pars_buildop_t * ops,
+                                               unsigned int * ops_count);
 /* functions in parse_phylip.y */
 
 PLL_EXPORT pll_msa_t * pll_phylip_parse_msa(const char * filename,
@@ -1576,6 +1595,59 @@ PLL_EXPORT int pll_utree_export_svg(pll_utree_t * tree,
                                     unsigned int tip_count,
                                     const pll_svg_attrib_t * attribs,
                                     const char * filename);
+
+/* functions in fast_parsimony.c */
+
+PLL_EXPORT pll_parsimony_t * pll_fastparsimony_init(pll_partition_t * partition);
+
+PLL_EXPORT void pll_fastparsimony_update_vectors(pll_parsimony_t * parsimony,
+                                                 const pll_pars_buildop_t * ops,
+                                                 int count);
+
+PLL_EXPORT unsigned int pll_fastparsimony_root_score(pll_parsimony_t * parsimony,
+                                                     unsigned int root_index);
+
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score(pll_parsimony_t * parsimony,
+                                                     unsigned int node1_score_index,
+                                                     unsigned int node2_score_index);
+
+/* functions in fast_parsimony_sse.c */
+
+PLL_EXPORT void pll_fastparsimony_update_vectors_4x4_sse(pll_parsimony_t * parsimony,
+                                                         const pll_pars_buildop_t * op,
+                                                         int count);
+
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_sse(pll_parsimony_t * parsimony,
+                                                             unsigned int node1_score_index,
+                                                             unsigned int node2_score_index);
+
+/* functions in fast_parsimony_avx.c */
+
+PLL_EXPORT void pll_fastparsimony_update_vectors_4x4_avx(pll_parsimony_t * parsimony,
+                                                         const pll_pars_buildop_t * op,
+                                                         int count);
+
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_avx(pll_parsimony_t * parsimony,
+                                                             unsigned int node1_score_index,
+                                                             unsigned int node2_score_index);
+
+/* functions in fast_parsimony_avx2.c */
+
+PLL_EXPORT void pll_fastparsimony_update_vectors_4x4_avx2(pll_parsimony_t * parsimony,
+                                                          const pll_pars_buildop_t * op,
+                                                          int count);
+
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_avx2(pll_parsimony_t * parsimony,
+                                                              unsigned int node1_score_index,
+                                                              unsigned int node2_score_index);
+
+/* functions in stepwise.c */
+
+PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
+                                                    char ** labels,
+                                                    unsigned int * score,
+                                                    unsigned int count,
+                                                    unsigned int seed);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

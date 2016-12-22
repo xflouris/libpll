@@ -25,7 +25,7 @@ PROFILING=-g
 WARN=-Wall -Wsign-compare
 
 CC = gcc
-CFLAGS = -Wall -g -O3 $(WARN)
+CFLAGS = -Wall -g -O3 $(WARN) -std=c99
 LINKFLAGS = -L. $(PROFILING)
 LIBS=-lpll -lm
 PROG=unrooted

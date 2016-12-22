@@ -18,7 +18,7 @@
 #    Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 
 CC = gcc
-CFLAGS = -L. -g -O3 -Wall 
+CFLAGS = -L. -g -O3 -Wall -std=c99
 CLIBS = -lpll -lm
 
 CFILES = src/alpha-cats.c \

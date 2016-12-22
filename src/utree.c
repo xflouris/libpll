@@ -638,3 +638,28 @@ PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * root)
 
   return uroot;
 }
+
+PLL_EXPORT void pll_utree_create_pars_buildops(pll_utree_t ** trav_buffer,
+                                               unsigned int trav_buffer_size,
+                                               pll_pars_buildop_t * ops,
+                                               unsigned int * ops_count)
+{
+  pll_utree_t * node;
+  unsigned int i;
+
+  *ops_count = 0;
+
+  for (i = 0; i < trav_buffer_size; ++i)
+  {
+    node = trav_buffer[i];
+
+    if (node->next)
+    {
+      ops[*ops_count].parent_score_index = node->clv_index;
+      ops[*ops_count].child1_score_index = node->next->back->clv_index;
+      ops[*ops_count].child2_score_index = node->next->next->back->clv_index;
+
+      *ops_count = *ops_count + 1;
+    }
+  }
+}

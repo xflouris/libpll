@@ -35,6 +35,12 @@ typedef struct
   int clv_valid;
 } node_info_t;
 
+/* call-back function to destroy the data element of each node */
+static void cb_data_destroy(void * data)
+{
+  free(data);
+}
+
 /* a callback function for performing a partial traversal */
 static int cb_partial_traversal(pll_utree_t * node)
 {
@@ -443,14 +449,6 @@ int main(int argc, char * argv[])
     printf("Log-L: %f\n", logl);
   }
 
-  /* deallocate the data elements at inner nodes */
-  for (i = 0; i < inner_nodes_count; ++i)
-  {
-    free(inner_nodes_list[i]->data);
-    free(inner_nodes_list[i]->next->data);
-    free(inner_nodes_list[i]->next->next->data);
-  }
-
   /* deallocate the inner nodes list */
   free(inner_nodes_list);
 
@@ -465,7 +463,7 @@ int main(int argc, char * argv[])
   free(operations);
 
   /* we will no longer need the tree structure */
-  pll_utree_destroy(tree);
+  pll_utree_destroy(tree,cb_data_destroy);
 
   return (EXIT_SUCCESS);
 }

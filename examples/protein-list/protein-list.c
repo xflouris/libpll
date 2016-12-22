@@ -296,7 +296,7 @@ int main(int argc, char * argv[])
 
     unsigned int tip_clv_index = *((unsigned int *)(found->data));
 
-    pll_set_tip_states(partition, tip_clv_index, pll_map_nt, seqdata[i]);
+    pll_set_tip_states(partition, tip_clv_index, pll_map_aa, seqdata[i]);
   }
 
   /* destroy hash table */
@@ -432,7 +432,7 @@ int main(int argc, char * argv[])
   free(operations);
 
   /* we will no longer need the tree structure */
-  pll_utree_destroy(tree);
+  pll_utree_destroy(tree,NULL);
 
   return (EXIT_SUCCESS);
 }

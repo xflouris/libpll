@@ -30,7 +30,17 @@ extern int pll_utree_colend;
 
 static unsigned int tip_cnt = 0;
 
-static void dealloc_tree_recursive(pll_utree_t * node)
+static void dealloc_data(pll_utree_t * node, void (*cb_destroy)(void *))
+{
+  if (node->data)
+  {
+    if (cb_destroy)
+      cb_destroy(node->data);
+  }
+}
+
+static void dealloc_tree_recursive(pll_utree_t * node,
+                                   void (*cb_destroy)(void *))
 {
   if (!node->next)
   {
@@ -39,8 +49,13 @@ static void dealloc_tree_recursive(pll_utree_t * node)
     return;
   }
 
-  dealloc_tree_recursive(node->next->back);
-  dealloc_tree_recursive(node->next->next->back);
+  dealloc_tree_recursive(node->next->back, cb_destroy);
+  dealloc_tree_recursive(node->next->next->back, cb_destroy);
+
+  /* deallocate any extra data */
+  dealloc_data(node,cb_destroy);
+  dealloc_data(node->next,cb_destroy);
+  dealloc_data(node->next->next,cb_destroy);
 
   free(node->next->next);
   free(node->next);
@@ -48,7 +63,8 @@ static void dealloc_tree_recursive(pll_utree_t * node)
   free(node);
 }
 
-PLL_EXPORT void pll_utree_destroy(pll_utree_t * root)
+PLL_EXPORT void pll_utree_destroy(pll_utree_t * root,
+                                  void (*cb_destroy)(void *))
 {
   if (!root) return;
   if (!(root->next))
@@ -59,13 +75,19 @@ PLL_EXPORT void pll_utree_destroy(pll_utree_t * root)
   }
 
   if (root->next)
-    dealloc_tree_recursive(root->next->back);
+    dealloc_tree_recursive(root->next->back,cb_destroy);
   if (root->next->next)
-    dealloc_tree_recursive(root->next->next->back);
+    dealloc_tree_recursive(root->next->next->back,cb_destroy);
   if (root->back)
-    dealloc_tree_recursive(root->back);
+    dealloc_tree_recursive(root->back,cb_destroy);
+
+  /* deallocate any extra data */
+  dealloc_data(root,cb_destroy);
+  dealloc_data(root->next,cb_destroy);
+  dealloc_data(root->next->next,cb_destroy);
 
   free(root->label);
+
   free(root->next->next);
   free(root->next);
   free(root);
@@ -93,7 +115,7 @@ static void pll_utree_error(pll_utree_t * tree, const char * s)
 
 %error-verbose
 %parse-param {struct pll_utree * tree}
-%destructor { pll_utree_destroy($$); } subtree
+%destructor { pll_utree_destroy($$,NULL); } subtree
 
 %token OPAR
 %token CPAR
@@ -284,14 +306,14 @@ PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
   pll_utree_in = fopen(filename, "r");
   if (!pll_utree_in)
   {
-    pll_utree_destroy(tree);
+    pll_utree_destroy(tree,NULL);
     pll_errno = PLL_ERROR_FILE_OPEN;
     snprintf(pll_errmsg, 200, "Unable to open file (%s)", filename);
     return PLL_FAILURE;
   }
   else if (pll_utree_parse(tree))
   {
-    pll_utree_destroy(tree);
+    pll_utree_destroy(tree,NULL);
     tree = NULL;
     fclose(pll_utree_in);
     pll_utree_lex_destroy();
@@ -324,14 +346,14 @@ PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(char * s,
   pll_utree_in = fmemopen(s, strlen(s), "r");
   if (!pll_utree_in)
   {
-    pll_utree_destroy(tree);
+    pll_utree_destroy(tree,NULL);
     pll_errno = PLL_ERROR_FILE_OPEN;
     snprintf(pll_errmsg, 200, "Unable to map string (%s)", s);
     return PLL_FAILURE;
   }
   else if (pll_utree_parse(tree))
   {
-    pll_utree_destroy(tree);
+    pll_utree_destroy(tree,NULL);
     tree = NULL;
     fclose(pll_utree_in);
     pll_utree_lex_destroy();

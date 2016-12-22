@@ -217,7 +217,7 @@ int main(int argc, char * argv[])
                                    branch_count,
                                    RATE_CATS,
                                    inner_nodes_count,
-                                   PLL_ATTRIB_ARCH_AVX);
+                                   PLL_ATTRIB_PATTERN_TIP | PLL_ATTRIB_ARCH_AVX);
 
   /* initialize the array of base frequencies */
   double frequencies[4] = { 0.17, 0.19, 0.25, 0.39 };
@@ -362,6 +362,12 @@ int main(int argc, char * argv[])
                                                NULL);
   printf("Log-L: %f\n", logl);
 
+  /* output svg */
+  pll_svg_attrib_t * attr = pll_svg_attrib_create();
+  attr->width = 500;
+  pll_utree_export_svg(tree,tip_nodes_count,attr,"testing.svg");
+  pll_svg_attrib_destroy(attr);
+
   /* destroy all structures allocated for the concrete PLL partition instance */
   pll_partition_destroy(partition);
 
@@ -373,7 +379,7 @@ int main(int argc, char * argv[])
   free(operations);
 
   /* we will no longer need the tree structure */
-  pll_utree_destroy(tree);
+  pll_utree_destroy(tree,NULL);
 
   return (EXIT_SUCCESS);
 }

@@ -66,32 +66,49 @@ PLL_EXPORT int pll_set_parsimony_sequence(pll_parsimony_t * pars,
   return PLL_SUCCESS;
 }
 
-static void dealloc_pars_data(pll_parsimony_t * pars)
+PLL_EXPORT void pll_parsimony_destroy(pll_parsimony_t * parsimony)
 {
   unsigned int i;
+  unsigned int nodes_count = parsimony->tips + parsimony->inner_nodes;
 
-  if (!pars) return;
+  if (!parsimony) return;
 
-  /* deallocate score buffers */
-  if (pars->sbuffer)
+  /* deallocate fast parsimony structures */
+  if (parsimony->packedvector)
   {
-    for (i = 0; i < pars->score_buffers + pars->tips; ++i)
-      free(pars->sbuffer[i]);
-    free(pars->sbuffer);
+    for (i=0; i < nodes_count; ++i)
+      pll_aligned_free(parsimony->packedvector[i]);
+    free(parsimony->packedvector);
   }
 
-  /* deallocate ancestral state buffers */
-  if (pars->anc_states)
+  if (parsimony->node_cost)
+    free(parsimony->node_cost);
+
+  if (parsimony->informative)
+    free(parsimony->informative);
+
+  /* if available, deallocate structures for weighted parsimony */
+
+  /* score buffers */
+  if (parsimony->sbuffer)
   {
-    for (i = pars->tips; i < pars->ancestral_buffers+pars->tips; ++i)
-      free(pars->anc_states[i]);
-    free(pars->anc_states);
+    for (i = 0; i < parsimony->score_buffers + parsimony->tips; ++i)
+      free(parsimony->sbuffer[i]);
+    free(parsimony->sbuffer);
   }
 
-  /* deallocate scoring matrix */
-  if (pars->score_matrix) free(pars->score_matrix);
+  /* ancestral state buffers */
+  if (parsimony->anc_states)
+  {
+    for (i=parsimony->tips; i<parsimony->ancestral_buffers+parsimony->tips; ++i)
+      free(parsimony->anc_states[i]);
+    free(parsimony->anc_states);
+  }
 
-  free(pars);
+  /* scoring matrix */
+  if (parsimony->score_matrix) free(parsimony->score_matrix);
+
+  free(parsimony);
 }
 
 PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
@@ -104,7 +121,7 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
   unsigned int i;
 
   /* create parsimony instance */
-  pll_parsimony_t * pars = (pll_parsimony_t *)malloc(sizeof(pll_parsimony_t));
+  pll_parsimony_t * pars = (pll_parsimony_t *)calloc(1,sizeof(pll_parsimony_t));
   if (!pars)
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -123,7 +140,7 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
   pars->score_matrix = (double *)calloc(states*states, sizeof(double));
   if (!pars->score_matrix)
   {
-    dealloc_pars_data(pars);
+    pll_parsimony_destroy(pars);
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf(pll_errmsg, 200,
              "Unable to allocate enough memory for scoring matrix.");
@@ -135,7 +152,7 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
   pars->sbuffer = (double **)calloc(score_buffers+tips, sizeof(double *));
   if (!pars->sbuffer)
   {
-    dealloc_pars_data(pars);
+    pll_parsimony_destroy(pars);
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf(pll_errmsg, 200,
              "Unable to allocate enough memory for score buffers.");
@@ -146,7 +163,7 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
     pars->sbuffer[i] = (double *)calloc(sites*states, sizeof(double *));
     if (!pars->sbuffer[i])
     {
-      dealloc_pars_data(pars);
+      pll_parsimony_destroy(pars);
       pll_errno = PLL_ERROR_MEM_ALLOC;
       snprintf(pll_errmsg, 200,
                "Unable to allocate enough memory for score buffers.");
@@ -159,7 +176,7 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
                                              sizeof(unsigned int *));
   if (!pars->anc_states)
   {
-    dealloc_pars_data(pars);
+    pll_parsimony_destroy(pars);
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf(pll_errmsg, 200,
              "Unable to allocate enough memory for score buffers.");
@@ -170,7 +187,7 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
     pars->anc_states[i] = (unsigned int *)calloc(sites, sizeof(unsigned int));
     if (!pars->anc_states[i])
     {
-      dealloc_pars_data(pars);
+      pll_parsimony_destroy(pars);
       pll_errno = PLL_ERROR_MEM_ALLOC;
       snprintf(pll_errmsg, 200,
                "Unable to allocate enough memory for score buffers.");
@@ -360,9 +377,4 @@ PLL_EXPORT void pll_parsimony_reconstruct(pll_parsimony_t * pars,
         ancestral_buffer[n] = revmap[minindex];
     }
   }
-}
-
-PLL_EXPORT void pll_parsimony_destroy(pll_parsimony_t * pars)
-{
-  dealloc_pars_data(pars);
 }

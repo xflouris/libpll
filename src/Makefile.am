@@ -34,7 +34,9 @@ parse_rtree.y \
 parse_phylip.y \
 lex_utree.l \
 lex_rtree.l \
-lex_phylip.l
+lex_phylip.l \
+fast_parsimony.c \
+stepwise.c
 
 libpll_la_CFLAGS = $(AM_CFLAGS)
 
@@ -52,7 +54,8 @@ if HAVE_AVX2
  core_partials_avx2.c \
  core_derivatives_avx2.c \
  core_pmatrix_avx2.c \
- core_likelihood_avx2.c
+ core_likelihood_avx2.c \
+ fast_parsimony_avx2.c
 endif
 
 if HAVE_AVX
@@ -62,7 +65,8 @@ libsimd_avx_la_SOURCES=\
 core_partials_avx.c \
 core_derivatives_avx.c \
 core_pmatrix_avx.c \
-core_likelihood_avx.c 
+core_likelihood_avx.c \
+fast_parsimony_avx.c
 endif
 
 if HAVE_SSE3
@@ -72,7 +76,8 @@ libsimd_sse_la_SOURCES=\
 core_partials_sse.c \
 core_derivatives_sse.c \
 core_likelihood_sse.c \
-core_pmatrix_sse.c 
+core_pmatrix_sse.c \
+fast_parsimony_sse.c
 endif
 
 libpll_la_LIBADD = $(SIMD_KERNELS)
