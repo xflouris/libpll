@@ -293,8 +293,8 @@ typedef struct pll_parsimony_s
   unsigned int inner_nodes;
   unsigned int sites;
   unsigned int states;
-  unsigned int alignment;
   unsigned int attributes;
+  size_t alignment;
 
   /* fast unweighted parsimony */
   unsigned int ** packedvector;
@@ -302,7 +302,7 @@ typedef struct pll_parsimony_s
   unsigned int packedvector_count;
   unsigned int const_cost;
   int * informative;
-  int informative_count;
+  unsigned int informative_count;
 
   /* weighted parsimony */
   unsigned int score_buffers;
@@ -1600,9 +1600,9 @@ PLL_EXPORT int pll_utree_export_svg(pll_utree_t * tree,
 
 PLL_EXPORT pll_parsimony_t * pll_fastparsimony_init(pll_partition_t * partition);
 
-PLL_EXPORT void pll_fastparsimony_update_vectors(pll_parsimony_t * parsimony,
-                                                 const pll_pars_buildop_t * ops,
-                                                 int count);
+PLL_EXPORT int pll_fastparsimony_update_vectors(pll_parsimony_t * parsimony,
+                                                const pll_pars_buildop_t * ops,
+                                                int count);
 
 PLL_EXPORT unsigned int pll_fastparsimony_root_score(pll_parsimony_t * parsimony,
                                                      unsigned int root_index);
@@ -1611,11 +1611,20 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score(pll_parsimony_t * parsimony
                                                      unsigned int node1_score_index,
                                                      unsigned int node2_score_index);
 
+PLL_EXPORT void pll_fastparsimony_update_vector_4x4(pll_parsimony_t * parsimony,
+                                                    const pll_pars_buildop_t * op);
+
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4(pll_parsimony_t * parsimony,
+                                                         unsigned int node1_score_index,
+                                                         unsigned int node2_score_index);
+
+PLL_EXPORT int pll_fastparsimony_update_vector(pll_parsimony_t * parsimony,
+                                               const pll_pars_buildop_t * op);
+
 /* functions in fast_parsimony_sse.c */
 
-PLL_EXPORT void pll_fastparsimony_update_vectors_4x4_sse(pll_parsimony_t * parsimony,
-                                                         const pll_pars_buildop_t * op,
-                                                         int count);
+PLL_EXPORT void pll_fastparsimony_update_vector_4x4_sse(pll_parsimony_t * parsimony,
+                                                         const pll_pars_buildop_t * op);
 
 PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_sse(pll_parsimony_t * parsimony,
                                                              unsigned int node1_score_index,
@@ -1623,9 +1632,8 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_sse(pll_parsimony_t * p
 
 /* functions in fast_parsimony_avx.c */
 
-PLL_EXPORT void pll_fastparsimony_update_vectors_4x4_avx(pll_parsimony_t * parsimony,
-                                                         const pll_pars_buildop_t * op,
-                                                         int count);
+PLL_EXPORT void pll_fastparsimony_update_vector_4x4_avx(pll_parsimony_t * parsimony,
+                                                         const pll_pars_buildop_t * op);
 
 PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_avx(pll_parsimony_t * parsimony,
                                                              unsigned int node1_score_index,
@@ -1633,9 +1641,8 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_avx(pll_parsimony_t * p
 
 /* functions in fast_parsimony_avx2.c */
 
-PLL_EXPORT void pll_fastparsimony_update_vectors_4x4_avx2(pll_parsimony_t * parsimony,
-                                                          const pll_pars_buildop_t * op,
-                                                          int count);
+PLL_EXPORT void pll_fastparsimony_update_vector_4x4_avx2(pll_parsimony_t * parsimony,
+                                                          const pll_pars_buildop_t * op);
 
 PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_avx2(pll_parsimony_t * parsimony,
                                                               unsigned int node1_score_index,

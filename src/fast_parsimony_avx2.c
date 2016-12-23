@@ -34,9 +34,9 @@ unsigned int pll_fastparsimony_edge_score_4x4_avx2(pll_parsimony_t * parsimony,
   unsigned int * node2[8];
 
   unsigned int ** vector = parsimony->packedvector;
-  int vector_count = parsimony->packedvector_count;
+  unsigned int vector_count = parsimony->packedvector_count;
 
-  int score = 0;
+  unsigned int score = 0;
 
   /* point to the parsimony vectors for each node and for each state */
   for (i = 0; i < 4; ++i)
@@ -48,31 +48,31 @@ unsigned int pll_fastparsimony_edge_score_4x4_avx2(pll_parsimony_t * parsimony,
   __m256i xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7;
 
   /* set all bits to one */
-  xmm7 = _mm256_set1_epi32(0xFFFFFFFF);
+  xmm7 = _mm256_set1_epi32(-1);
   
   for (i = 0; i < parsimony->packedvector_count; i += 8)
   {
     /* load, and, or bit vectors for state 0 */
-    xmm0 = _mm256_load_si256((__m256i *)(node1[0]+i));
-    xmm1 = _mm256_load_si256((__m256i *)(node2[0]+i));
+    xmm0 = _mm256_load_si256((__m256i *)(void *)(node1[0]+i));
+    xmm1 = _mm256_load_si256((__m256i *)(void *)(node2[0]+i));
 
     xmm2 = _mm256_and_si256(xmm0,xmm1);
 
     /* load, and, or bit vectors for state 1 */
-    xmm0 = _mm256_load_si256((__m256i *)(node1[1]+i));
-    xmm1 = _mm256_load_si256((__m256i *)(node2[1]+i));
+    xmm0 = _mm256_load_si256((__m256i *)(void *)(node1[1]+i));
+    xmm1 = _mm256_load_si256((__m256i *)(void *)(node2[1]+i));
 
     xmm3 = _mm256_and_si256(xmm0,xmm1);
 
     /* load, and, or bit vectors for state 2 */
-    xmm0 = _mm256_load_si256((__m256i *)(node1[2]+i));
-    xmm1 = _mm256_load_si256((__m256i *)(node2[2]+i));
+    xmm0 = _mm256_load_si256((__m256i *)(void *)(node1[2]+i));
+    xmm1 = _mm256_load_si256((__m256i *)(void *)(node2[2]+i));
 
     xmm4 = _mm256_and_si256(xmm0,xmm1);
 
     /* load, and, or bit vectors for state 3 */
-    xmm0 = _mm256_load_si256((__m256i *)(node1[3]+i));
-    xmm1 = _mm256_load_si256((__m256i *)(node2[3]+i));
+    xmm0 = _mm256_load_si256((__m256i *)(void *)(node1[3]+i));
+    xmm1 = _mm256_load_si256((__m256i *)(void *)(node2[3]+i));
 
     xmm5 = _mm256_and_si256(xmm0,xmm1);
 
@@ -87,7 +87,7 @@ unsigned int pll_fastparsimony_edge_score_4x4_avx2(pll_parsimony_t * parsimony,
 
     xmm0 = _mm256_andnot_si256(xmm6, xmm7);
 
-    _mm256_store_si256((__m256i *)bits, xmm0);
+    _mm256_store_si256((__m256i *)(void *)bits, xmm0);
 
 #if 0
     unsigned long long * p = (unsigned long long *)bits;
@@ -97,14 +97,14 @@ unsigned int pll_fastparsimony_edge_score_4x4_avx2(pll_parsimony_t * parsimony,
     score += __builtin_popcountl(p[2]);
     score += __builtin_popcountl(p[3]);
 #else
-    score += __builtin_popcount(bits[0]);
-    score += __builtin_popcount(bits[1]);
-    score += __builtin_popcount(bits[2]);
-    score += __builtin_popcount(bits[3]);
-    score += __builtin_popcount(bits[4]);
-    score += __builtin_popcount(bits[5]);
-    score += __builtin_popcount(bits[6]);
-    score += __builtin_popcount(bits[7]);
+    score += (unsigned int)__builtin_popcount(bits[0]);
+    score += (unsigned int)__builtin_popcount(bits[1]);
+    score += (unsigned int)__builtin_popcount(bits[2]);
+    score += (unsigned int)__builtin_popcount(bits[3]);
+    score += (unsigned int)__builtin_popcount(bits[4]);
+    score += (unsigned int)__builtin_popcount(bits[5]);
+    score += (unsigned int)__builtin_popcount(bits[6]);
+    score += (unsigned int)__builtin_popcount(bits[7]);
 #endif
   }
 
@@ -115,9 +115,8 @@ unsigned int pll_fastparsimony_edge_score_4x4_avx2(pll_parsimony_t * parsimony,
 }
 
 PLL_EXPORT
-void pll_fastparsimony_update_vectors_4x4_avx2(pll_parsimony_t * parsimony,
-                                               const pll_pars_buildop_t * op,
-                                               int count)
+void pll_fastparsimony_update_vector_4x4_avx2(pll_parsimony_t * parsimony,
+                                              const pll_pars_buildop_t * op)
 {
   unsigned int i;
 
@@ -128,9 +127,9 @@ void pll_fastparsimony_update_vectors_4x4_avx2(pll_parsimony_t * parsimony,
   unsigned int * child2[8];
 
   unsigned int ** vector = parsimony->packedvector;
-  int vector_count = parsimony->packedvector_count;
+  unsigned int vector_count = parsimony->packedvector_count;
 
-  int score = 0;
+  unsigned int score = 0;
 
   /* point to the parsimony vectors for each node and for each state */
   for (i = 0; i < 4; ++i)
@@ -143,36 +142,35 @@ void pll_fastparsimony_update_vectors_4x4_avx2(pll_parsimony_t * parsimony,
   __m256i xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7,xmm8,xmm9,xmm10,xmm11;
 
   /* set all bits to one */
-  xmm11 = _mm256_set_epi32(0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
-                           0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+  xmm11 = _mm256_set1_epi32(-1);
 
 
   for (i = 0; i < parsimony->packedvector_count; i += 8)
   {
     /* load, and, or bit vectors for state 0 */
-    xmm0 = _mm256_load_si256((__m256i *)(child1[0]+i));
-    xmm1 = _mm256_load_si256((__m256i *)(child2[0]+i));
+    xmm0 = _mm256_load_si256((__m256i *)(void *)(child1[0]+i));
+    xmm1 = _mm256_load_si256((__m256i *)(void *)(child2[0]+i));
 
     xmm2 = _mm256_and_si256(xmm0,xmm1);
     xmm3 = _mm256_or_si256(xmm0,xmm1);
 
     /* load, and, or bit vectors for state 1 */
-    xmm0 = _mm256_load_si256((__m256i *)(child1[1]+i));
-    xmm1 = _mm256_load_si256((__m256i *)(child2[1]+i));
+    xmm0 = _mm256_load_si256((__m256i *)(void *)(child1[1]+i));
+    xmm1 = _mm256_load_si256((__m256i *)(void *)(child2[1]+i));
 
     xmm4 = _mm256_and_si256(xmm0,xmm1);
     xmm5 = _mm256_or_si256(xmm0,xmm1);
 
     /* load, and, or bit vectors for state 2 */
-    xmm0 = _mm256_load_si256((__m256i *)(child1[2]+i));
-    xmm1 = _mm256_load_si256((__m256i *)(child2[2]+i));
+    xmm0 = _mm256_load_si256((__m256i *)(void *)(child1[2]+i));
+    xmm1 = _mm256_load_si256((__m256i *)(void *)(child2[2]+i));
 
     xmm6 = _mm256_and_si256(xmm0,xmm1);
     xmm7 = _mm256_or_si256(xmm0,xmm1);
 
     /* load, and, or bit vectors for state 3 */
-    xmm0 = _mm256_load_si256((__m256i *)(child1[3]+i));
-    xmm1 = _mm256_load_si256((__m256i *)(child2[3]+i));
+    xmm0 = _mm256_load_si256((__m256i *)(void *)(child1[3]+i));
+    xmm1 = _mm256_load_si256((__m256i *)(void *)(child2[3]+i));
 
     xmm8 = _mm256_and_si256(xmm0,xmm1);
     xmm9 = _mm256_or_si256(xmm0,xmm1);
@@ -189,24 +187,24 @@ void pll_fastparsimony_update_vectors_4x4_avx2(pll_parsimony_t * parsimony,
     /* store them */
     xmm0 = _mm256_andnot_si256(xmm10,xmm3);
     xmm1 = _mm256_or_si256(xmm2,xmm0);
-    _mm256_store_si256((__m256i *)(parent[0]+i),xmm1);
+    _mm256_store_si256((__m256i *)(void *)(parent[0]+i),xmm1);
 
     xmm0 = _mm256_andnot_si256(xmm10,xmm5);
     xmm1 = _mm256_or_si256(xmm4,xmm0);
-    _mm256_store_si256((__m256i *)(parent[1]+i),xmm1);
+    _mm256_store_si256((__m256i *)(void *)(parent[1]+i),xmm1);
 
     xmm0 = _mm256_andnot_si256(xmm10,xmm7);
     xmm1 = _mm256_or_si256(xmm6,xmm0);
-    _mm256_store_si256((__m256i *)(parent[2]+i),xmm1);
+    _mm256_store_si256((__m256i *)(void *)(parent[2]+i),xmm1);
 
     xmm0 = _mm256_andnot_si256(xmm10,xmm9);
     xmm1 = _mm256_or_si256(xmm8,xmm0);
-    _mm256_store_si256((__m256i *)(parent[3]+i),xmm1);
+    _mm256_store_si256((__m256i *)(void *)(parent[3]+i),xmm1);
 
 
     xmm0 = _mm256_andnot_si256(xmm10, xmm11);
 
-    _mm256_store_si256((__m256i *)bits, xmm0);
+    _mm256_store_si256((__m256i *)(void *)bits, xmm0);
 #if 0
     unsigned long long * p = (unsigned long long *)bits;
     score += __builtin_popcountl(p[0]);
@@ -215,14 +213,14 @@ void pll_fastparsimony_update_vectors_4x4_avx2(pll_parsimony_t * parsimony,
     score += __builtin_popcountl(p[2]);
     score += __builtin_popcountl(p[3]);
 #else
-    score += __builtin_popcount(bits[0]);
-    score += __builtin_popcount(bits[1]);
-    score += __builtin_popcount(bits[2]);
-    score += __builtin_popcount(bits[3]);
-    score += __builtin_popcount(bits[4]);
-    score += __builtin_popcount(bits[5]);
-    score += __builtin_popcount(bits[6]);
-    score += __builtin_popcount(bits[7]);
+    score += (unsigned int)__builtin_popcount(bits[0]);
+    score += (unsigned int)__builtin_popcount(bits[1]);
+    score += (unsigned int)__builtin_popcount(bits[2]);
+    score += (unsigned int)__builtin_popcount(bits[3]);
+    score += (unsigned int)__builtin_popcount(bits[4]);
+    score += (unsigned int)__builtin_popcount(bits[5]);
+    score += (unsigned int)__builtin_popcount(bits[6]);
+    score += (unsigned int)__builtin_popcount(bits[7]);
 #endif
   }
 
