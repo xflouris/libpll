@@ -298,7 +298,7 @@ static int fill_parsimony_vectors(pll_partition_t * partition,
           if (parsimony->attributes & PLL_ATTRIB_PATTERN_TIP)
           {
             c = partition->tipchars[i][j];
-            if (states != 4) c = partition->tipmap[(int)c];
+            if (states != 4) c = partition->tipmap[c];
             for (k = 0; k < parsimony->states; ++k, c >>= 1)
               if (c & 1) 
                 val[k] |= (1 << bitcount);
@@ -547,86 +547,58 @@ PLL_EXPORT pll_parsimony_t * pll_fastparsimony_init(pll_partition_t * partition)
   return parsimony;
 }
 
-PLL_EXPORT int pll_fastparsimony_update_vector(pll_parsimony_t * parsimony,
-                                               const pll_pars_buildop_t * op)
+PLL_EXPORT void pll_fastparsimony_update_vector(pll_parsimony_t * parsimony,
+                                                const pll_pars_buildop_t * op)
 {
   unsigned int i,j;
   unsigned int states = parsimony->states;
-  unsigned int ** parent;
-  unsigned int ** child1;
-  unsigned int ** child2;
-
-  unsigned int * vor;
-  unsigned int * vand;
-
-
-  parent = (unsigned int **)malloc(states*sizeof(unsigned int *));
-  child1 = (unsigned int **)malloc(states*sizeof(unsigned int *));
-  child2 = (unsigned int **)malloc(states*sizeof(unsigned int *));
-  vor  = (unsigned int *)malloc(states*sizeof(unsigned int));
-  vand = (unsigned int *)malloc(states*sizeof(unsigned int));
-  if (!parent || !child1 || !child2 || !vor || !vand)
-  {
-    if (parent) free(parent);
-    if (child1) free(child1);
-    if (child2) free(child2);
-    if (vor) free(vor);
-    if (vand) free(vand);
-
-    pll_errno = PLL_ERROR_MEM_ALLOC;
-    snprintf (pll_errmsg, 200,
-              "Cannot allocate parsimony vector.");
-    
-    return PLL_FAILURE;
-  }
-
-  unsigned int ** vector = parsimony->packedvector;
   unsigned int vector_count = parsimony->packedvector_count;
+  unsigned int ** vector = parsimony->packedvector;
+
+  unsigned int * child1;
+  unsigned int * child2;
+  unsigned int * parent;
 
   unsigned int score = 0;
-
-  /* point to the parsimony vectors for each node and for each state */
-  for (i = 0; i < states; ++i)
-  {
-    parent[i] = vector[op->parent_score_index] + i*vector_count;
-    child1[i] = vector[op->child1_score_index] + i*vector_count;
-    child2[i] = vector[op->child2_score_index] + i*vector_count;
-  }
 
   /* set all bits to one */
   unsigned int vones = ~0u;
 
   for (i = 0; i < parsimony->packedvector_count; ++i)
   {
-    /* load, and, or bit vectors for each state */
-    for (j = 0; j < states; ++j)
-    {
-      vand[j] = child1[j][i] & child2[j][i];
-      vor[j]  = child1[j][i] | child2[j][i];
-    }
 
     /* OR the ANDs of all states */
     unsigned int orvand = 0;
+    child1 = vector[op->child1_score_index];
+    child2 = vector[op->child2_score_index];
     for (j = 0; j < states; ++j)
-      orvand |= vand[j];
+    {
+      orvand |= (child1[i] & child2[i]);
 
-    /* store them */
+      child1 += vector_count;
+      child2 += vector_count;
+    }
+
+    /* store vectors at parent */
+    child1 = vector[op->child1_score_index];
+    child2 = vector[op->child2_score_index];
+    parent = vector[op->parent_score_index];
     for (j = 0; j < states; ++j)
-      parent[j][i] = vand[j] | (~orvand & vor[j]);
+    {
+      parent[i] = (child1[i] & child2[i]) | 
+                     (~orvand & (child1[i] | child2[i]));
+
+      child1 += vector_count;
+      child2 += vector_count;
+      parent += vector_count;
+
+    }
 
     score += (unsigned int)__builtin_popcount(~orvand & vones);
   }
   unsigned int score1 = parsimony->node_cost[op->child1_score_index];
   unsigned int score2 = parsimony->node_cost[op->child2_score_index];
   parsimony->node_cost[op->parent_score_index] = score+score1+score2;
-
-  free(parent);
-  free(child1);
-  free(child2);
-  free(vor);
-  free(vand);
-
-  return PLL_SUCCESS;
 }
 
 static unsigned int fastparsimony_edge_score(pll_parsimony_t * parsimony,
@@ -635,70 +607,44 @@ static unsigned int fastparsimony_edge_score(pll_parsimony_t * parsimony,
 {
   unsigned int i,j;
   unsigned int states = parsimony->states;
-  unsigned int ** node1;
-  unsigned int ** node2;
-
-  unsigned int * vand;
-
-  node1 = (unsigned int **)malloc(states*sizeof(unsigned int *));
-  node2 = (unsigned int **)malloc(states*sizeof(unsigned int *));
-  vand  = (unsigned int *)malloc(states*sizeof(unsigned int));
-  if (!node1 || !node2 || !vand)
-  {
-    if (node1) free(node1);
-    if (node2) free(node2);
-    if (vand)  free(vand);
-
-    pll_errno = PLL_ERROR_MEM_ALLOC;
-    snprintf (pll_errmsg, 200,
-              "Cannot allocate parsimony vector.");
-    
-    return PLL_FAILURE;
-  }
-
-  unsigned int ** vector = parsimony->packedvector;
   unsigned int vector_count = parsimony->packedvector_count;
+  unsigned int ** vector = parsimony->packedvector;
+
+  unsigned int * node1;
+  unsigned int * node2;
 
   unsigned int score = 0;
 
-  /* point to the parsimony vectors for each node and for each state */
-  for (i = 0; i < states; ++i)
-  {
-    node1[i] = vector[node1_score_index] + i*vector_count;
-    node2[i] = vector[node2_score_index] + i*vector_count;
-  }
-
+  /* set all bits to one */
   unsigned int vones = ~0u;
 
   for (i = 0; i < parsimony->packedvector_count; ++i)
   {
-    /* load, and, or bit vectors for each state */
-    for (j = 0; j < states; ++j)
-      vand[j] = node1[j][i] & node2[j][i];
-
     /* OR the ANDs of all states */
     unsigned int orvand = 0;
+    node1 = vector[node1_score_index];
+    node2 = vector[node2_score_index];
     for (j = 0; j < states; ++j)
-      orvand |= vand[j];
+    {
+      orvand |= (node1[i] & node2[i]);
+      
+      node1 += vector_count;
+      node2 += vector_count;
+    }
 
     score += (unsigned int )__builtin_popcount(~orvand & vones);
   }
   unsigned int score1 = parsimony->node_cost[node1_score_index];
   unsigned int score2 = parsimony->node_cost[node2_score_index];
 
-  free(node1);
-  free(node2);
-  free(vand);
-
   return score+score1+score2+parsimony->const_cost;
-
 }
 
 static void fastparsimony_update_vectors_4x4(pll_parsimony_t * parsimony,
                                              const pll_pars_buildop_t * ops,
-                                             int count)
+                                             unsigned int count)
 {
-  int i;
+  unsigned int i;
   const pll_pars_buildop_t * op;
 
   for (i = 0; i < count; ++i)
@@ -725,31 +671,42 @@ static void fastparsimony_update_vectors_4x4(pll_parsimony_t * parsimony,
 
 static int fastparsimony_update_vectors(pll_parsimony_t * parsimony,
                                         const pll_pars_buildop_t * ops,
-                                        int count)
+                                        unsigned int count)
 {
-  int i;
+  unsigned int i;
   const pll_pars_buildop_t * op;
 
   for (i = 0; i < count; ++i)
   {
     op = &(ops[i]);
-    if (!pll_fastparsimony_update_vector(parsimony,op))
-      return PLL_FAILURE;
+#ifdef HAVE_SSE3
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE)
+      pll_fastparsimony_update_vector_sse(parsimony,op);
+    else
+#endif
+#ifdef HAVE_AVX
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX)
+      pll_fastparsimony_update_vector_avx(parsimony,op);
+    else
+#endif
+#ifdef HAVE_AVX2
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2)
+      pll_fastparsimony_update_vector_avx2(parsimony,op);
+    else
+#endif
+      pll_fastparsimony_update_vector(parsimony,op);
   }
   return PLL_SUCCESS;
 }
 
-PLL_EXPORT int pll_fastparsimony_update_vectors(pll_parsimony_t * parsimony,
-                                                const pll_pars_buildop_t * ops,
-                                                int count)
+PLL_EXPORT void pll_fastparsimony_update_vectors(pll_parsimony_t * parsimony,
+                                                 const pll_pars_buildop_t * ops,
+                                                 unsigned int count)
 {
   if (parsimony->states == 4)
     fastparsimony_update_vectors_4x4(parsimony,ops,count);
   else
-    return fastparsimony_update_vectors(parsimony,ops,count);
-
-  return PLL_SUCCESS;
-
+    fastparsimony_update_vectors(parsimony,ops,count);
 }
 
 PLL_EXPORT unsigned int pll_fastparsimony_edge_score(pll_parsimony_t * parsimony,
@@ -780,6 +737,28 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score(pll_parsimony_t * parsimony
                                             node1_score_index,
                                             node2_score_index);
   }
+
+#ifdef HAVE_SSE3
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE)
+    return pll_fastparsimony_edge_score_sse(parsimony,
+                                            node1_score_index,
+                                            node2_score_index);
+  else
+#endif
+#ifdef HAVE_AVX
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX)
+    return pll_fastparsimony_edge_score_avx(parsimony,
+                                            node1_score_index,
+                                            node2_score_index);
+  else
+#endif
+#ifdef HAVE_AVX2
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2)
+    return pll_fastparsimony_edge_score_avx2(parsimony,
+                                             node1_score_index,
+                                             node2_score_index);
+  else
+#endif
   return fastparsimony_edge_score(parsimony,
                                   node1_score_index,
                                   node2_score_index);

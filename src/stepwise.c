@@ -32,8 +32,21 @@ typedef struct
 static pll_utree_t ** travbuffer;
 static pll_pars_buildop_t * parsops;
 
+static char * xstrdup(const char * s)
+{
+  size_t len = strlen(s);
+  char * p = (char *)malloc(len+1);
+  if (!p)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Memory allocation failed");
+    return NULL;
+  }
+  return strcpy(p,s);
+}
+
 /* Fisher-Yates shuffle */
-unsigned int * create_shuffled(unsigned int n, unsigned int seed)
+static unsigned int * create_shuffled(unsigned int n, unsigned int seed)
 {
   unsigned int i,j;
   char * statebuf;
@@ -240,7 +253,7 @@ static unsigned int utree_iterate(pll_parsimony_t ** list,
   unsigned int traversal_size;
 
   /* set min cost to maximum possible value */
-  min_cost = ~0;
+  min_cost = ~0u;
 
   /* find first empty slot in edge_list */
   pll_utree_t ** empty_slot = edge_list + edge_count;
@@ -348,7 +361,7 @@ PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
     return NULL;
   }
 
-  *cost = ~0;
+  *cost = ~0u;
 
 
   pll_utree_t * root;
@@ -432,7 +445,7 @@ PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
     unsigned int index = order[i];
     tip_node_list[i] = utree_tip_create(index);
     if (tip_node_list[i])
-      tip_node_list[i]->label = strdup(labels[index]);
+      tip_node_list[i]->label = xstrdup(labels[index]);
 
     if (!tip_node_list[i] || !tip_node_list[i]->label)
     {

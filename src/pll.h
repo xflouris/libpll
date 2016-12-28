@@ -1600,9 +1600,9 @@ PLL_EXPORT int pll_utree_export_svg(pll_utree_t * tree,
 
 PLL_EXPORT pll_parsimony_t * pll_fastparsimony_init(pll_partition_t * partition);
 
-PLL_EXPORT int pll_fastparsimony_update_vectors(pll_parsimony_t * parsimony,
-                                                const pll_pars_buildop_t * ops,
-                                                int count);
+PLL_EXPORT void pll_fastparsimony_update_vectors(pll_parsimony_t * parsimony,
+                                                 const pll_pars_buildop_t * ops,
+                                                 unsigned int count);
 
 PLL_EXPORT unsigned int pll_fastparsimony_root_score(pll_parsimony_t * parsimony,
                                                      unsigned int root_index);
@@ -1618,8 +1618,8 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4(pll_parsimony_t * parsi
                                                          unsigned int node1_score_index,
                                                          unsigned int node2_score_index);
 
-PLL_EXPORT int pll_fastparsimony_update_vector(pll_parsimony_t * parsimony,
-                                               const pll_pars_buildop_t * op);
+PLL_EXPORT void pll_fastparsimony_update_vector(pll_parsimony_t * parsimony,
+                                                const pll_pars_buildop_t * op);
 
 /* functions in fast_parsimony_sse.c */
 
@@ -1630,6 +1630,13 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_sse(pll_parsimony_t * p
                                                              unsigned int node1_score_index,
                                                              unsigned int node2_score_index);
 
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_sse(pll_parsimony_t * parsimony,
+                                                         unsigned int node1_score_index,
+                                                         unsigned int node2_score_index);
+
+PLL_EXPORT void pll_fastparsimony_update_vector_sse(pll_parsimony_t * parsimony,
+                                                    const pll_pars_buildop_t * op);
+
 /* functions in fast_parsimony_avx.c */
 
 PLL_EXPORT void pll_fastparsimony_update_vector_4x4_avx(pll_parsimony_t * parsimony,
@@ -1639,6 +1646,14 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_avx(pll_parsimony_t * p
                                                              unsigned int node1_score_index,
                                                              unsigned int node2_score_index);
 
+PLL_EXPORT void pll_fastparsimony_update_vector_avx(pll_parsimony_t * parsimony,
+                                                    const pll_pars_buildop_t * op);
+
+
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_avx(pll_parsimony_t * parsimony,
+                                                         unsigned int node1_score_index,
+                                                         unsigned int node2_score_index);
+
 /* functions in fast_parsimony_avx2.c */
 
 PLL_EXPORT void pll_fastparsimony_update_vector_4x4_avx2(pll_parsimony_t * parsimony,
@@ -1647,6 +1662,13 @@ PLL_EXPORT void pll_fastparsimony_update_vector_4x4_avx2(pll_parsimony_t * parsi
 PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4_avx2(pll_parsimony_t * parsimony,
                                                               unsigned int node1_score_index,
                                                               unsigned int node2_score_index);
+
+PLL_EXPORT void pll_fastparsimony_update_vector_avx2(pll_parsimony_t * parsimony,
+                                                     const pll_pars_buildop_t * op);
+
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_avx2(pll_parsimony_t * parsimony,
+                                                          unsigned int node1_score_index,
+                                                          unsigned int node2_score_index);
 
 /* functions in stepwise.c */
 

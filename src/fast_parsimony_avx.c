@@ -234,3 +234,171 @@ void pll_fastparsimony_update_vector_4x4_avx(pll_parsimony_t * parsimony,
 
   parsimony->node_cost[op->parent_score_index] = score+score1+score2;
 }
+
+PLL_EXPORT
+void pll_fastparsimony_update_vector_avx(pll_parsimony_t * parsimony,
+                                         const pll_pars_buildop_t * op)
+{
+  unsigned int i,j;
+  unsigned int states = parsimony->states;
+
+  unsigned int bits[32] __attribute__ ((aligned(PLL_ALIGNMENT_AVX)));
+
+  unsigned int * parent;
+  unsigned int * child1;
+  unsigned int * child2;
+
+  unsigned int vector_count = parsimony->packedvector_count;
+  unsigned int ** vector = parsimony->packedvector;
+
+  unsigned int score = 0;
+
+  __m256d xmm0,xmm1,xmm2,xmm3,xmm4,xmm5;
+
+  /* set all bits to one */
+  xmm5 = (__m256d)_mm256_set1_epi32(-1);
+
+  for (i = 0; i < parsimony->packedvector_count; i += 8)
+  {
+    xmm4 = _mm256_setzero_pd();
+
+    /* load, and, or bit vectors for each state */
+    child1 = vector[op->child1_score_index];
+    child2 = vector[op->child2_score_index];
+    for (j = 0; j < states; ++j)
+    {
+      xmm0 = _mm256_load_pd((double *)(void *)(child1+i));
+      xmm1 = _mm256_load_pd((double *)(void *)(child2+i));
+
+      xmm2 = _mm256_and_pd(xmm0,xmm1);
+
+      /* combine (OR) all ANDs for all states */
+      xmm4 = _mm256_or_pd(xmm4,xmm2);
+
+      child1 += vector_count;
+      child2 += vector_count;
+    }
+
+    child1 = vector[op->child1_score_index];
+    child2 = vector[op->child2_score_index];
+    parent = vector[op->parent_score_index];
+    for (j=0; j<states; ++j)
+    {
+      /* load, and, or bit vectors for state j */
+      xmm0 = _mm256_load_pd((double *)(void *)(child1+i));
+      xmm1 = _mm256_load_pd((double *)(void *)(child2+i));
+
+      xmm2 = _mm256_and_pd(xmm0,xmm1);          /* vand */
+      xmm3 = _mm256_or_pd(xmm0,xmm1);           /* vor */
+
+      xmm0 = _mm256_andnot_pd(xmm4,xmm3);
+      xmm1 = _mm256_or_pd(xmm2,xmm0);
+      _mm256_store_pd((double *)(void *)(parent+i),xmm1); 
+
+      child1 += vector_count;
+      child2 += vector_count;
+      parent += vector_count;
+    }
+    xmm0 = _mm256_andnot_pd(xmm4,xmm5);
+    
+    _mm256_store_pd((double *)(void *)bits, xmm0);
+
+#if 0
+    /* seems there is no difference in speed between popcnt32 and popcnt64 */
+
+    unsigned long long * p = (unsigned long long *)bits;
+    score += __builtin_popcountl(p[0]);
+    score += __builtin_popcountl(p[1]);
+    score += __builtin_popcountl(p[2]);
+    score += __builtin_popcountl(p[3]);
+#else
+    score += (unsigned int)__builtin_popcount(bits[0]);
+    score += (unsigned int)__builtin_popcount(bits[1]);
+    score += (unsigned int)__builtin_popcount(bits[2]);
+    score += (unsigned int)__builtin_popcount(bits[3]);
+    score += (unsigned int)__builtin_popcount(bits[4]);
+    score += (unsigned int)__builtin_popcount(bits[5]);
+    score += (unsigned int)__builtin_popcount(bits[6]);
+    score += (unsigned int)__builtin_popcount(bits[7]);
+#endif
+  }
+
+  unsigned int score1 = parsimony->node_cost[op->child1_score_index];
+  unsigned int score2 = parsimony->node_cost[op->child2_score_index];
+
+  parsimony->node_cost[op->parent_score_index] = score+score1+score2;
+}
+
+PLL_EXPORT
+unsigned int pll_fastparsimony_edge_score_avx(pll_parsimony_t * parsimony,
+                                              unsigned int node1_score_index,
+                                              unsigned int node2_score_index)
+{
+  unsigned int i,j;
+  unsigned int states = parsimony->states;
+
+  unsigned int bits[32] __attribute__ ((aligned(PLL_ALIGNMENT_AVX)));
+
+  unsigned int * node1;
+  unsigned int * node2;
+
+  unsigned int vector_count = parsimony->packedvector_count;
+  unsigned int ** vector = parsimony->packedvector;
+
+  unsigned int score = 0;
+
+  __m256d xmm0,xmm1,xmm2,xmm4,xmm5;
+
+  /* set all bits to one */
+  xmm5 = (__m256d)_mm256_set1_epi32(-1);
+
+  for (i = 0; i < parsimony->packedvector_count; i += 8)
+  {
+    xmm4 = _mm256_setzero_pd();
+
+    /* load, and, or bit vectors for each state */
+    node1 = vector[node1_score_index];
+    node2 = vector[node2_score_index];
+    for (j = 0; j < states; ++j)
+    {
+      xmm0 = _mm256_load_pd((double *)(void *)(node1+i));
+      xmm1 = _mm256_load_pd((double *)(void *)(node2+i));
+
+      xmm2 = _mm256_and_pd(xmm0,xmm1);
+
+      /* combine (OR) all ANDs for all states */
+      xmm4 = _mm256_or_pd(xmm4,xmm2);
+
+      node1 += vector_count;
+      node2 += vector_count;
+    }
+
+    xmm0 = _mm256_andnot_pd(xmm4,xmm5);
+    
+    _mm256_store_pd((double *)(void *)bits, xmm0);
+
+#if 0
+    /* seems there is no difference in speed between popcnt32 and popcnt64 */
+
+    unsigned long long * p = (unsigned long long *)bits;
+    score += __builtin_popcountl(p[0]);
+    score += __builtin_popcountl(p[1]);
+    score += __builtin_popcountl(p[2]);
+    score += __builtin_popcountl(p[3]);
+#else
+    score += (unsigned int)__builtin_popcount(bits[0]);
+    score += (unsigned int)__builtin_popcount(bits[1]);
+    score += (unsigned int)__builtin_popcount(bits[2]);
+    score += (unsigned int)__builtin_popcount(bits[3]);
+    score += (unsigned int)__builtin_popcount(bits[4]);
+    score += (unsigned int)__builtin_popcount(bits[5]);
+    score += (unsigned int)__builtin_popcount(bits[6]);
+    score += (unsigned int)__builtin_popcount(bits[7]);
+#endif
+  }
+
+  unsigned int score1 = parsimony->node_cost[node1_score_index];
+  unsigned int score2 = parsimony->node_cost[node2_score_index];
+
+  return score+score1+score2+parsimony->const_cost;
+}
