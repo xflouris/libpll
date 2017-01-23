@@ -91,9 +91,11 @@ PLL_EXPORT double pll_core_root_loglikelihood_sse(unsigned int states,
     }
 
     /* compute site log-likelihood and scale if necessary */
-    term = log(term) * pattern_weights[i];
+    term = log(term);
     if (scaler && scaler[i])
       term += scaler[i] * log(PLL_SCALE_THRESHOLD);
+
+    term *= pattern_weights[i];
 
     /* store per-site log-likelihood */
     if (persite_lnl)
@@ -103,6 +105,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_sse(unsigned int states,
   }
   return logl;
 }
+
 PLL_EXPORT double pll_core_root_loglikelihood_4x4_sse(unsigned int sites,
                                                       unsigned int rate_cats,
                                                       const double * clv,
@@ -168,9 +171,11 @@ PLL_EXPORT double pll_core_root_loglikelihood_4x4_sse(unsigned int sites,
     }
 
     /* compute site log-likelihood and scale if necessary */
-    term = log(term) * pattern_weights[i];
+    term = log(term);
     if (scaler && scaler[i])
       term += scaler[i] * log(PLL_SCALE_THRESHOLD);
+
+    term *= pattern_weights[i];
 
     /* store per-site log-likelihood */
     if (persite_lnl)
@@ -309,9 +314,11 @@ double pll_core_edge_loglikelihood_ti_sse(unsigned int states,
     scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
 
     /* compute site log-likelihood and scale if necessary */
-    site_lk = log(terma) * pattern_weights[n];
+    site_lk = log(terma);
     if (scale_factors)
       site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+
+    site_lk *= pattern_weights[n];
 
     /* store per-site log-likelihood */
     if (persite_lnl)
@@ -439,9 +446,11 @@ double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
     scale_factors += (child_scaler) ? child_scaler[n] : 0;
 
     /* compute site log-likelihood and scale if necessary */
-    site_lk = log(terma) * pattern_weights[n];
+    site_lk = log(terma);
     if (scale_factors)
       site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+
+    site_lk *= pattern_weights[n];
 
     /* store per-site log-likelihood */
     if (persite_lnl)
@@ -599,9 +608,11 @@ double pll_core_edge_loglikelihood_ii_4x4_sse(unsigned int sites,
     scale_factors += (child_scaler) ? child_scaler[n] : 0;
 
     /* compute site log-likelihood and scale if necessary */
-    site_lk = log(terma) * pattern_weights[n];
+    site_lk = log(terma);
     if (scale_factors)
       site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+
+    site_lk *= pattern_weights[n];
 
     /* store per-site log-likelihood */
     if (persite_lnl)
@@ -799,9 +810,11 @@ double pll_core_edge_loglikelihood_ti_4x4_sse(unsigned int sites,
     scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
 
     /* compute site log-likelihood and scale if necessary */
-    site_lk = log(terma) * pattern_weights[n];
+    site_lk = log(terma);
     if (scale_factors)
       site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+
+    site_lk *= pattern_weights[n];
 
     /* store per-site log-likelihood */
     if (persite_lnl)
