@@ -72,6 +72,9 @@ static void pll_rtree_error(pll_rtree_t * tree, const char * s)
 %error-verbose
 %parse-param {struct pll_rtree * tree}
 %destructor { pll_rtree_destroy($$,NULL); } subtree
+%destructor { free($$); } STRING
+%destructor { free($$); } NUMBER
+%destructor { free($$); } label
 
 %token OPAR
 %token CPAR

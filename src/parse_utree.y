@@ -116,6 +116,10 @@ static void pll_utree_error(pll_utree_t * tree, const char * s)
 %error-verbose
 %parse-param {struct pll_utree * tree}
 %destructor { pll_utree_destroy($$,NULL); } subtree
+%destructor { free($$); } STRING
+%destructor { free($$); } NUMBER
+%destructor { free($$); } label
+
 
 %token OPAR
 %token CPAR
