@@ -28,6 +28,10 @@ extern int pll_utree_lineno;
 extern int pll_utree_colstart;
 extern int pll_utree_colend;
 
+extern int pll_utree_parse();
+extern struct pll_utree_buffer_state * pll_utree__scan_string(char * str);
+extern void pll_utree__delete_buffer(struct pll_utree_buffer_state * buffer);
+
 static unsigned int tip_cnt = 0;
 
 static void dealloc_data(pll_utree_t * node, void (*cb_destroy)(void *))
@@ -336,43 +340,38 @@ PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
   return tree;
 }
 
-#ifdef __linux__
 PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(char * s,
                                                        unsigned int * tip_count)
 {
+  int rc;
   struct pll_utree * tree;
 
   /* reset tip count */
-  tip_cnt = 0;
+  tip_count = 0;
 
-  tree = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
-
-  pll_utree_in = fmemopen(s, strlen(s), "r");
-  if (!pll_utree_in)
+  if (!(tree = (pll_utree_t *)calloc(1, sizeof(pll_utree_t))))
   {
-    pll_utree_destroy(tree,NULL);
-    pll_errno = PLL_ERROR_FILE_OPEN;
-    snprintf(pll_errmsg, 200, "Unable to map string (%s)", s);
-    return PLL_FAILURE;
-  }
-  else if (pll_utree_parse(tree))
-  {
-    pll_utree_destroy(tree,NULL);
-    tree = NULL;
-    fclose(pll_utree_in);
-    pll_utree_lex_destroy();
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return PLL_FAILURE;
   }
 
-  if (pll_utree_in) fclose(pll_utree_in);
+  struct pll_utree_buffer_state * buffer = pll_utree__scan_string(s);
+  rc = pll_utree_parse(tree);
+  pll_utree__delete_buffer(buffer);
 
   pll_utree_lex_destroy();
 
-  *tip_count = tip_cnt;
+  if (!rc)
+  {
+    *tip_count = tip_cnt;
 
-  /* initialize clv and scaler indices */
-  pll_utree_reset_template_indices(tree, tip_cnt);
+    /* initialize clv and scaler indices */
+    pll_utree_reset_template_indices(tree, tip_cnt);
 
-  return tree;
+    return tree;
+  }
+
+  free(tree);
+  return NULL;
 }
-#endif

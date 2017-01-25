@@ -28,6 +28,10 @@ extern int pll_rtree_lineno;
 extern int pll_rtree_colstart;
 extern int pll_rtree_colend;
 
+extern int pll_rtree_parse();
+extern struct pll_rtree_buffer_state * pll_rtree__scan_string(char * str);
+extern void pll_rtree__delete_buffer(struct pll_rtree_buffer_state * buffer);
+
 static unsigned int tip_cnt = 0;
 
 PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root,
@@ -207,7 +211,12 @@ PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
   /* reset tip count */
   tip_cnt = 0;
 
-  tree = (pll_rtree_t *)calloc(1, sizeof(pll_rtree_t));
+  if (!(tree = (pll_rtree_t *)calloc(1, sizeof(pll_rtree_t))))
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return PLL_FAILURE;
+  }
 
   pll_rtree_in = fopen(filename, "r");
   if (!pll_rtree_in)
@@ -238,43 +247,38 @@ PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
   return tree;
 }
 
-#ifdef __linux__
 PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(char * s,
                                                        unsigned int * tip_count)
 {
+  int rc;
   struct pll_rtree * tree;
 
   /* reset tip count */
-  tip_cnt = 0;
+  tip_count = 0;
 
-  tree = (pll_rtree_t *)calloc(1, sizeof(pll_rtree_t));
-
-  pll_rtree_in = fmemopen(s, strlen(s), "r");
-  if (!pll_rtree_in)
+  if (!(tree = (pll_rtree_t *)calloc(1, sizeof(pll_rtree_t))))
   {
-    pll_rtree_destroy(tree,NULL);
-    pll_errno = PLL_ERROR_FILE_OPEN;
-    snprintf(pll_errmsg, 200, "Unable to map string (%s)", s);
-    return PLL_FAILURE;
-  }
-  else if (pll_rtree_parse(tree))
-  {
-    pll_rtree_destroy(tree,NULL);
-    tree = NULL;
-    fclose(pll_rtree_in);
-    pll_rtree_lex_destroy();
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return PLL_FAILURE;
   }
 
-  if (pll_rtree_in) fclose(pll_rtree_in);
+  struct pll_rtree_buffer_state * buffer = pll_rtree__scan_string(s);
+  rc = pll_rtree_parse(tree);
+  pll_rtree__delete_buffer(buffer);
 
   pll_rtree_lex_destroy();
 
-  *tip_count = tip_cnt;
+  if (!rc)
+  {
+    *tip_count = tip_cnt;
 
-  /* initialize clv and scaler indices */
-  assign_indices(tree, tip_cnt);
+    /* initialize clv and scaler indices */
+    assign_indices(tree, tip_cnt);
 
-  return tree;
+    return tree;
+  }
+
+  free(tree);
+  return NULL;
 }
-#endif

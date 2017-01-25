@@ -561,10 +561,8 @@ PLL_EXPORT int pll_fasta_rewind(pll_fasta_t * fd);
 PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
                                                 unsigned int * tip_count);
 
-#ifdef __linux__
 PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(char * s,
                                                        unsigned int * tip_count);
-#endif
 
 PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root,
                                   void (*cb_destroy)(void *));
@@ -574,10 +572,8 @@ PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root,
 PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
                                                 unsigned int * tip_count);
 
-#ifdef __linux__
 PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(char * s,
                                                        unsigned int * tip_count);
-#endif
 
 PLL_EXPORT void pll_utree_destroy(pll_utree_t * root,
                                   void (*cb_destroy)(void *));
