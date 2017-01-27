@@ -126,7 +126,8 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
                                          parent_scaler,
                                          left_tipchars,
                                          right_tipchars,
-                                         lookup);
+                                         lookup,
+                                         attrib);
     else
       pll_core_update_partial_tt_avx(states,
                                      sites,
@@ -136,7 +137,8 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
                                      left_tipchars,
                                      right_tipchars,
                                      lookup,
-                                     tipmap_size);
+                                     tipmap_size,
+                                     attrib);
 
     return;
   }
@@ -151,7 +153,8 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
                                          parent_scaler,
                                          left_tipchars,
                                          right_tipchars,
-                                         lookup);
+                                         lookup,
+                                         attrib);
     else
       pll_core_update_partial_tt_avx(states,
                                      sites,
@@ -161,7 +164,8 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
                                      left_tipchars,
                                      right_tipchars,
                                      lookup,
-                                     tipmap_size);
+                                     tipmap_size,
+                                     attrib);
 
     return;
   }
@@ -232,7 +236,8 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
                                        right_clv,
                                        left_matrix,
                                        right_matrix,
-                                       right_scaler);
+                                       right_scaler,
+                                       attrib);
     return;
   }
   #endif
@@ -247,7 +252,8 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
                                        right_clv,
                                        left_matrix,
                                        right_matrix,
-                                       right_scaler);
+                                       right_scaler,
+                                       attrib);
     return;
   }
   #endif
@@ -364,7 +370,8 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
                                    right_matrix,
                                    right_scaler,
                                    tipmap,
-                                   tipmap_size);
+                                   tipmap_size,
+                                   attrib);
     return;
   }
 #endif
@@ -382,7 +389,8 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
                                    right_matrix,
                                    right_scaler,
                                    tipmap,
-                                   tipmap_size);
+                                   tipmap_size,
+                                   attrib);
     return;
   }
 #endif
@@ -501,7 +509,8 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                    left_matrix,
                                    right_matrix,
                                    left_scaler,
-                                   right_scaler);
+                                   right_scaler,
+                                   attrib);
     return;
   }
 #endif
@@ -518,7 +527,8 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                    left_matrix,
                                    right_matrix,
                                    left_scaler,
-                                   right_scaler);
+                                   right_scaler,
+                                   attrib);
     return;
   }
 #endif

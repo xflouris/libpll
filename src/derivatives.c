@@ -22,15 +22,19 @@
 #include "pll.h"
 
 static int sumtable_tipinner(pll_partition_t * partition,
-                                unsigned int parent_clv_index,
-                                unsigned int child_clv_index,
-                                const unsigned int * params_indices,
-                                double *sumtable)
+                             unsigned int parent_clv_index,
+                             unsigned int child_clv_index,
+                             const unsigned int * parent_scaler,
+                             const unsigned int * child_scaler,
+                             const unsigned int * params_indices,
+                             double *sumtable)
 {
   unsigned int i, retval;
   unsigned int tip_clv_index;
   unsigned int inner_clv_index;
   unsigned int sites = partition->sites;
+  const unsigned int * scaler;
+
   double ** eigenvecs = (double **)malloc(partition->rate_cats *
                                           sizeof(double *));
   double ** inv_eigenvecs = (double **)malloc(partition->rate_cats *
@@ -64,11 +68,13 @@ static int sumtable_tipinner(pll_partition_t * partition,
   {
     tip_clv_index = parent_clv_index;
     inner_clv_index = child_clv_index;
+    scaler = child_scaler;
   }
   else
   {
     tip_clv_index = child_clv_index;
     inner_clv_index = parent_clv_index;
+    scaler = parent_scaler;
   }
 
   retval = pll_core_update_sumtable_ti(partition->states,
@@ -76,6 +82,7 @@ static int sumtable_tipinner(pll_partition_t * partition,
                                        partition->rate_cats,
                                        partition->clv[inner_clv_index],
                                        partition->tipchars[tip_clv_index],
+                                       scaler,
                                        eigenvecs,
                                        inv_eigenvecs,
                                        freqs,
@@ -94,6 +101,8 @@ static int sumtable_tipinner(pll_partition_t * partition,
 static int sumtable_innerinner(pll_partition_t * partition,
                                 unsigned int parent_clv_index,
                                 unsigned int child_clv_index,
+                                const unsigned int * parent_scaler,
+                                const unsigned int * child_scaler,
                                 const unsigned int * params_indices,
                                 double *sumtable)
 {
@@ -134,6 +143,8 @@ static int sumtable_innerinner(pll_partition_t * partition,
                               partition->rate_cats,
                               partition->clv[parent_clv_index],
                               partition->clv[child_clv_index],
+                              parent_scaler,
+                              child_scaler,
                               eigenvecs,
                               inv_eigenvecs,
                               freqs,
@@ -153,48 +164,71 @@ static int sumtable_innerinner(pll_partition_t * partition,
 PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
                                       unsigned int parent_clv_index,
                                       unsigned int child_clv_index,
+                                      int parent_scaler_index,
+                                      int child_scaler_index,
                                       const unsigned int * params_indices,
                                       double *sumtable)
 {
   int retval;
 
+  unsigned int * parent_scaler;
+  unsigned int * child_scaler;
+
+  /* get parent scaler */
+  if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
+    parent_scaler = NULL;
+  else
+    parent_scaler = partition->scale_buffer[parent_scaler_index];
+
+  if (child_scaler_index == PLL_SCALE_BUFFER_NONE)
+    child_scaler = NULL;
+  else
+    child_scaler = partition->scale_buffer[child_scaler_index];
+
+
   if (partition->attributes & PLL_ATTRIB_PATTERN_TIP)
-      {
-        if ((parent_clv_index < partition->tips) &&
-            (child_clv_index < partition->tips))
-        {
-          /* tip-tip case */
-          assert(0);
-        }
-        else if ((parent_clv_index < partition->tips) ||
-                 (child_clv_index < partition->tips))
-        {
-          /* tip-inner */
-          retval = sumtable_tipinner(partition,
-                                     parent_clv_index,
-                                     child_clv_index,
-                                     params_indices,
-                                     sumtable);
-        }
-        else
-        {
-          /* inner-inner */
-          retval = sumtable_innerinner(partition,
-                                       parent_clv_index,
-                                       child_clv_index,
-                                       params_indices,
-                                       sumtable);
-        }
-      }
-      else
-      {
-        /* inner-inner */
-        retval = sumtable_innerinner(partition,
-                                     parent_clv_index,
-                                     child_clv_index,
-                                     params_indices,
-                                     sumtable);
-      }
+  {
+    if ((parent_clv_index < partition->tips) &&
+        (child_clv_index < partition->tips))
+    {
+      /* tip-tip case */
+      assert(0);
+    }
+    else if ((parent_clv_index < partition->tips) ||
+             (child_clv_index < partition->tips))
+    {
+      /* tip-inner */
+      retval = sumtable_tipinner(partition,
+                                 parent_clv_index,
+                                 child_clv_index,
+                                 parent_scaler,
+                                 child_scaler,
+                                 params_indices,
+                                 sumtable);
+    }
+    else
+    {
+      /* inner-inner */
+      retval = sumtable_innerinner(partition,
+                                   parent_clv_index,
+                                   child_clv_index,
+                                   parent_scaler,
+                                   child_scaler,
+                                   params_indices,
+                                   sumtable);
+    }
+  }
+  else
+  {
+    /* inner-inner */
+    retval = sumtable_innerinner(partition,
+                                 parent_clv_index,
+                                 child_clv_index,
+                                 parent_scaler,
+                                 child_scaler,
+                                 params_indices,
+                                 sumtable);
+  }
 
   return retval;
 }

@@ -110,6 +110,8 @@ static double eval(pll_partition_t * partition,
   pll_update_sumtable(partition,
                       tree->clv_index,
                       tree->back->clv_index,
+                      tree->scaler_index,
+                      tree->back->scaler_index,
                       params_indices,
                       sumtable);
 

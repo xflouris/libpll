@@ -26,10 +26,13 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx2(unsigned int states,
                                                 unsigned int rate_cats,
                                                 const double * clvp,
                                                 const double * clvc,
+                                                const unsigned int * parent_scaler,
+                                                const unsigned int * child_scaler,
                                                 double ** eigenvecs,
                                                 double ** inv_eigenvecs,
                                                 double ** freqs,
-                                                double *sumtable)
+                                                double *sumtable,
+                                                unsigned int attrib)
 {
   unsigned int i, j, k, n;
 
@@ -49,10 +52,13 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx2(unsigned int states,
                                            rate_cats,
                                            clvp,
                                            clvc,
+                                           parent_scaler,
+                                           child_scaler,
                                            eigenvecs,
                                            inv_eigenvecs,
                                            freqs,
-                                           sumtable);
+                                           sumtable,
+                                           attrib);
   }
 
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
@@ -215,6 +221,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx2(unsigned int states,
                                                 unsigned int rate_cats,
                                                 const double * parent_clv,
                                                 const unsigned char * left_tipchars,
+                                                const unsigned int * parent_scaler,
                                                 double ** eigenvecs,
                                                 double ** inv_eigenvecs,
                                                 double ** freqs,
@@ -231,6 +238,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx2(unsigned int states,
                                            rate_cats,
                                            parent_clv,
                                            left_tipchars,
+                                           parent_scaler,
                                            eigenvecs,
                                            inv_eigenvecs,
                                            freqs,

@@ -21,7 +21,7 @@
 
 #include "pll.h"
 
-static void fill_parent_scaler(unsigned int sites,
+static void fill_parent_scaler(unsigned int scaler_size,
                                unsigned int * parent_scaler,
                                const unsigned int * left_scaler,
                                const unsigned int * right_scaler)
@@ -29,19 +29,19 @@ static void fill_parent_scaler(unsigned int sites,
   unsigned int i;
 
   if (!left_scaler && !right_scaler)
-    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+    memset(parent_scaler, 0, sizeof(unsigned int) * scaler_size);
   else if (left_scaler && right_scaler)
   {
-    memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * sites);
-    for (i = 0; i < sites; ++i)
+    memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * scaler_size);
+    for (i = 0; i < scaler_size; ++i)
       parent_scaler[i] += right_scaler[i];
   }
   else
   {
     if (left_scaler)
-      memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * sites);
+      memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * scaler_size);
     else
-      memcpy(parent_scaler, right_scaler, sizeof(unsigned int) * sites);
+      memcpy(parent_scaler, right_scaler, sizeof(unsigned int) * scaler_size);
   }
 }
 
@@ -372,11 +372,14 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
                                                    const double * left_matrix,
                                                    const double * right_matrix,
                                                    const unsigned int * left_scaler,
-                                                   const unsigned int * right_scaler)
+                                                   const unsigned int * right_scaler,
+                                                   unsigned int attrib)
 {
   unsigned int states = 4;
   unsigned int n,k,i;
-  unsigned int scaling;
+  unsigned int scale_mode;  /* 0 = none, 1 = per-site, 2 = per-rate */
+  unsigned int scale_mask;
+  unsigned int init_mask;
 
   const double * lmat;
   const double * rmat;
@@ -386,17 +389,29 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
 
   unsigned int span = states * rate_cats;
 
-  /* add up the scale vector of the two children if available */
-  if (parent_scaler)
-    fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
+  if (!parent_scaler)
+  {
+    /* scaling disabled / not required */
+    scale_mode = init_mask = 0;
+  }
+  else
+  {
+    /* determine the scaling mode and init the vars accordingly */
+    scale_mode = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 2 : 1;
+    init_mask = (scale_mode == 1) ? 0xF : 0;
+    const size_t scaler_size = (scale_mode == 2) ? sites * rate_cats : sites;
+    /* add up the scale vector of the two children if available */
+    fill_parent_scaler(scaler_size, parent_scaler, left_scaler, right_scaler);
+  }
 
   __m256d v_scale_threshold = _mm256_set1_pd(PLL_SCALE_THRESHOLD);
+  __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
 
   for (n = 0; n < sites; ++n)
   {
     lmat = left_matrix;
     rmat = right_matrix;
-    scaling = (parent_scaler) ? 0xF : 0;
+    scale_mask = init_mask;
 
     for (k = 0; k < rate_cats; ++k)
     {
@@ -470,23 +485,34 @@ PLL_EXPORT void pll_core_update_partial_ii_4x4_avx(unsigned int sites,
       /* compute x*y */
       xmm0 = _mm256_mul_pd(xmm4,ymm4);
 
-      _mm256_store_pd(parent_clv, xmm0);
-
-        /* check for scaling */
+      /* check if scaling is needed for the current rate category */
       __m256d v_cmp = _mm256_cmp_pd(xmm0, v_scale_threshold, _CMP_LT_OS);
-      scaling = scaling & _mm256_movemask_pd(v_cmp);
+      const unsigned int rate_mask = _mm256_movemask_pd(v_cmp);
+
+      if (scale_mode == 2)
+      {
+        /* PER-RATE SCALING: if *all* entries of the *rate* CLV were below
+         * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+        if (rate_mask == 0xF)
+        {
+          xmm0 = _mm256_mul_pd(xmm0,v_scale_factor);
+          parent_scaler[n*rate_cats + k] += 1;
+        }
+      }
+      else
+        scale_mask = scale_mask & rate_mask;
+
+      _mm256_store_pd(parent_clv, xmm0);
 
       parent_clv += states;
       left_clv   += states;
       right_clv  += states;
     }
 
-    /* if *all* entries of the site CLV were below the threshold then scale
-       (all) entries by PLL_SCALE_FACTOR */
-    if (scaling == 0xF)
+    /* PER-SITE SCALING: if *all* entries of the *site* CLV were below
+     * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+    if (scale_mask == 0xF)
     {
-      __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
-
       parent_clv -= span;
       for (i = 0; i < span; i += 4)
       {
@@ -508,7 +534,8 @@ PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
                                                const unsigned char * left_tipchars,
                                                const unsigned char * right_tipchars,
                                                const double * lookup,
-                                               unsigned int tipstates_count)
+                                               unsigned int tipstates_count,
+                                               unsigned int attrib)
 {
   unsigned int j,k,n;
   unsigned int log2_maxstates = (unsigned int)ceil(log2(tipstates_count));
@@ -524,7 +551,8 @@ PLL_EXPORT void pll_core_update_partial_tt_avx(unsigned int states,
                                        parent_scaler,
                                        left_tipchars,
                                        right_tipchars,
-                                       lookup);
+                                       lookup,
+                                       attrib);
     return;
   }
 
@@ -551,15 +579,19 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4_avx(unsigned int sites,
                                                    unsigned int * parent_scaler,
                                                    const unsigned char * left_tipchars,
                                                    const unsigned char * right_tipchars,
-                                                   const double * lookup)
+                                                   const double * lookup,
+                                                   unsigned int attrib)
 {
   unsigned int j,k,n;
   unsigned int states = 4;
   unsigned int span = states*rate_cats;
   const double * offset;
 
+  size_t scaler_size = (attrib & PLL_ATTRIB_RATE_SCALERS) ?
+                                                        sites*rate_cats : sites;
+
   if (parent_scaler)
-    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+    memset(parent_scaler, 0, sizeof(unsigned int) * scaler_size);
 
   for (n = 0; n < sites; ++n)
   {
@@ -569,7 +601,12 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4_avx(unsigned int sites,
     offset = lookup;
     offset += ((j << 4) + k)*span;
 
-    memcpy(parent_clv, offset, span*sizeof(double));
+    //    memcpy(parent_clv, offset, span*sizeof(double));
+    for (k = 0; k < span; k += 4)
+    {
+      __m256d v_clv = _mm256_load_pd(offset + k);
+      _mm256_store_pd(parent_clv + k, v_clv);
+    }
 
     parent_clv += span;
   }
@@ -586,7 +623,8 @@ PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
                                                const double * right_matrix,
                                                const unsigned int * right_scaler,
                                                const unsigned int * tipmap,
-                                               unsigned int tipmap_size)
+                                               unsigned int tipmap_size,
+                                               unsigned int attrib)
 {
   unsigned int i,j,k,n;
   unsigned int scaling;
@@ -610,7 +648,8 @@ PLL_EXPORT void pll_core_update_partial_ti_avx(unsigned int states,
                                        right_clv,
                                        left_matrix,
                                        right_matrix,
-                                       right_scaler);
+                                       right_scaler,
+                                       attrib);
     return;
   }
 
@@ -825,11 +864,15 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
                                                    const double * right_clv,
                                                    const double * left_matrix,
                                                    const double * right_matrix,
-                                                   const unsigned int * right_scaler)
+                                                   const unsigned int * right_scaler,
+                                                   unsigned int attrib)
 {
   unsigned int states = 4;
-  unsigned int scaling;
   unsigned int i,k,n;
+
+  unsigned int scale_mode;  /* 0 = none, 1 = per-site, 2 = per-rate */
+  unsigned int scale_mask;
+  unsigned int init_mask;
 
   const double * lmat;
   const double * rmat;
@@ -900,18 +943,31 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
     }
   }
 
-  /* update the parent scaler with the scaler of the right child */
-  if (parent_scaler)
-    fill_parent_scaler(sites, parent_scaler, NULL, right_scaler);
+  if (!parent_scaler)
+  {
+    /* scaling disabled / not required */
+    scale_mode = init_mask = 0;
+  }
+  else
+  {
+    /* determine the scaling mode and init the vars accordingly */
+    scale_mode = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 2 : 1;
+    init_mask = (scale_mode == 1) ? 0xF : 0;
+    const size_t scaler_size = (scale_mode == 2) ? sites * rate_cats : sites;
+
+    /* update the parent scaler with the scaler of the right child */
+    fill_parent_scaler(scaler_size, parent_scaler, NULL, right_scaler);
+  }
 
   __m256d v_scale_threshold = _mm256_set1_pd(PLL_SCALE_THRESHOLD);
+  __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
 
   /* iterate over sites and compute CLV entries */
   for (n = 0; n < sites; ++n)
   {
     rmat = right_matrix;
 
-    scaling = (parent_scaler) ? 0xF : 0;
+    scale_mask = init_mask;
 
     lstate = left_tipchar[n];
 
@@ -956,28 +1012,39 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4_avx(unsigned int sites,
       /* compute x*y */
       xmm0 = _mm256_mul_pd(xmm4,ymm4);
 
-      _mm256_store_pd(parent_clv, xmm0);
-
-      /* check for scaling */
+      /* check if scaling is needed for the current rate category */
       __m256d v_cmp = _mm256_cmp_pd(xmm0, v_scale_threshold, _CMP_LT_OS);
-      scaling = scaling & _mm256_movemask_pd(v_cmp);
+      const unsigned int rate_mask = _mm256_movemask_pd(v_cmp);
+
+      if (scale_mode == 2)
+      {
+        /* PER-RATE SCALING: if *all* entries of the *rate* CLV were below
+         * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+        if (rate_mask == 0xF)
+        {
+          xmm0 = _mm256_mul_pd(xmm0, v_scale_factor);
+          parent_scaler[n*rate_cats + k] += 1;
+        }
+      }
+      else
+        scale_mask = scale_mask & rate_mask;
+
+      _mm256_store_pd(parent_clv, xmm0);
 
       parent_clv += states;
       right_clv  += states;
       loffset    += 4;
     }
 
-    /* if *all* entries of the site CLV were below the threshold then scale
-       (all) entries by PLL_SCALE_FACTOR */
-    if (scaling == 0xF)
+    /* PER-SITE SCALING: if *all* entries of the *site* CLV were below
+     * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+    if (scale_mask == 0xF)
     {
-      __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
-
       parent_clv -= span;
       for (i = 0; i < span; i += 4)
       {
         __m256d v_prod = _mm256_load_pd(parent_clv + i);
-        v_prod = _mm256_mul_pd(v_prod,v_scale_factor);
+        v_prod = _mm256_mul_pd(v_prod, v_scale_factor);
         _mm256_store_pd(parent_clv + i, v_prod);
       }
       parent_clv += span;
@@ -1209,7 +1276,8 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
                                                const double * left_matrix,
                                                const double * right_matrix,
                                                const unsigned int * left_scaler,
-                                               const unsigned int * right_scaler)
+                                               const unsigned int * right_scaler,
+                                               unsigned int attrib)
 {
   unsigned int i,j,k,n;
   unsigned int scaling;
@@ -1232,7 +1300,8 @@ PLL_EXPORT void pll_core_update_partial_ii_avx(unsigned int states,
                                        left_matrix,
                                        right_matrix,
                                        left_scaler,
-                                       right_scaler);
+                                       right_scaler,
+                                       attrib);
     return;
   }
 

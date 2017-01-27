@@ -197,7 +197,9 @@ int main(int argc, char * argv[])
                                                            params_indices,
                                                            NULL);
 
-        pll_update_sumtable(partition, 6, 7, params_indices, sumtable);
+        pll_update_sumtable(partition, 6, 7,
+                            PLL_SCALE_BUFFER_NONE, PLL_SCALE_BUFFER_NONE,
+                            params_indices, sumtable);
 
         for (b = 0; b < NUM_BRANCHES; ++b) {
           if (!pll_compute_likelihood_derivatives(partition,
@@ -276,7 +278,9 @@ int main(int argc, char * argv[])
                                                            params_indices,
                                                            NULL);
 
-        pll_update_sumtable(partition, 4, 7, params_indices, sumtable);
+        pll_update_sumtable(partition, 4, 7,
+                            PLL_SCALE_BUFFER_NONE, PLL_SCALE_BUFFER_NONE,
+                            params_indices, sumtable);
 
         for (b = 0; b < NUM_BRANCHES; ++b) {
           if (!pll_compute_likelihood_derivatives(partition,
