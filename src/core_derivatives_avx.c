@@ -41,7 +41,6 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
 
   const double * t_clvp = clvp;
   const double * t_clvc = clvc;
-  double * t_eigenvecs;
   double * t_freqs;
 
   unsigned int states = 4;
@@ -103,58 +102,47 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
       }
     }
 
+    const double * c_eigenvecs;
+    const double * c_inv_eigenvecs = tt_inv_eigenvecs;
+
     for (i = 0; i < rate_cats; ++i)
     {
-      t_eigenvecs = eigenvecs[i];
-
-      const double * c_eigenvecs = t_eigenvecs;
-      const double * ct_inv_eigenvecs = tt_inv_eigenvecs;
+      c_eigenvecs = eigenvecs[i];
 
       __m256d v_lefterm[4], v_righterm[4];
-      v_lefterm[0] = v_lefterm[1] = v_lefterm[2] = v_lefterm[3] = _mm256_setzero_pd ();
-      v_righterm[0] = v_righterm[1] = v_righterm[2] = v_righterm[3] = _mm256_setzero_pd ();
-
       __m256d v_eigen;
       __m256d v_clvp, v_clvc;
 
       v_clvp = _mm256_load_pd (t_clvp);
       v_clvc = _mm256_load_pd (t_clvc);
 
-      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
-      v_lefterm[0] = _mm256_add_pd (v_lefterm[0],
-                                    _mm256_mul_pd (v_eigen, v_clvp));
+      v_eigen = _mm256_load_pd (c_inv_eigenvecs);
+      v_lefterm[0] = _mm256_mul_pd (v_eigen, v_clvp);
       v_eigen = _mm256_load_pd (c_eigenvecs);
-      v_righterm[0] = _mm256_add_pd (v_righterm[0],
-                                     _mm256_mul_pd (v_eigen, v_clvc));
+      v_righterm[0] = _mm256_mul_pd (v_eigen, v_clvc);
       c_eigenvecs += 4;
-      ct_inv_eigenvecs += 4;
+      c_inv_eigenvecs += 4;
 
-      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
-      v_lefterm[1] = _mm256_add_pd (v_lefterm[1],
-                                    _mm256_mul_pd (v_eigen, v_clvp));
+      v_eigen = _mm256_load_pd (c_inv_eigenvecs);
+      v_lefterm[1] = _mm256_mul_pd (v_eigen, v_clvp);
       v_eigen = _mm256_load_pd (c_eigenvecs);
-      v_righterm[1] = _mm256_add_pd (v_righterm[1],
-                                     _mm256_mul_pd (v_eigen, v_clvc));
+      v_righterm[1] = _mm256_mul_pd (v_eigen, v_clvc);
       c_eigenvecs += 4;
-      ct_inv_eigenvecs += 4;
+      c_inv_eigenvecs += 4;
 
-      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
-      v_lefterm[2] = _mm256_add_pd (v_lefterm[2],
-                                    _mm256_mul_pd (v_eigen, v_clvp));
+      v_eigen = _mm256_load_pd (c_inv_eigenvecs);
+      v_lefterm[2] = _mm256_mul_pd (v_eigen, v_clvp);
       v_eigen = _mm256_load_pd (c_eigenvecs);
-      v_righterm[2] = _mm256_add_pd (v_righterm[2],
-                                     _mm256_mul_pd (v_eigen, v_clvc));
+      v_righterm[2] = _mm256_mul_pd (v_eigen, v_clvc);
       c_eigenvecs += 4;
-      ct_inv_eigenvecs += 4;
+      c_inv_eigenvecs += 4;
 
-      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
-      v_lefterm[3] = _mm256_add_pd (v_lefterm[3],
-                                    _mm256_mul_pd (v_eigen, v_clvp));
+      v_eigen = _mm256_load_pd (c_inv_eigenvecs);
+      v_lefterm[3] = _mm256_mul_pd (v_eigen, v_clvp);
       v_eigen = _mm256_load_pd (c_eigenvecs);
-      v_righterm[3] = _mm256_add_pd (v_righterm[3],
-                                     _mm256_mul_pd (v_eigen, v_clvc));
+      v_righterm[3] = _mm256_mul_pd (v_eigen, v_clvc);
       c_eigenvecs += 4;
-      ct_inv_eigenvecs += 4;
+      c_inv_eigenvecs += 4;
 
       /* compute lefterm */
       __m256d xmm0 = _mm256_unpackhi_pd (v_lefterm[0], v_lefterm[1]);
