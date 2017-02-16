@@ -29,7 +29,7 @@ extern int pll_rtree_colstart;
 extern int pll_rtree_colend;
 
 extern int pll_rtree_parse();
-extern struct pll_rtree_buffer_state * pll_rtree__scan_string(char * str);
+extern struct pll_rtree_buffer_state * pll_rtree__scan_string(const char * str);
 extern void pll_rtree__delete_buffer(struct pll_rtree_buffer_state * buffer);
 
 static unsigned int tip_cnt = 0;
@@ -247,7 +247,7 @@ PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
   return tree;
 }
 
-PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(char * s,
+PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(const char * s,
                                                        unsigned int * tip_count)
 {
   int rc;

@@ -23,7 +23,7 @@
 
 static int indent_space = 4;
 
-static void print_node_info(pll_utree_t * tree, int options)
+static void print_node_info(const pll_utree_t * tree, int options)
 {
   if (options & PLL_UTREE_SHOW_LABEL)
     printf (" %s", tree->label);
@@ -109,7 +109,7 @@ static void print_tree_recurse(pll_utree_t * tree,
 
 }
 
-static unsigned int tree_indent_level(pll_utree_t * tree, unsigned int indent)
+static unsigned int tree_indent_level(const pll_utree_t * tree, unsigned int indent)
 {
   if (!tree->next) return indent+1;
 
@@ -119,7 +119,7 @@ static unsigned int tree_indent_level(pll_utree_t * tree, unsigned int indent)
   return (a > b ? a : b);
 }
 
-PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options)
+PLL_EXPORT void pll_utree_show_ascii(const pll_utree_t * tree, int options)
 {
   unsigned int a, b;
 
@@ -146,7 +146,7 @@ PLL_EXPORT void pll_utree_show_ascii(pll_utree_t * tree, int options)
   free(active_node_order);
 }
 
-static char * newick_utree_recurse(pll_utree_t * root)
+static char * newick_utree_recurse(const pll_utree_t * root)
 {
   char * newick;
   int size_alloced;
@@ -189,7 +189,7 @@ static char * newick_utree_recurse(pll_utree_t * root)
   return newick;
 }
 
-PLL_EXPORT char * pll_utree_export_newick(pll_utree_t * root)
+PLL_EXPORT char * pll_utree_export_newick(const pll_utree_t * root)
 {
   char * newick;
   int size_alloced;
