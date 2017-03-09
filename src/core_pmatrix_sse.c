@@ -219,7 +219,7 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
           ONESTEP(12);
         }
       }
-      #ifdef NDEBUG
+      #ifdef DEBUG
       unsigned int j,k;
       for (j = 0; j < 4; ++j)
         for (k = 0; k < 4; ++k)

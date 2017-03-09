@@ -229,7 +229,7 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
           }
         }
       }
-      #ifdef NDEBUG
+      #ifdef DEBUG
       for (j = 0; j < states; ++j)
         for (k = 0; k < states; ++k)
           assert(pmat[j*states_padded+k] >= 0);

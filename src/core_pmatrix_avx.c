@@ -279,7 +279,7 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
           _mm256_store_pd(pmat+12,ymm0);
         }
       }
-      #ifdef NDEBUG
+      #ifdef DEBUG
       unsigned int j,k;
       for (j = 0; j < 4; ++j)
         for (k = 0; k < 4; ++k)
@@ -418,7 +418,7 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
         continue;
       }
 
-      #ifdef NDEBUG
+      #ifdef DEBUG
       double * dbg_pmat = pmat;   
       #endif
 
@@ -565,7 +565,7 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
           pmat += 4;
         }
       }
-      #ifdef NDEBUG
+      #ifdef DEBUG
       for (j = 0; j < 20; ++j)
         for (k = 0; k < 20; ++k)
           assert(dbg_pmat[j*20+k] >= 0);
