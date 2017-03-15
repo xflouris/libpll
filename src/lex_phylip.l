@@ -64,30 +64,33 @@ static char * append(size_t * dstlen, const char * src, size_t srclen)
 
 %%
 <quot>{
-\\\"                                         append(&string_length, "\"", 1);
-\'                                           append(&string_length, "\'", 1);
-\"                                           {BEGIN(INITIAL);return STRING;}
+\\\"              { append(&string_length, "\"", 1);                           }
+\'                { append(&string_length, "\'", 1);                           }
+\"                { BEGIN(INITIAL); return STRING;                             }
 }
 
 <apos>{
-\\\'                                         append(&string_length, "\'", 1);
-\"                                           append(&string_length, "\"", 1);
-\'                                           {BEGIN(INITIAL);return STRING;}
+\\\'              { append(&string_length, "\'", 1);                           }
+\"                { append(&string_length, "\"", 1);                           }
+\'                { BEGIN(INITIAL); return STRING;                             }
 }
 
 <apos,quot>{
-\\n                                          append(&string_length, "\n", 1);
-\\t                                          append(&string_length, "\t", 1);
-\\\\                                         append(&string_length, "\\", 1);
-([^\"\'\\]|\n)+                              append(&string_length, pll_phylip_text, pll_phylip_leng);
+\\n               { append(&string_length, "\n", 1);                           }
+\\t               { append(&string_length, "\t", 1);                           }
+\\\\              { append(&string_length, "\\", 1);                           }
+([^\"\'\\]|\n)+   { append(&string_length, pll_phylip_text, pll_phylip_leng);  }
 }
 
-\"                                           {string_length =0; pll_phylip_lval.s = NULL; ;BEGIN(quot);}
-\'                                           {string_length =0; pll_phylip_lval.s = NULL; ;BEGIN(apos);}
-([^\t\n\r ])+                {pll_phylip_lval.s = xstrndup(pll_phylip_text, pll_phylip_leng); return STRING;}
-[ \t\n\r]*\#[^\n]*                           ;
-[ \t\n\r]                                    ;
-.                                            {snprintf(pll_errmsg, 200, "Syntax error (%c)\n", pll_phylip_text[0]);
-                                              pll_errno = PLL_ERROR_PHYLIP_SYNTAX;
-                                              return PLL_FAILURE;}
+\"                { string_length = 0; pll_phylip_lval.s = NULL; BEGIN(quot);  }
+\'                { string_length =0; pll_phylip_lval.s = NULL; ;BEGIN(apos);  }
+([^\t\n\r ])+     { pll_phylip_lval.s=xstrndup(pll_phylip_text,pll_phylip_leng);
+                    return STRING;                                             }
+[ \t\n\r]*\#[^\n]* {
+                    ;                                                          }
+[ \t\n\r]         { ;                                                          }
+.                 { snprintf(pll_errmsg, 200, 
+                             "Syntax error (%c)\n", pll_phylip_text[0]);
+                    pll_errno = PLL_ERROR_PHYLIP_SYNTAX;
+                    return PLL_FAILURE;                                        }
 %%

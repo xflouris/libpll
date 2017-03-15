@@ -192,6 +192,26 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
             expd[j] = exp(evals[j] * rates[n] * branch_lengths[i]);
         }
 
+        /* check if all values of expd are approximately one */
+        for (k=0, j=0; j < states; ++j)
+          if ((expd[j] > PLL_ONE_MIN) && (expd[j] < PLL_ONE_MAX))
+            ++k;
+
+        /* if yes, it means we are multiplying the inverse eigenvectors matrix
+           by the eigenvectors matrix, and essentially the resulting pmatrix is
+           the identity matrix. This is done to prevent having numerical issues
+           (negative entries in the pmatrix) which can occur due to the
+           different floating point representations of one in expd */
+        if (k == states)
+        {
+          /* set identity matrix */
+          for (j = 0; j < states; ++j)
+            for (k = 0; k < states; ++k)
+              pmat[j*states_padded + k] = (j == k) ? 1 : 0;
+
+          continue;
+        }
+
         for (j = 0; j < states; ++j)
           for (k = 0; k < states; ++k)
             temp[j*states+k] = inv_evecs[j*states+k] * expd[k];
@@ -209,6 +229,11 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
           }
         }
       }
+      #ifdef DEBUG
+      for (j = 0; j < states; ++j)
+        for (k = 0; k < states; ++k)
+          assert(pmat[j*states_padded+k] >= 0);
+      #endif
     }
   }
 

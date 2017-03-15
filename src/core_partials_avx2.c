@@ -57,7 +57,8 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
                                                 const double * right_matrix,
                                                 const unsigned int * right_scaler,
                                                 const unsigned int * tipmap,
-                                                unsigned int tipmap_size)
+                                                unsigned int tipmap_size,
+                                                unsigned int attrib)
 {
   unsigned int i,j,k,n;
   unsigned int scaling;
@@ -82,7 +83,8 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
                                        right_clv,
                                        left_matrix,
                                        right_matrix,
-                                       right_scaler);
+                                       right_scaler,
+                                       attrib);
     return;
   }
 
@@ -504,7 +506,8 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
                                                 const double * left_matrix,
                                                 const double * right_matrix,
                                                 const unsigned int * left_scaler,
-                                                const unsigned int * right_scaler)
+                                                const unsigned int * right_scaler,
+                                                unsigned int attrib)
 {
   unsigned int i,j,k,n;
   unsigned int scaling;
@@ -528,7 +531,8 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
                                        left_matrix,
                                        right_matrix,
                                        left_scaler,
-                                       right_scaler);
+                                       right_scaler,
+                                       attrib);
     return;
   }
 

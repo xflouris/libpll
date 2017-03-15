@@ -72,8 +72,11 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
   }
 
   __m256d xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7,xmm8,xmm9;
-  __m256d ymm0,ymm1,ymm2,ymm3,ymm4,ymm5,ymm6,ymm7;
+  __m256d ymm0,ymm1,ymm2,ymm3,ymm4,ymm5,ymm6,ymm7,ymm8,ymm9;
+
   xmm0 = _mm256_setzero_pd();
+  ymm8 = _mm256_set1_pd(PLL_ONE_MIN);
+  ymm9 = _mm256_set1_pd(PLL_ONE_MAX);
 
   for (i = 0; i < count; ++i)
   {
@@ -131,127 +134,157 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
                              exp(expd[1]),
                              exp(expd[0]));
 
-        /* multiply inverse eigenvectors with computed result */
-        xmm2 = _mm256_load_pd(inv_evecs+0);
-        xmm4 = _mm256_load_pd(inv_evecs+4);
-        xmm5 = _mm256_load_pd(inv_evecs+8);
-        xmm6 = _mm256_load_pd(inv_evecs+12);
 
-        xmm7 = _mm256_mul_pd(xmm2,xmm1);       /* temp row 0 */
-        xmm2 = _mm256_mul_pd(xmm4,xmm1);       /* temp row 1 */
-        xmm4 = _mm256_mul_pd(xmm5,xmm1);       /* temp row 2 */
-        xmm5 = _mm256_mul_pd(xmm6,xmm1);       /* temp row 3 */
+        /* check if all values of expd are approximately one */
+        xmm2 = _mm256_cmp_pd(xmm1, ymm8, _CMP_GT_OS);
+        xmm4 = _mm256_cmp_pd(xmm1, ymm9, _CMP_LT_OS);
+        xmm5 = _mm256_and_pd(xmm2,xmm4);
 
-        /* transpose eigenvector */
-        xmm6 = _mm256_load_pd(evecs+0); 
-        xmm1 = _mm256_load_pd(evecs+4);
-        xmm8 = _mm256_load_pd(evecs+8);
-        xmm9 = _mm256_load_pd(evecs+12);
+        
+        /* if yes, it means we are multiplying the inverse eigenvectors matrix
+           by the eigenvectors matrix, and essentially the resulting pmatrix is
+           the identity matrix. This is done to prevent having numerical issues
+           (negative entries in the pmatrix) which can occur due to the
+           different floating point representations of one in expd. Otherwise,
+           proceed as normal and multiply eigenvector matrices with expd  */
+        if (_mm256_movemask_pd(xmm5) == 0xF)
+        {
+          _mm256_store_pd(pmat+0,xmm0);
+          _mm256_store_pd(pmat+4,xmm0);
+          _mm256_store_pd(pmat+8,xmm0);
+          _mm256_store_pd(pmat+12,xmm0);
 
-        /* transpose eigenvectors */
-        ymm0 = _mm256_unpacklo_pd(xmm6,xmm1);
-        ymm1 = _mm256_unpackhi_pd(xmm6,xmm1);
-        ymm2 = _mm256_unpacklo_pd(xmm8,xmm9);
-        ymm3 = _mm256_unpackhi_pd(xmm8,xmm9);
+          pmat[0] = pmat[5] = pmat[10] = pmat[15] = 1;
+        }
+        else
+        {
+          /* multiply inverse eigenvectors with computed result */
+          xmm2 = _mm256_load_pd(inv_evecs+0);
+          xmm4 = _mm256_load_pd(inv_evecs+4);
+          xmm5 = _mm256_load_pd(inv_evecs+8);
+          xmm6 = _mm256_load_pd(inv_evecs+12);
 
-        xmm6 = _mm256_permute2f128_pd(ymm0,ymm2,_MM_SHUFFLE(0,2,0,0));
-        xmm1 = _mm256_permute2f128_pd(ymm1,ymm3,_MM_SHUFFLE(0,2,0,0));
-        xmm8 = _mm256_permute2f128_pd(ymm0,ymm2,_MM_SHUFFLE(0,3,0,1));
-        xmm9 = _mm256_permute2f128_pd(ymm1,ymm3,_MM_SHUFFLE(0,3,0,1));
+          xmm7 = _mm256_mul_pd(xmm2,xmm1);       /* temp row 0 */
+          xmm2 = _mm256_mul_pd(xmm4,xmm1);       /* temp row 1 */
+          xmm4 = _mm256_mul_pd(xmm5,xmm1);       /* temp row 2 */
+          xmm5 = _mm256_mul_pd(xmm6,xmm1);       /* temp row 3 */
 
-        /* pmat row 0*/
+          /* transpose eigenvector */
+          xmm6 = _mm256_load_pd(evecs+0); 
+          xmm1 = _mm256_load_pd(evecs+4);
+          xmm8 = _mm256_load_pd(evecs+8);
+          xmm9 = _mm256_load_pd(evecs+12);
 
-        ymm0 = _mm256_mul_pd(xmm7,xmm6);
-        ymm1 = _mm256_mul_pd(xmm7,xmm1);
-        ymm2 = _mm256_mul_pd(xmm7,xmm8);
-        ymm3 = _mm256_mul_pd(xmm7,xmm9);
+          /* transpose eigenvectors */
+          ymm0 = _mm256_unpacklo_pd(xmm6,xmm1);
+          ymm1 = _mm256_unpackhi_pd(xmm6,xmm1);
+          ymm2 = _mm256_unpacklo_pd(xmm8,xmm9);
+          ymm3 = _mm256_unpackhi_pd(xmm8,xmm9);
 
-        /* create a vector with the sums of ymm0, ymm1, ymm2, ymm3 */
-        ymm4 = _mm256_unpackhi_pd(ymm0,ymm1);
-        ymm5 = _mm256_unpacklo_pd(ymm0,ymm1);
+          xmm6 = _mm256_permute2f128_pd(ymm0,ymm2,_MM_SHUFFLE(0,2,0,0));
+          xmm1 = _mm256_permute2f128_pd(ymm1,ymm3,_MM_SHUFFLE(0,2,0,0));
+          xmm8 = _mm256_permute2f128_pd(ymm0,ymm2,_MM_SHUFFLE(0,3,0,1));
+          xmm9 = _mm256_permute2f128_pd(ymm1,ymm3,_MM_SHUFFLE(0,3,0,1));
 
-        ymm6 = _mm256_unpackhi_pd(ymm2,ymm3);
-        ymm7 = _mm256_unpacklo_pd(ymm2,ymm3);
+          /* pmat row 0*/
 
-        ymm0 = _mm256_add_pd(ymm4,ymm5);
-        ymm1 = _mm256_add_pd(ymm6,ymm7);
+          ymm0 = _mm256_mul_pd(xmm7,xmm6);
+          ymm1 = _mm256_mul_pd(xmm7,xmm1);
+          ymm2 = _mm256_mul_pd(xmm7,xmm8);
+          ymm3 = _mm256_mul_pd(xmm7,xmm9);
 
-        ymm2 = _mm256_permute2f128_pd(ymm0,ymm1, _MM_SHUFFLE(0,2,0,1));
-        ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
-        ymm0 = _mm256_add_pd(ymm2,ymm3);
+          /* create a vector with the sums of ymm0, ymm1, ymm2, ymm3 */
+          ymm4 = _mm256_unpackhi_pd(ymm0,ymm1);
+          ymm5 = _mm256_unpacklo_pd(ymm0,ymm1);
 
-        _mm256_store_pd(pmat+0,ymm0);
+          ymm6 = _mm256_unpackhi_pd(ymm2,ymm3);
+          ymm7 = _mm256_unpacklo_pd(ymm2,ymm3);
 
-        /* pmat row 1 */
+          ymm0 = _mm256_add_pd(ymm4,ymm5);
+          ymm1 = _mm256_add_pd(ymm6,ymm7);
 
-        ymm0 = _mm256_mul_pd(xmm2,xmm6);
-        ymm1 = _mm256_mul_pd(xmm2,xmm1);
-        ymm2 = _mm256_mul_pd(xmm2,xmm8);
-        ymm3 = _mm256_mul_pd(xmm2,xmm9);
+          ymm2 = _mm256_permute2f128_pd(ymm0,ymm1, _MM_SHUFFLE(0,2,0,1));
+          ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
+          ymm0 = _mm256_add_pd(ymm2,ymm3);
 
-        /* create a vector with the sums of ymm0, ymm1, ymm2, ymm3 */
-        ymm4 = _mm256_unpackhi_pd(ymm0,ymm1);
-        ymm5 = _mm256_unpacklo_pd(ymm0,ymm1);
+          _mm256_store_pd(pmat+0,ymm0);
 
-        ymm6 = _mm256_unpackhi_pd(ymm2,ymm3);
-        ymm7 = _mm256_unpacklo_pd(ymm2,ymm3);
+          /* pmat row 1 */
 
-        ymm0 = _mm256_add_pd(ymm4,ymm5);
-        ymm1 = _mm256_add_pd(ymm6,ymm7);
+          ymm0 = _mm256_mul_pd(xmm2,xmm6);
+          ymm1 = _mm256_mul_pd(xmm2,xmm1);
+          ymm2 = _mm256_mul_pd(xmm2,xmm8);
+          ymm3 = _mm256_mul_pd(xmm2,xmm9);
 
-        ymm2 = _mm256_permute2f128_pd(ymm0,ymm1, _MM_SHUFFLE(0,2,0,1));
-        ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
-        ymm0 = _mm256_add_pd(ymm2,ymm3);
+          /* create a vector with the sums of ymm0, ymm1, ymm2, ymm3 */
+          ymm4 = _mm256_unpackhi_pd(ymm0,ymm1);
+          ymm5 = _mm256_unpacklo_pd(ymm0,ymm1);
 
-        _mm256_store_pd(pmat+4,ymm0);
+          ymm6 = _mm256_unpackhi_pd(ymm2,ymm3);
+          ymm7 = _mm256_unpacklo_pd(ymm2,ymm3);
 
-        /* pmat row 2 */
+          ymm0 = _mm256_add_pd(ymm4,ymm5);
+          ymm1 = _mm256_add_pd(ymm6,ymm7);
 
-        ymm0 = _mm256_mul_pd(xmm4,xmm6);
-        ymm1 = _mm256_mul_pd(xmm4,xmm1);
-        ymm2 = _mm256_mul_pd(xmm4,xmm8);
-        ymm3 = _mm256_mul_pd(xmm4,xmm9);
+          ymm2 = _mm256_permute2f128_pd(ymm0,ymm1, _MM_SHUFFLE(0,2,0,1));
+          ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
+          ymm0 = _mm256_add_pd(ymm2,ymm3);
 
-        /* create a vector with the sums of ymm0, ymm1, ymm2, ymm3 */
-        ymm4 = _mm256_unpackhi_pd(ymm0,ymm1);
-        ymm5 = _mm256_unpacklo_pd(ymm0,ymm1);
+          _mm256_store_pd(pmat+4,ymm0);
 
-        ymm6 = _mm256_unpackhi_pd(ymm2,ymm3);
-        ymm7 = _mm256_unpacklo_pd(ymm2,ymm3);
+          /* pmat row 2 */
 
-        ymm0 = _mm256_add_pd(ymm4,ymm5);
-        ymm1 = _mm256_add_pd(ymm6,ymm7);
+          ymm0 = _mm256_mul_pd(xmm4,xmm6);
+          ymm1 = _mm256_mul_pd(xmm4,xmm1);
+          ymm2 = _mm256_mul_pd(xmm4,xmm8);
+          ymm3 = _mm256_mul_pd(xmm4,xmm9);
 
-        ymm2 = _mm256_permute2f128_pd(ymm0,ymm1, _MM_SHUFFLE(0,2,0,1));
-        ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
-        ymm0 = _mm256_add_pd(ymm2,ymm3);
+          /* create a vector with the sums of ymm0, ymm1, ymm2, ymm3 */
+          ymm4 = _mm256_unpackhi_pd(ymm0,ymm1);
+          ymm5 = _mm256_unpacklo_pd(ymm0,ymm1);
 
-        _mm256_store_pd(pmat+8,ymm0);
+          ymm6 = _mm256_unpackhi_pd(ymm2,ymm3);
+          ymm7 = _mm256_unpacklo_pd(ymm2,ymm3);
 
-        /* pmat row 3 */
+          ymm0 = _mm256_add_pd(ymm4,ymm5);
+          ymm1 = _mm256_add_pd(ymm6,ymm7);
 
-        ymm0 = _mm256_mul_pd(xmm5,xmm6);
-        ymm1 = _mm256_mul_pd(xmm5,xmm1);
-        ymm2 = _mm256_mul_pd(xmm5,xmm8);
-        ymm3 = _mm256_mul_pd(xmm5,xmm9);
+          ymm2 = _mm256_permute2f128_pd(ymm0,ymm1, _MM_SHUFFLE(0,2,0,1));
+          ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
+          ymm0 = _mm256_add_pd(ymm2,ymm3);
 
-        /* create a vector with the sums of ymm0, ymm1, ymm2, ymm3 */
-        ymm4 = _mm256_unpackhi_pd(ymm0,ymm1);
-        ymm5 = _mm256_unpacklo_pd(ymm0,ymm1);
+          _mm256_store_pd(pmat+8,ymm0);
 
-        ymm6 = _mm256_unpackhi_pd(ymm2,ymm3);
-        ymm7 = _mm256_unpacklo_pd(ymm2,ymm3);
+          /* pmat row 3 */
 
-        ymm0 = _mm256_add_pd(ymm4,ymm5);
-        ymm1 = _mm256_add_pd(ymm6,ymm7);
+          ymm0 = _mm256_mul_pd(xmm5,xmm6);
+          ymm1 = _mm256_mul_pd(xmm5,xmm1);
+          ymm2 = _mm256_mul_pd(xmm5,xmm8);
+          ymm3 = _mm256_mul_pd(xmm5,xmm9);
 
-        ymm2 = _mm256_permute2f128_pd(ymm0,ymm1, _MM_SHUFFLE(0,2,0,1));
-        ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
-        ymm0 = _mm256_add_pd(ymm2,ymm3);
+          /* create a vector with the sums of ymm0, ymm1, ymm2, ymm3 */
+          ymm4 = _mm256_unpackhi_pd(ymm0,ymm1);
+          ymm5 = _mm256_unpacklo_pd(ymm0,ymm1);
 
-        _mm256_store_pd(pmat+12,ymm0);
+          ymm6 = _mm256_unpackhi_pd(ymm2,ymm3);
+          ymm7 = _mm256_unpacklo_pd(ymm2,ymm3);
 
+          ymm0 = _mm256_add_pd(ymm4,ymm5);
+          ymm1 = _mm256_add_pd(ymm6,ymm7);
+
+          ymm2 = _mm256_permute2f128_pd(ymm0,ymm1, _MM_SHUFFLE(0,2,0,1));
+          ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
+          ymm0 = _mm256_add_pd(ymm2,ymm3);
+
+          _mm256_store_pd(pmat+12,ymm0);
+        }
       }
+      #ifdef DEBUG
+      unsigned int j,k;
+      for (j = 0; j < 4; ++j)
+        for (k = 0; k < 4; ++k)
+          assert(pmat[j*4+k] >= 0);
+      #endif
       pmat = pmat+16;
     }
   }
@@ -349,6 +382,9 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
   __m256d ymm0,ymm1,ymm2,ymm3,ymm4,ymm5,ymm6,ymm7,ymm8,ymm9;
   __m256d zmm0,zmm1,zmm2,zmm3;
 
+  ymm8 = _mm256_set1_pd(PLL_ONE_MIN);
+  ymm9 = _mm256_set1_pd(PLL_ONE_MAX);
+
   double * tran = NULL;
   for (i = 0; i < count; ++i)
   {
@@ -381,6 +417,10 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
         }
         continue;
       }
+
+      #ifdef DEBUG
+      double * dbg_pmat = pmat;   
+      #endif
 
       /* exponentiate eigenvalues */
       xmm2 = _mm256_set1_pd(rates[n]);
@@ -415,6 +455,51 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
       xmm6 = _mm256_load_pd(expd+8);
       xmm7 = _mm256_load_pd(expd+12);
       xmm8 = _mm256_load_pd(expd+16);
+
+      /* check if all values of expd are approximately one */
+      ymm0 = _mm256_cmp_pd(xmm4, ymm8, _CMP_GT_OS);
+      ymm1 = _mm256_cmp_pd(xmm4, ymm9, _CMP_LT_OS);
+      ymm2 = _mm256_and_pd(ymm0,ymm1);                 /* expd[0..3] */
+      ymm0 = _mm256_cmp_pd(xmm5, ymm8, _CMP_GT_OS);
+      ymm1 = _mm256_cmp_pd(xmm5, ymm9, _CMP_LT_OS);
+      ymm3 = _mm256_and_pd(ymm0,ymm1);                 /* expd[4..7] */
+      ymm0 = _mm256_cmp_pd(xmm6, ymm8, _CMP_GT_OS);
+      ymm1 = _mm256_cmp_pd(xmm6, ymm9, _CMP_LT_OS);
+      ymm4 = _mm256_and_pd(ymm0,ymm1);                 /* expd[8..11] */
+      ymm0 = _mm256_cmp_pd(xmm7, ymm8, _CMP_GT_OS);
+      ymm1 = _mm256_cmp_pd(xmm7, ymm9, _CMP_LT_OS);
+      ymm5 = _mm256_and_pd(ymm0,ymm1);                 /* expd[12..15] */
+      ymm0 = _mm256_cmp_pd(xmm8, ymm8, _CMP_GT_OS);
+      ymm1 = _mm256_cmp_pd(xmm8, ymm9, _CMP_LT_OS);
+      ymm6 = _mm256_and_pd(ymm0,ymm1);                 /* expd[12..15] */
+
+      /* AND the results of comnparisons and check the mask to see if all
+         values of expd are approximately one. If they are, it means we are
+         multiplying the inverse eigenvectors matrix by the eigenvectors
+         matrix, and essentially the resulting pmatrix is the identity matrix.
+         This is done to prevent having numerical issues (negative entries in
+         the pmatrix) which can occur due to the different floating point
+         representations of one in expd. Otherwise, proceed as normal and
+         multiply eigenvector matrices with expd  */
+      ymm0 = _mm256_and_pd(ymm2,ymm3);
+      ymm1 = _mm256_and_pd(ymm0,ymm4);
+      ymm0 = _mm256_and_pd(ymm1,ymm5);
+      ymm1 = _mm256_and_pd(ymm0,ymm6);
+      if (_mm256_movemask_pd(ymm1) == 0xF)
+      {
+        xmm0 = _mm256_setzero_pd();
+        for (j = 0; j < 20; ++j)
+        {
+          _mm256_store_pd(pmat+0,xmm0);
+          _mm256_store_pd(pmat+4,xmm0);
+          _mm256_store_pd(pmat+8,xmm0);
+          _mm256_store_pd(pmat+12,xmm0);
+          _mm256_store_pd(pmat+16,xmm0);
+          pmat[j] = 1;
+          pmat += 20;
+        }
+        continue;
+      }
 
       /* compute temp matrix */
       for (k = 0; k < 400; k += 20)
@@ -480,6 +565,11 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
           pmat += 4;
         }
       }
+      #ifdef DEBUG
+      for (j = 0; j < 20; ++j)
+        for (k = 0; k < 20; ++k)
+          assert(dbg_pmat[j*20+k] >= 0);
+      #endif
     }
   }
 

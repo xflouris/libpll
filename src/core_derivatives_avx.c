@@ -19,16 +19,20 @@
     Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 */
 
+#include <limits.h>
 #include "pll.h"
 
 static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
                                            unsigned int rate_cats,
                                            const double * clvp,
                                            const double * clvc,
+                                           const unsigned int * parent_scaler,
+                                           const unsigned int * child_scaler,
                                            double ** eigenvecs,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
-                                           double *sumtable)
+                                           double *sumtable,
+                                           unsigned int attrib)
 {
   unsigned int i, j, k, n;
 
@@ -37,10 +41,27 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
 
   const double * t_clvp = clvp;
   const double * t_clvc = clvc;
-  double * t_eigenvecs;
   double * t_freqs;
 
   unsigned int states = 4;
+
+  unsigned int min_scaler = 0;
+  unsigned int * rate_scale_factors = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  if (per_rate_scaling)
+    rate_scale_factors = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+  /* powers of scale threshold for undoing the scaling */
+  __m256d v_scale_minlh[5] = {
+      _mm256_set1_pd(1.0),
+      _mm256_set1_pd(PLL_SCALE_THRESHOLD),
+      _mm256_set1_pd(PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD),
+      _mm256_set1_pd(PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD *
+                     PLL_SCALE_THRESHOLD),
+      _mm256_set1_pd(PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD *
+                     PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD)
+  };
 
   /* transposed inv_eigenvecs */
   double * tt_inv_eigenvecs = (double *) pll_aligned_alloc (
@@ -68,58 +89,60 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
   /* vectorized loop from update_sumtable() */
   for (n = 0; n < sites; n++)
   {
+    /* compute per-rate scalers and obtain minimum value (within site) */
+    if (per_rate_scaling)
+    {
+      min_scaler = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scale_factors[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        rate_scale_factors[i] += (child_scaler) ? child_scaler[n*rate_cats+i] : 0;
+        if (rate_scale_factors[i] < min_scaler)
+          min_scaler = rate_scale_factors[i];
+      }
+    }
+
+    const double * c_eigenvecs;
+    const double * c_inv_eigenvecs = tt_inv_eigenvecs;
+
     for (i = 0; i < rate_cats; ++i)
     {
-      t_eigenvecs = eigenvecs[i];
-
-      const double * c_eigenvecs = t_eigenvecs;
-      const double * ct_inv_eigenvecs = tt_inv_eigenvecs;
+      c_eigenvecs = eigenvecs[i];
 
       __m256d v_lefterm[4], v_righterm[4];
-      v_lefterm[0] = v_lefterm[1] = v_lefterm[2] = v_lefterm[3] = _mm256_setzero_pd ();
-      v_righterm[0] = v_righterm[1] = v_righterm[2] = v_righterm[3] = _mm256_setzero_pd ();
-
       __m256d v_eigen;
       __m256d v_clvp, v_clvc;
 
       v_clvp = _mm256_load_pd (t_clvp);
       v_clvc = _mm256_load_pd (t_clvc);
 
-      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
-      v_lefterm[0] = _mm256_add_pd (v_lefterm[0],
-                                    _mm256_mul_pd (v_eigen, v_clvp));
+      v_eigen = _mm256_load_pd (c_inv_eigenvecs);
+      v_lefterm[0] = _mm256_mul_pd (v_eigen, v_clvp);
       v_eigen = _mm256_load_pd (c_eigenvecs);
-      v_righterm[0] = _mm256_add_pd (v_righterm[0],
-                                     _mm256_mul_pd (v_eigen, v_clvc));
+      v_righterm[0] = _mm256_mul_pd (v_eigen, v_clvc);
       c_eigenvecs += 4;
-      ct_inv_eigenvecs += 4;
+      c_inv_eigenvecs += 4;
 
-      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
-      v_lefterm[1] = _mm256_add_pd (v_lefterm[1],
-                                    _mm256_mul_pd (v_eigen, v_clvp));
+      v_eigen = _mm256_load_pd (c_inv_eigenvecs);
+      v_lefterm[1] = _mm256_mul_pd (v_eigen, v_clvp);
       v_eigen = _mm256_load_pd (c_eigenvecs);
-      v_righterm[1] = _mm256_add_pd (v_righterm[1],
-                                     _mm256_mul_pd (v_eigen, v_clvc));
+      v_righterm[1] = _mm256_mul_pd (v_eigen, v_clvc);
       c_eigenvecs += 4;
-      ct_inv_eigenvecs += 4;
+      c_inv_eigenvecs += 4;
 
-      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
-      v_lefterm[2] = _mm256_add_pd (v_lefterm[2],
-                                    _mm256_mul_pd (v_eigen, v_clvp));
+      v_eigen = _mm256_load_pd (c_inv_eigenvecs);
+      v_lefterm[2] = _mm256_mul_pd (v_eigen, v_clvp);
       v_eigen = _mm256_load_pd (c_eigenvecs);
-      v_righterm[2] = _mm256_add_pd (v_righterm[2],
-                                     _mm256_mul_pd (v_eigen, v_clvc));
+      v_righterm[2] = _mm256_mul_pd (v_eigen, v_clvc);
       c_eigenvecs += 4;
-      ct_inv_eigenvecs += 4;
+      c_inv_eigenvecs += 4;
 
-      v_eigen = _mm256_load_pd (ct_inv_eigenvecs);
-      v_lefterm[3] = _mm256_add_pd (v_lefterm[3],
-                                    _mm256_mul_pd (v_eigen, v_clvp));
+      v_eigen = _mm256_load_pd (c_inv_eigenvecs);
+      v_lefterm[3] = _mm256_mul_pd (v_eigen, v_clvp);
       v_eigen = _mm256_load_pd (c_eigenvecs);
-      v_righterm[3] = _mm256_add_pd (v_righterm[3],
-                                     _mm256_mul_pd (v_eigen, v_clvc));
+      v_righterm[3] = _mm256_mul_pd (v_eigen, v_clvc);
       c_eigenvecs += 4;
-      ct_inv_eigenvecs += 4;
+      c_inv_eigenvecs += 4;
 
       /* compute lefterm */
       __m256d xmm0 = _mm256_unpackhi_pd (v_lefterm[0], v_lefterm[1]);
@@ -144,8 +167,18 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
       __m256d v_righterm_sum = _mm256_add_pd (xmm2, xmm3);
 
       /* update sum */
-      __m256d v_prod = _mm256_mul_pd (v_lefterm_sum, v_righterm_sum);
-      _mm256_store_pd (sum, v_prod);
+      __m256d v_sum = _mm256_mul_pd (v_lefterm_sum, v_righterm_sum);
+
+      /* apply per-rate scalers */
+      if (per_rate_scaling)
+      {
+        int scalings = rate_scale_factors[i] - min_scaler > 4 ?
+            4 : (rate_scale_factors[i] - min_scaler);
+
+        v_sum = _mm256_mul_pd(v_sum, v_scale_minlh[scalings]);
+      }
+
+      _mm256_store_pd (sum, v_sum);
 
       t_clvc += states;
       t_clvp += states;
@@ -155,6 +188,9 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
 
   pll_aligned_free (tt_inv_eigenvecs);
 
+  if (rate_scale_factors)
+    free(rate_scale_factors);
+
   return PLL_SUCCESS;
 }
 
@@ -163,10 +199,13 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
                                                unsigned int rate_cats,
                                                const double * clvp,
                                                const double * clvc,
+                                               const unsigned int * parent_scaler,
+                                               const unsigned int * child_scaler,
                                                double ** eigenvecs,
                                                double ** inv_eigenvecs,
                                                double ** freqs,
-                                               double *sumtable)
+                                               double *sumtable,
+                                               unsigned int attrib)
 {
   unsigned int i, j, k, n;
 
@@ -184,10 +223,13 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
                                            rate_cats,
                                            clvp,
                                            clvc,
+                                           parent_scaler,
+                                           child_scaler,
                                            eigenvecs,
                                            inv_eigenvecs,
                                            freqs,
-                                           sumtable);
+                                           sumtable,
+                                           attrib);
   }
 
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
@@ -354,10 +396,12 @@ static int core_update_sumtable_ti_4x4_avx(unsigned int sites,
                                            unsigned int rate_cats,
                                            const double * parent_clv,
                                            const unsigned char * left_tipchars,
+                                           const unsigned int * parent_scaler,
                                            double ** eigenvecs,
                                            double ** inv_eigenvecs,
                                            double ** freqs,
-                                           double *sumtable)
+                                           double *sumtable,
+                                           unsigned int attrib)
 {
   const unsigned int states = 4;
 
@@ -367,6 +411,24 @@ static int core_update_sumtable_ti_4x4_avx(unsigned int sites,
   double * sum = sumtable;
   const double * t_clvc = parent_clv;
   const double * t_eigenvecs_trans;
+
+  unsigned int min_scaler = 0;
+  unsigned int * rate_scale_factors = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  if (per_rate_scaling)
+    rate_scale_factors = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+  /* powers of scale threshold for undoing the scaling */
+  __m256d v_scale_minlh[5] = {
+      _mm256_set1_pd(1.0),
+      _mm256_set1_pd(PLL_SCALE_THRESHOLD),
+      _mm256_set1_pd(PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD),
+      _mm256_set1_pd(PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD *
+                     PLL_SCALE_THRESHOLD),
+      _mm256_set1_pd(PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD *
+                     PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD)
+  };
 
   double * eigenvecs_trans = (double *) pll_aligned_alloc (
       (states * states * rate_cats) * sizeof(double),
@@ -445,6 +507,18 @@ static int core_update_sumtable_ti_4x4_avx(unsigned int sites,
   /* build sumtable */
   for (n = 0; n < sites; n++)
   {
+    /* compute per-rate scalers and obtain minimum value (within site) */
+    if (per_rate_scaling)
+    {
+      min_scaler = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scale_factors[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        if (rate_scale_factors[i] < min_scaler)
+          min_scaler = rate_scale_factors[i];
+      }
+    }
+
     tipstate = (unsigned int) left_tipchars[n];
 
     /* set pointer to the precomputed lefterm values for the current tipstate */
@@ -457,15 +531,24 @@ static int core_update_sumtable_ti_4x4_avx(unsigned int sites,
       __m256d v_righterm = _mm256_setzero_pd();
 
       for (k = 0; k < states; ++k)
-        {
-          __m256d v_clvc = _mm256_set1_pd(t_clvc[k]);
-          __m256d v_eigen = _mm256_load_pd(t_eigenvecs_trans + k*states);
-          v_righterm =  _mm256_add_pd(v_righterm,
-                                      _mm256_mul_pd(v_eigen, v_clvc));
-
-        }
+      {
+        __m256d v_clvc = _mm256_set1_pd(t_clvc[k]);
+        __m256d v_eigen = _mm256_load_pd(t_eigenvecs_trans + k*states);
+        v_righterm =  _mm256_add_pd(v_righterm,
+                                    _mm256_mul_pd(v_eigen, v_clvc));
+      }
 
       __m256d v_sum = _mm256_mul_pd(v_lefterm, v_righterm);
+
+      /* apply per-rate scalers */
+      if (per_rate_scaling)
+      {
+        int scalings = rate_scale_factors[i] - min_scaler > 4 ?
+            4 : (rate_scale_factors[i] - min_scaler);
+
+        v_sum = _mm256_mul_pd(v_sum, v_scale_minlh[scalings]);
+      }
+
       _mm256_store_pd(sum, v_sum);
 
       t_eigenvecs_trans += states * states;
@@ -478,6 +561,9 @@ static int core_update_sumtable_ti_4x4_avx(unsigned int sites,
   pll_aligned_free(eigenvecs_trans);
   pll_aligned_free(precomp_left);
 
+  if (rate_scale_factors)
+    free(rate_scale_factors);
+
   return PLL_SUCCESS;
 }
 
@@ -486,6 +572,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
                                                unsigned int rate_cats,
                                                const double * parent_clv,
                                                const unsigned char * left_tipchars,
+                                               const unsigned int * parent_scaler,
                                                double ** eigenvecs,
                                                double ** inv_eigenvecs,
                                                double ** freqs,
@@ -500,10 +587,12 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
                                            rate_cats,
                                            parent_clv,
                                            left_tipchars,
+                                           parent_scaler,
                                            eigenvecs,
                                            inv_eigenvecs,
                                            freqs,
-                                           sumtable);
+                                           sumtable,
+                                           attrib);
   }
 
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;

@@ -89,7 +89,11 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
 
   __m128d xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8, xmm9;
   __m128d xmm10, xmm11, xmm12, xmm13, xmm14, xmm15, xmm16;
+  __m128d v_onemin, v_onemax;
+
   xmm0 = _mm_setzero_pd();
+  v_onemin = _mm_set1_pd(PLL_ONE_MIN);
+  v_onemax = _mm_set1_pd(PLL_ONE_MAX);
 
   for (i = 0; i < count; ++i)
   {
@@ -152,41 +156,75 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
         _mm_store_pd(expd+0,xmm7);
         _mm_store_pd(expd+2,xmm8);
 
+        /* check if all values of expd are approximately one */
+        xmm12 = _mm_set_pd(exp(expd[1]), exp(expd[0]));
+        xmm13 = _mm_set_pd(exp(expd[3]), exp(expd[2]));
 
-        /* transpose eigenvector */
+        /* */
+        xmm1 = _mm_cmpgt_pd(xmm12,v_onemin);
+        xmm2 = _mm_cmplt_pd(xmm13,v_onemax);
+        xmm4 = _mm_and_pd(xmm1,xmm2);
 
-        xmm1 = _mm_load_pd(evecs+0);
-        xmm2 = _mm_load_pd(evecs+4);
-        xmm4 = _mm_unpacklo_pd(xmm1,xmm2);     /* row 0 (0,1) */
-        xmm5 = _mm_unpackhi_pd(xmm1,xmm2);     /* row 1 (0,1) */
+        if (_mm_movemask_pd(xmm4) == 0x3)
+        {
+          _mm_store_pd(pmat+0, xmm0);
+          _mm_store_pd(pmat+2, xmm0);
+          _mm_store_pd(pmat+4, xmm0);
+          _mm_store_pd(pmat+6, xmm0);
+          _mm_store_pd(pmat+8, xmm0);
+          _mm_store_pd(pmat+10,xmm0);
+          _mm_store_pd(pmat+12,xmm0);
+          _mm_store_pd(pmat+14,xmm0);
 
-        xmm1 = _mm_load_pd(evecs+2);
-        xmm2 = _mm_load_pd(evecs+6);
-        xmm6 = _mm_unpacklo_pd(xmm1,xmm2);     /* row 2 (0,1) */
-        xmm7 = _mm_unpackhi_pd(xmm1,xmm2);     /* row 3 (0,1) */
+          pmat[0] = pmat[5] = pmat[10] = pmat[15] = 1;
+        }
+        else
+        {
+          /* transpose eigenvector */
 
-        xmm1 = _mm_load_pd(evecs+8);
-        xmm2 = _mm_load_pd(evecs+12);
-        xmm8 = _mm_unpacklo_pd(xmm1,xmm2);     /* row 0 (2,3) */
-        xmm9 = _mm_unpackhi_pd(xmm1,xmm2);     /* row 1 (2,3) */
+          xmm1 = _mm_load_pd(evecs+0);
+          xmm2 = _mm_load_pd(evecs+4);
+          xmm4 = _mm_unpacklo_pd(xmm1,xmm2);     /* row 0 (0,1) */
+          xmm5 = _mm_unpackhi_pd(xmm1,xmm2);     /* row 1 (0,1) */
 
-        xmm1 = _mm_load_pd(evecs+10);
-        xmm2 = _mm_load_pd(evecs+14);
-        xmm10 = _mm_unpacklo_pd(xmm1,xmm2);    /* row 2 (2,3) */
-        xmm11 = _mm_unpackhi_pd(xmm1,xmm2);    /* row 3 (2,3) */
+          xmm1 = _mm_load_pd(evecs+2);
+          xmm2 = _mm_load_pd(evecs+6);
+          xmm6 = _mm_unpacklo_pd(xmm1,xmm2);     /* row 2 (0,1) */
+          xmm7 = _mm_unpackhi_pd(xmm1,xmm2);     /* row 3 (0,1) */
 
-        /* load exponentiated eigenvalues */
-        xmm1 = _mm_set_pd(exp(expd[1]),
-                          exp(expd[0]));
-        xmm2 = _mm_set_pd(exp(expd[3]),
-                          exp(expd[2]));
+          xmm1 = _mm_load_pd(evecs+8);
+          xmm2 = _mm_load_pd(evecs+12);
+          xmm8 = _mm_unpacklo_pd(xmm1,xmm2);     /* row 0 (2,3) */
+          xmm9 = _mm_unpackhi_pd(xmm1,xmm2);     /* row 1 (2,3) */
 
-        /* compute pmatrix */
-        ONESTEP(0);
-        ONESTEP(4);
-        ONESTEP(8);
-        ONESTEP(12);
+          xmm1 = _mm_load_pd(evecs+10);
+          xmm2 = _mm_load_pd(evecs+14);
+          xmm10 = _mm_unpacklo_pd(xmm1,xmm2);    /* row 2 (2,3) */
+          xmm11 = _mm_unpackhi_pd(xmm1,xmm2);    /* row 3 (2,3) */
+
+          /* load exponentiated eigenvalues */
+          /*
+          xmm1 = _mm_set_pd(exp(expd[1]),
+                            exp(expd[0]));
+          xmm2 = _mm_set_pd(exp(expd[3]),
+                            exp(expd[2]));
+          */
+          xmm1 = xmm12;
+          xmm2 = xmm13;
+
+          /* compute pmatrix */
+          ONESTEP(0);
+          ONESTEP(4);
+          ONESTEP(8);
+          ONESTEP(12);
+        }
       }
+      #ifdef DEBUG
+      unsigned int j,k;
+      for (j = 0; j < 4; ++j)
+        for (k = 0; k < 4; ++k)
+          assert(pmat[j*4+k] >= 0);
+      #endif
       pmat = pmat+16;
     }
   }

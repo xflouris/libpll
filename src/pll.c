@@ -790,7 +790,9 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
   }
   for (i = 0; i < partition->scale_buffers; ++i)
   {
-    partition->scale_buffer[i] = (unsigned int *)calloc(sites_alloc,
+    size_t scaler_size = (attributes & PLL_ATTRIB_RATE_SCALERS) ?
+                                                             sites_alloc * rate_cats : sites_alloc;
+    partition->scale_buffer[i] = (unsigned int *)calloc(scaler_size,
                                                         sizeof(unsigned int));
     if (!partition->scale_buffer[i])
     {

@@ -47,15 +47,30 @@ PLL_EXPORT void pll_msa_destroy(pll_msa_t * msa)
 
   int i;
 
-  for (i = 0; i < seq_count; ++i)
+  if (msa->label)
   {
-    free(msa->sequence[i]);
-    free(msa->label[i]);
+    for (i = 0; i < msa->count; ++i)
+      free(msa->label[i]);
+    free(msa->label);
   }
-  free(msa->sequence);
-  free(msa->label);
+  
+  if (msa->sequence)
+  {
+    for (i = 0; i < msa->count; ++i)
+      free(msa->sequence[i]);
+    free(msa->sequence);
+  }
 
   free(msa);
+}
+
+void msa_destroy(pll_msa_t * msa)
+{
+  if (msa)
+  {
+    msa->count = seq_count;
+    pll_msa_destroy(msa);
+  }
 }
 %}
 
@@ -68,7 +83,7 @@ PLL_EXPORT void pll_msa_destroy(pll_msa_t * msa)
 
 %error-verbose
 %parse-param {pll_msa_t ** msa}
-%destructor { pll_msa_destroy($$); } msa
+%destructor { msa_destroy($$); } msa
 
 %token<s> STRING
 %type<msa> msa
@@ -205,14 +220,14 @@ PLL_EXPORT pll_msa_t * pll_phylip_parse_msa(const char * filename,
   pll_phylip_in = fopen(filename, "r");
   if (!pll_phylip_in)
   {
-    pll_msa_destroy(msa);
+    msa_destroy(msa);
     pll_errno = PLL_ERROR_FILE_OPEN;
     snprintf(pll_errmsg, 200, "Unable to open file (%s)", filename);
     return PLL_FAILURE;
   }
   else if (pll_phylip_parse(&msa))
   {
-    pll_msa_destroy(msa);
+    msa_destroy(msa);
     msa = NULL;
     fclose(pll_phylip_in);
     pll_phylip_lex_destroy();
