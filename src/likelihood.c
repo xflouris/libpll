@@ -68,6 +68,9 @@ static double root_loglikelihood_asc_bias(pll_partition_t * partition,
    unsigned int sum_w_inv = 0;
    int asc_bias_type = partition->attributes & PLL_ATTRIB_AB_MASK;
 
+   /* point clvp to state sites */
+   clv += partition->sites * partition->rate_cats * partition->states_padded;
+
    /* 1. compute per-site logl for each state */
    for (i = 0; i < states; ++i)
    {
@@ -146,7 +149,7 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
                                      partition->attributes);
 
 
-                              
+
 
   /* ascertainment bias correction */
   if (partition->attributes & PLL_ATTRIB_AB_MASK)
@@ -186,6 +189,9 @@ static double edge_loglikelihood_asc_bias_ti(pll_partition_t * partition,
   double logl_correction = 0;
   unsigned int sum_w_inv = 0;
   int asc_bias_type = partition->attributes & PLL_ATTRIB_AB_MASK;
+
+  /* point clvp to state sites */
+  clvp += partition->sites * partition->rate_cats * partition->states_padded;
 
   /* 1. compute per-site logl for each state */
   for (n = 0; n < partition->states; ++n)
@@ -330,15 +336,17 @@ static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
   double * rate_weights = partition->rate_weights;
 
   /* point clv, clvc, scalers and pattern weights to state sites */
-  unsigned int offset = partition->sites * 
+  unsigned int offset = partition->sites *
                         partition->rate_cats *
                         partition->states_padded;
 
   pattern_weights += partition->sites;
   clvp += offset;
   clvc += offset;
-  parent_scaler += partition->sites;
-  child_scaler += partition->sites;
+  if (parent_scaler)
+    parent_scaler += partition->sites;
+  if (child_scaler)
+    child_scaler += partition->sites;
 
   double logl_correction = 0;
   unsigned int sum_w_inv = 0;
@@ -397,7 +405,7 @@ static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
                                       partition->pattern_weight_sum,
                                       sum_w_inv,
                                       asc_bias_type);
-  
+
   return logl;
 }
 
@@ -499,4 +507,3 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
 
   return logl;
 }
-

@@ -122,10 +122,11 @@ pll_partition_t * parse_msa(const char * filename,
                                                sizeof(unsigned int));
   for (i = 0; i < taxa_count; ++i)
   {
-    data[i] = i;
+    data[i] = tipnodes[i]->clv_index;
     ENTRY entry;
     entry.key = tipnodes[i]->label;
     entry.data = (void *)(data+i);
+
     hsearch(entry, ENTER);
   }
 

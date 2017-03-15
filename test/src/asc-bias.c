@@ -74,10 +74,11 @@ void print_operations(pll_operation_t * operations, unsigned int len)
 
 static double eval(pll_partition_t * partition,
                    pll_utree_t * tree,
-                   double alpha)
+                   double alpha,
+                   double old_lnl)
 {
   unsigned int i;
-  double logl;
+  double logl, upbl_logl;
   double d_f, dd_f;
   double * sumtable;
 
@@ -100,6 +101,11 @@ static double eval(pll_partition_t * partition,
                                         tree->pmatrix_index,
                                         params_indices,
                                         NULL);
+
+  if (old_lnl < 0 && fabs(old_lnl - logl) > 1e-4)
+  {
+    printf("ERROR: Likelihood mismatch %f vs %f\n", logl, old_lnl);
+  }
 
   printf("Log-L: %f\n", logl);
 
@@ -137,7 +143,7 @@ static double eval(pll_partition_t * partition,
                             &(tree->pmatrix_index),
                             &branch_length,
                             1);
-   logl = pll_compute_edge_loglikelihood(partition,
+   upbl_logl = pll_compute_edge_loglikelihood(partition,
                                          tree->clv_index,
                                          tree->scaler_index,
                                          tree->back->clv_index,
@@ -146,10 +152,10 @@ static double eval(pll_partition_t * partition,
                                          params_indices,
                                          NULL);
 
-    printf("%8.4f %18.6f %15.8e %15.8e  ", branch_length, logl, d_f, dd_f);
-    if (logl > max_logl)
+    printf("%8.4f %18.6f %15.8e %15.8e  ", branch_length, upbl_logl, d_f, dd_f);
+    if (upbl_logl > max_logl)
     {
-      max_logl = logl;
+      max_logl = upbl_logl;
       printf("*");
     }
     printf("\n");
@@ -167,9 +173,12 @@ int main(int argc, char * argv[])
   unsigned int taxa_count, nodes_count, inner_nodes_count, branch_count;
   double alpha = 0.5;
   unsigned int rate_cats = 4;
+  int i;
+  double lnl_test[4] = {0};
 
   /* check attributes */
   attributes = get_attributes(argc, argv);
+  attributes |= PLL_ATTRIB_AB_FLAG;
 
   tree = pll_utree_parse_newick(TRE_FILENAME, &taxa_count);
   printf("Read %s: %u taxa\n", TRE_FILENAME, taxa_count);
@@ -185,68 +194,71 @@ int main(int argc, char * argv[])
   operations = (pll_operation_t *)malloc(inner_nodes_count *
                                                 sizeof(pll_operation_t));
 
-  pll_utree_traverse(tree,
-                     cb_full_traversal,
-                     travbuffer,
-                     &traversal_size);
-
-  pll_utree_create_operations(travbuffer,
-                              traversal_size,
-                              branch_lengths,
-                              matrix_indices,
-                              operations,
-                              &matrix_count,
-                              &ops_count);
-
-  printf("  Traversal buffer: "); print_travbuffer(travbuffer, traversal_size);
-  printf("  Operations: ");       print_operations(operations, ops_count);
-
-  /* test 1: no ascertainment bias correction */
-  printf("\nTEST 1: NO ASC BIAS\n");
   partition = parse_msa(MSA_FILENAME, taxa_count, STATES, rate_cats, 1,
                         tree, attributes);
   printf("Read %s: %u sites\n", MSA_FILENAME, partition->sites);
 
-  eval(partition, tree, alpha);
-
-  pll_partition_destroy(partition);
-
-
-  /* test 2: ascertainment bias correction */
-  printf("\nTEST 2: ASC BIAS LEWIS\n");
-  attributes |= PLL_ATTRIB_AB_LEWIS;
-  partition = parse_msa(MSA_FILENAME, taxa_count, STATES, rate_cats, 1,
-                        tree, attributes);
-
-  pll_set_asc_bias_type(partition, PLL_ATTRIB_AB_LEWIS);
-  eval(partition, tree, alpha);
-
-  /* attempt to update invariant sites proportion. This should fail */
-  if (pll_update_invariant_sites_proportion(partition, 0, 0.5))
+  for (i=0;i<3;++i)
   {
-    printf("Error: Setting P-inv with ASC BIAS should fail");
-    return 1;
+    tree = tree->next;
+
+    pll_set_asc_bias_type(partition, 0);
+
+    pll_utree_traverse(tree,
+                       cb_full_traversal,
+                       travbuffer,
+                       &traversal_size);
+
+    pll_utree_create_operations(travbuffer,
+                                traversal_size,
+                                branch_lengths,
+                                matrix_indices,
+                                operations,
+                                &matrix_count,
+                                &ops_count);
+
+    /* test 1: no ascertainment bias correction */
+    printf("\nTEST 1: NO ASC BIAS\n");
+
+    lnl_test[0] = eval(partition, tree, alpha, lnl_test[0]);
+
+    /* test 2: ascertainment bias correction */
+    printf("\nTEST 2: ASC BIAS LEWIS\n");
+
+    pll_set_asc_bias_type(partition, PLL_ATTRIB_AB_LEWIS);
+
+    lnl_test[1] = eval(partition, tree, alpha, lnl_test[1]);
+
+    /* attempt to update invariant sites proportion. This should fail */
+    if (pll_update_invariant_sites_proportion(partition, 0, 0.5))
+    {
+      printf("Error: Setting P-inv with ASC BIAS should fail");
+      return 1;
+    }
+
+    /* test 2: ascertainment bias correction */
+    printf("\nTEST 2: ASC BIAS FELSENSTEIN\n");
+    pll_set_asc_bias_type(partition, PLL_ATTRIB_AB_FELSENSTEIN);
+    pll_set_asc_state_weights(partition, invar_weights);
+
+    lnl_test[2] = eval(partition, tree, alpha, lnl_test[2]);
+
+    /* test 2: ascertainment bias correction */
+    printf("\nTEST 2: ASC BIAS STAMATAKIS\n");
+    pll_set_asc_bias_type(partition, PLL_ATTRIB_AB_STAMATAKIS);
+    pll_set_asc_state_weights(partition, invar_weights);
+
+    lnl_test[3] = eval(partition, tree, alpha, lnl_test[3]);
+
   }
+    /* clean */
+    free(travbuffer);
+    free(branch_lengths);
+    free(operations);
+    free(matrix_indices);
+    pll_partition_destroy(partition);
 
-  /* test 2: ascertainment bias correction */
-  printf("\nTEST 2: ASC BIAS FELSENSTEIN\n");
-  pll_set_asc_bias_type(partition, PLL_ATTRIB_AB_FELSENSTEIN);
-  pll_set_asc_state_weights(partition, invar_weights);
-  eval(partition, tree, alpha);
-
-  /* test 2: ascertainment bias correction */
-  printf("\nTEST 2: ASC BIAS STAMATAKIS\n");
-  pll_set_asc_bias_type(partition, PLL_ATTRIB_AB_STAMATAKIS);
-  pll_set_asc_state_weights(partition, invar_weights);
-  eval(partition, tree, alpha);
-
-  /* clean */
-  free(travbuffer);
-  free(branch_lengths);
-  free(operations);
-  free(matrix_indices);
   pll_utree_destroy(tree,NULL);
-  pll_partition_destroy(partition);
 
   return 0;
 }

@@ -178,7 +178,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
       {
         inv_site_lk = (invar_indices[i] == -1) ?
                            0 : freqs[invar_indices[i]];
-        term += rate_weights[j] * (term_r * (1 - prop_invar) + 
+        term += rate_weights[j] * (term_r * (1 - prop_invar) +
                                    inv_site_lk*prop_invar);
       }
       else
@@ -640,7 +640,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
 
   unsigned int scale_factors;
 
-  /* TODO: We need states_padded in the AVX/SSE implementations 
+  /* TODO: We need states_padded in the AVX/SSE implementations
   */
   unsigned int states_padded = states;
 
@@ -773,7 +773,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
     states_padded = (states+3) & 0xFFFFFFFC;
   }
   #endif
-  
+
   for (n = 0; n < sites; ++n)
   {
     pmat = pmatrix;
