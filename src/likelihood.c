@@ -184,7 +184,8 @@ static double edge_loglikelihood_asc_bias_ti(pll_partition_t * partition,
   unsigned int states = partition->states;
   unsigned int states_padded = partition->states_padded;
   unsigned int scale_factors;
-  double * weights = partition->rate_weights;
+  unsigned int * pattern_weights = partition->pattern_weights;
+  double * rate_weights = partition->rate_weights;
 
   double logl_correction = 0;
   unsigned int sum_w_inv = 0;
@@ -192,6 +193,9 @@ static double edge_loglikelihood_asc_bias_ti(pll_partition_t * partition,
 
   /* point clvp to state sites */
   clvp += partition->sites * partition->rate_cats * partition->states_padded;
+  pattern_weights += partition->sites;
+  if (parent_scaler)
+    parent_scaler += partition->sites;
 
   /* 1. compute per-site logl for each state */
   for (n = 0; n < partition->states; ++n)
@@ -208,18 +212,18 @@ static double edge_loglikelihood_asc_bias_ti(pll_partition_t * partition,
         pmatrix += states_padded;
       }
 
-      terma += terma_r * weights[i];
+      terma += terma_r * rate_weights[i];
       clvp += states_padded;
     }
 
     /* count number of scaling factors to acount for */
-    scale_factors = (parent_scaler) ? parent_scaler[partition->sites + n] : 0;
+    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
 
-    sum_w_inv += partition->pattern_weights[partition->sites + n];
+    sum_w_inv += pattern_weights[n];
     if (asc_bias_type == PLL_ATTRIB_AB_STAMATAKIS)
     {
       /* 2a. site_lk is the lnl weighted by the number of occurences */
-      site_lk = log(terma) * partition->pattern_weights[partition->sites + n];
+      site_lk = log(terma) * pattern_weights[n];
       if (scale_factors)
         site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
     }

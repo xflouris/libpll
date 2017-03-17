@@ -60,6 +60,32 @@ subset of test cases.
 
 e.g., ./runtest.py speed hky alpha-cats
 
+## Naming convention
+
+Source files for testing are named after the following convention:
+
+```
+NNNNN_FLAGS_NAME.c
+```
+
+NNNNN is a 5-digit code with format Class (1 digit) Subclass (1 digit) and ID (3 digits)
+FLAGS is a set of characters identifying different features:
+
+* A/N: [A]scertainment Bias Correction or [N]ot
+* P/M: FASTA/PHYLIP [P]arsing or [M]anual CLVs
+* D/A/O: [D]NA (4 states), [A]mino acid (20 states) or [O]dd number of states
+* R/U: [R]ooted or [U]nrooted
+
+
+## Configure the test framework
+
+Some additional features can be configured inside the test script, in the
+configuration section at the beginning of runtest.py file.
+
+1. do_memtest = [0,1]  : if 0, memory errors and leaks are not checked
+2. num_replicates = #  : number of samples evaluated in the speed test
+3. all_args = [0,1,..] : set of PLL attributes that are evaluated
+
 ## Build tests for Windows
 
 1. Build the library dll file and place them in current directory

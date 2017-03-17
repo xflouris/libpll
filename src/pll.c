@@ -875,13 +875,18 @@ static int set_tipchars(pll_partition_t * partition,
   /* if asc_bias is set, we initialize the additional positions */
   if (partition->asc_bias_alloc)
   {
+    /* this part needs to be fixed */
+    /* tip chars should go in the same order as expected, or the pattern
+       weights for the invariant sites would not match the correct character.
+       For example, the expected order of amino acids is A,R,N,..., and the
+       tipchars order is 1,16,13,... (i.e., not sequential)  */
+    assert(0);
     for (i = 0; i < partition->states; ++i)
     {
       partition->tipchars[tip_index][partition->sites + i] =
-        partition->charmap[i];
+        (unsigned char)i+1;
     }
   }
-
   return PLL_SUCCESS;
 }
 

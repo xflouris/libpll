@@ -85,7 +85,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_avx(unsigned int states,
         freqs = frequencies[freqs_indices[j]];
         inv_site_lk = (invar_indices[i] == -1) ?
                            0 : freqs[invar_indices[i]];
-        term += rate_weights[j] * (term_r * (1 - prop_invar) + 
+        term += rate_weights[j] * (term_r * (1 - prop_invar) +
                                    inv_site_lk*prop_invar);
       }
       else
@@ -161,7 +161,7 @@ double pll_core_root_loglikelihood_4x4_avx(unsigned int sites,
       {
         inv_site_lk = (invar_indices[i] == -1) ?
                            0 : freqs[invar_indices[i]];
-        term += rate_weights[j] * (term_r * (1 - prop_invar) + 
+        term += rate_weights[j] * (term_r * (1 - prop_invar) +
                                    inv_site_lk*prop_invar);
       }
       else
@@ -557,7 +557,7 @@ double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[n] = site_lk;
 
     logl += site_lk;
   }
@@ -636,7 +636,7 @@ double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
         /* iterate quadruples of columns */
         for (k = 0; k < states_padded; k += 4)
         {
-          
+
           /* set mask */
           mask = _mm256_set_epi64x(
                     ((cstate >> (lsb+3)) & 1) ? ~0 : 0,
@@ -667,7 +667,7 @@ double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
           row3 += 4;
         }
 
-        /* point pmatrix to the next four rows */ 
+        /* point pmatrix to the next four rows */
         pmat = row3;
 
         /* create a vector containing the sums of xmm0, xmm1, xmm2, xmm3 */
@@ -780,7 +780,7 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
     {
       freqs = frequencies[freqs_indices[i]];
       terma_r = 0;
-      
+
       /* iterate over quadruples of rows */
       for (j = 0; j < states_padded; j += 4)
       {
@@ -794,7 +794,7 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
         const double * row1 = row0 + states_padded;
         const double * row2 = row1 + states_padded;
         const double * row3 = row2 + states_padded;
-        
+
         /* iterate quadruples of columns */
         for (k = 0; k < states_padded; k += 4)
         {
@@ -811,7 +811,7 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
           xmm6 = _mm256_mul_pd(xmm4,xmm5);
           xmm1 = _mm256_add_pd(xmm1,xmm6);
           row1 += 4;
-          
+
           /* row 2 */
           xmm4 = _mm256_load_pd(row2);
           xmm6 = _mm256_mul_pd(xmm4,xmm5);
@@ -825,7 +825,7 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
           row3 += 4;
         }
 
-        /* point pmatrix to the next four rows */ 
+        /* point pmatrix to the next four rows */
         pmat = row3;
 
         /* create a vector containing the sums of xmm0, xmm1, xmm2, xmm3 */

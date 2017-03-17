@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <search.h>
+#include <stdarg.h>
 
 unsigned int get_attributes(int argc, char **argv)
 {
@@ -50,12 +51,31 @@ void skip_test ()
          It is intended to use with the test datasets that were
          validated in advance. */
 pll_partition_t * parse_msa(const char * filename,
+                           unsigned int taxa_count,
+                           unsigned int states,
+                           unsigned int rate_cats,
+                           unsigned int rate_matrices,
+                           pll_utree_t * tree,
+                           unsigned int attributes)
+{
+  return parse_msa_reduced(filename,
+                          taxa_count,
+                          states,
+                          rate_cats,
+                          rate_matrices,
+                          tree,
+                          attributes,
+                          -1);
+}
+
+pll_partition_t * parse_msa_reduced(const char * filename,
                             unsigned int taxa_count,
                             unsigned int states,
                             unsigned int rate_cats,
                             unsigned int rate_matrices,
                             pll_utree_t * tree,
-                            unsigned int attributes)
+                            unsigned int attributes,
+                            unsigned int max_sites)
 {
   unsigned int i;
   pll_partition_t * partition;
@@ -99,6 +119,9 @@ pll_partition_t * parse_msa(const char * filename,
     printf("Unable to read alignment");
     return NULL;
   }
+
+  if (max_sites != -1)
+    sites = max_sites;
 
   partition = pll_partition_create(taxa_count,           /* tip nodes */
                                    taxa_count - 2,       /* inner nodes */
@@ -172,4 +195,15 @@ int cb_full_traversal(pll_utree_t * node)
 int cb_rfull_traversal(pll_rtree_t * node)
 {
   return 1;
+}
+
+__attribute__((format(printf, 1, 2)))
+void fatal(const char * format, ...)
+{
+  va_list argptr;
+  va_start(argptr, format);
+  vfprintf(stderr, format, argptr);
+  va_end(argptr);
+  fprintf(stderr, "\n");
+  exit(EXIT_FAILURE);
 }

@@ -37,7 +37,18 @@ pll_partition_t * parse_msa(const char * filename,
                             pll_utree_t * tree,
                             unsigned int attributes);
 
+pll_partition_t * parse_msa_reduced(const char * filename,
+                            unsigned int taxa_count,
+                            unsigned int states,
+                            unsigned int rate_cats,
+                            unsigned int rate_matrices,
+                            pll_utree_t * tree,
+                            unsigned int attributes,
+                            unsigned int max_sites);
 int cb_full_traversal(pll_utree_t * node);
 int cb_rfull_traversal(pll_rtree_t * node);
+
+/* print error and exit */
+void fatal(const char * format, ...) __attribute__ ((noreturn));
 
 #endif /* COMMON_H_ */

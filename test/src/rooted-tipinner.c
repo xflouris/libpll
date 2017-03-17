@@ -9,23 +9,12 @@
 #define FASTAFILE     "testdata/small.fas"
 #define TREEFILE      "testdata/small.rooted.tip.tree"
 
-static void fatal(const char * format, ...) __attribute__ ((noreturn));
 static double prop_invar_list[4] = {0.0, 0.1, 0.5, 0.9};
 
 typedef struct
 {
   int clv_valid;
 } node_info_t;
-
-static void fatal(const char * format, ...)
-{
-  va_list argptr;
-  va_start(argptr, format);
-  vfprintf(stderr, format, argptr);
-  va_end(argptr);
-  fprintf(stderr, "\n");
-  exit(EXIT_FAILURE);
-}
 
 int main(int argc, char * argv[])
 {

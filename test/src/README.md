@@ -12,6 +12,9 @@ Each test must focus on evaluating one or a reduced set of features. Also
 testing cases that should fail and it is determined how the library would
 behave is interesting. For example, attempting to read an unexistent file.
 
+* 00010_NMPU_lkcalc compute likelihood score for a simple unrooted tree
+* 00020_NMPR_lkcalc compute likelihood score for a simple rooted tree
+
 ## alpha-cats
 
 Evaluate the likelihood for different alpha shape parameters and number of

@@ -21,18 +21,7 @@ CC = gcc
 CFLAGS = -L. -g -O3 -Wall -std=c99
 CLIBS = -lpll -lm
 
-CFILES = src/alpha-cats.c \
-	 src/asc-bias.c \
-         src/derivatives.c \
-         src/derivatives-oddstates.c \
-         src/fasta-dna.c \
-         src/fasta-prot.c \
-         src/rooted.c \
-         src/rooted-tipinner.c \
-         src/hky.c \
-         src/odd-states.c \
-         src/partial-traversal.c \
-         src/protein-models.c
+CFILES = $(shell find src -name '*.c' ! -name 'common.c')
 
 OBJFILES = $(patsubst src/%.c, obj/%, $(CFILES))
 
@@ -44,9 +33,11 @@ RESULTDIR = result
 DEPFILES = worms16s.fas \
 					 small.fas small.tree small.rooted.tree small.rooted.tip.tree \
 					 246x4465.fas 246x4465.tree \
-					 ribosomal_l5_pf00673.fas \
+					 ribosomal_l5_pf00673.fas ribosomal_l5_pf00673.tree \
 					 medium.fas medium.tree \
-					 2000.fas 2000.tree
+					 2000.fas 2000.tree \
+					 200.fas 200.tree \
+					 1000x5.dna.fas 1000.tree
 
 REQFILES = $(patsubst %, $(DATADIR)/%, $(DEPFILES))
 ASSETS = https://raw.githubusercontent.com/xflouris/assets/master/libpll

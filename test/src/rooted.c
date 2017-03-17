@@ -10,23 +10,12 @@
 #define TREEFILE      "testdata/small.rooted.tree"
 #define TREEFILE_TIP  "testdata/small.rooted.tip.tree"
 
-static void fatal(const char * format, ...) __attribute__ ((noreturn));
 static double prop_invar_list[4] = {0.0, 0.1, 0.5, 0.9};
 
 typedef struct
 {
   int clv_valid;
 } node_info_t;
-
-static void fatal(const char * format, ...)
-{
-  va_list argptr;
-  va_start(argptr, format);
-  vfprintf(stderr, format, argptr);
-  va_end(argptr);
-  fprintf(stderr, "\n");
-  exit(EXIT_FAILURE);
-}
 
 int main(int argc, char * argv[])
 {
@@ -266,12 +255,6 @@ int main(int argc, char * argv[])
     /* use the operations array to compute all ops_count inner CLVs. Operations
        will be carried out sequentially starting from operation 0 towrds ops_count-1 */
     pll_update_partials(partition, operations, ops_count);
-
-  //  for (i = tip_nodes_count; i < nodes_count; ++i)
-  //  {
-  //    printf ("CLV %d: ", i);
-  //    pll_show_clv(partition,i, PLL_SCALE_BUFFER_NONE, 6);
-  //  }
 
     /* compute the likelihood on an edge of the unrooted tree by specifying
        the CLV indices at the two end-point of the branch, the probability matrix
