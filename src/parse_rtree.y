@@ -254,7 +254,7 @@ PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(const char * s,
   struct pll_rtree * tree;
 
   /* reset tip count */
-  tip_count = 0;
+  tip_cnt = 0;
 
   if (!(tree = (pll_rtree_t *)calloc(1, sizeof(pll_rtree_t))))
   {
