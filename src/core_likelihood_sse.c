@@ -34,7 +34,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_sse(unsigned int states,
                                                   const unsigned int * freqs_indices,
                                                   double * persite_lnl)
 {
-  unsigned int i,j,k,m = 0;
+  unsigned int i,j,k;
   double logl = 0;
   double prop_invar = 0;
 
@@ -81,7 +81,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_sse(unsigned int states,
         freqs = frequencies[freqs_indices[j]];
         inv_site_lk = (invar_indices[i] == -1) ?
                            0 : freqs[invar_indices[i]];
-        term += rate_weights[j] * (term_r * (1 - prop_invar) + 
+        term += rate_weights[j] * (term_r * (1 - prop_invar) +
                                    inv_site_lk*prop_invar);
       }
       else
@@ -99,7 +99,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_sse(unsigned int states,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = term;
+      persite_lnl[i] = term;
 
     logl += term;
   }
@@ -118,7 +118,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_4x4_sse(unsigned int sites,
                                                       const unsigned int * freqs_indices,
                                                       double * persite_lnl)
 {
-  unsigned int i,j,m = 0;
+  unsigned int i,j;
   double logl = 0;
   double prop_invar = 0;
 
@@ -159,7 +159,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_4x4_sse(unsigned int sites,
       {
         inv_site_lk = (invar_indices[i] == -1) ?
                            0 : freqs[invar_indices[i]];
-        term += rate_weights[j] * (term_r * (1 - prop_invar) + 
+        term += rate_weights[j] * (term_r * (1 - prop_invar) +
                                    inv_site_lk*prop_invar);
       }
       else
@@ -179,7 +179,7 @@ PLL_EXPORT double pll_core_root_loglikelihood_4x4_sse(unsigned int sites,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = term;
+      persite_lnl[i] = term;
 
     logl += term;
   }
@@ -203,7 +203,7 @@ double pll_core_edge_loglikelihood_ti_sse(unsigned int states,
                                           const unsigned int * freqs_indices,
                                           double * persite_lnl)
 {
-  unsigned int n,i,j,k,m = 0;
+  unsigned int n,i,j,k;
   double logl = 0;
   double prop_invar = 0;
 
@@ -272,7 +272,7 @@ double pll_core_edge_loglikelihood_ti_sse(unsigned int states,
           row1 += 2;
         }
 
-        /* point pmatrix to the next four rows */ 
+        /* point pmatrix to the next four rows */
         pmat = row1;
 
         /* create a vector containing the sums of xmm0 and xmm1 */
@@ -322,7 +322,7 @@ double pll_core_edge_loglikelihood_ti_sse(unsigned int states,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[n] = site_lk;
 
     logl += site_lk;
   }
@@ -346,7 +346,7 @@ double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
                                           const unsigned int * freqs_indices,
                                           double * persite_lnl)
 {
-  unsigned int n,i,j,k,m = 0;
+  unsigned int n,i,j,k;
   double logl = 0;
   double prop_invar = 0;
 
@@ -373,7 +373,7 @@ double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
     {
       freqs = frequencies[freqs_indices[i]];
       terma_r = 0;
-      
+
       /* iterate over pairs of rows */
       for (j = 0; j < states_padded; j += 2)
       {
@@ -383,7 +383,7 @@ double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
         /* point to the two rows */
         const double * row0 = pmat;
         const double * row1 = row0 + states_padded;
-        
+
         /* iterate pairs of columns */
         for (k = 0; k < states_padded; k += 2)
         {
@@ -402,7 +402,7 @@ double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
           row1 += 2;
         }
 
-        /* point pmatrix to the next two rows */ 
+        /* point pmatrix to the next two rows */
         pmat = row1;
 
         /* create a vector containing the sums of xmm0 and xmm1 */
@@ -454,7 +454,7 @@ double pll_core_edge_loglikelihood_ii_sse(unsigned int states,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[n] = site_lk;
 
     logl += site_lk;
   }
@@ -477,7 +477,7 @@ double pll_core_edge_loglikelihood_ii_4x4_sse(unsigned int sites,
                                               const unsigned int * freqs_indices,
                                               double * persite_lnl)
 {
-  unsigned int n,i,m = 0;
+  unsigned int n,i;
   double logl = 0;
   double prop_invar = 0;
 
@@ -494,7 +494,7 @@ double pll_core_edge_loglikelihood_ii_4x4_sse(unsigned int sites,
   unsigned int states_padded = 4;
 
   __m128d xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7;
-  
+
   for (n = 0; n < sites; ++n)
   {
     pmat = pmatrix;
@@ -513,7 +513,7 @@ double pll_core_edge_loglikelihood_ii_4x4_sse(unsigned int sites,
       /* load pmatrix row 1 */
       xmm3 = _mm_load_pd(pmat);
       xmm4 = _mm_load_pd(pmat+2);
-      
+
       /* load pmatrix row 2 */
       pmat += states;
       xmm5 = _mm_load_pd(pmat);
@@ -616,7 +616,7 @@ double pll_core_edge_loglikelihood_ii_4x4_sse(unsigned int sites,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[n] = site_lk;
 
     logl += site_lk;
   }
@@ -638,7 +638,7 @@ double pll_core_edge_loglikelihood_ti_4x4_sse(unsigned int sites,
                                               const unsigned int * freqs_indices,
                                               double * persite_lnl)
 {
-  unsigned int i,k,m,n;
+  unsigned int i,k,n;
   double logl = 0;
   double prop_invar = 0;
 
@@ -758,7 +758,6 @@ double pll_core_edge_loglikelihood_ti_4x4_sse(unsigned int sites,
     }
   }
 
-  m=0;
   for (n = 0; n < sites; ++n)
   {
     pmat = pmatrix;
@@ -818,7 +817,7 @@ double pll_core_edge_loglikelihood_ti_4x4_sse(unsigned int sites,
 
     /* store per-site log-likelihood */
     if (persite_lnl)
-      persite_lnl[m++] = site_lk;
+      persite_lnl[n] = site_lk;
 
     logl += site_lk;
   }
