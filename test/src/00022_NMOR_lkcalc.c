@@ -45,7 +45,7 @@ const unsigned int odd_map[256] =
 
 int main(int argc, char * argv[])
 {
-  unsigned int i,j;
+  unsigned int j;
   double lk_score;
   unsigned int n_sites = 12;
   unsigned int n_tips = 5;
@@ -151,17 +151,17 @@ int main(int argc, char * argv[])
 
   for (j = 0; j < 4; ++j)
   {
-    printf ("[%d] P-matrix for branch length %f\n", i, branch_lengths[j]);
+    printf ("[%d] P-matrix for branch length %f\n", j+1, branch_lengths[j]);
     pll_show_pmatrix(partition, j, FLOAT_PRECISION);
     printf ("\n");
   }
 
   /* show CLVs */
-  printf ("[%d] CLV 5: ", i);
+  printf ("[5] CLV 5: ");
   pll_show_clv(partition,5,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
-  printf ("[%d] CLV 6: ", i);
+  printf ("[6] CLV 6: ");
   pll_show_clv(partition,6,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
-  printf ("[%d] CLV 7: ", i);
+  printf ("[7] CLV 7: ");
   pll_show_clv(partition,7,PLL_SCALE_BUFFER_NONE,FLOAT_PRECISION+1);
 
   lk_score = pll_compute_root_loglikelihood(partition,
