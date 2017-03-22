@@ -128,6 +128,7 @@
 #define PLL_ERROR_STEPWISE_STRUCT          123
 #define PLL_ERROR_STEPWISE_TIPS            124
 #define PLL_ERROR_STEPWISE_UNSUPPORTED     125
+#define PLL_ERROR_EINVAL                   126
 
 /* utree specific */
 
@@ -351,6 +352,22 @@ typedef struct pll_svg_attrib_s
   long node_radius;
   double legend_ratio;
 } pll_svg_attrib_t;
+
+/* Reentrant versions of the `random' family of functions.
+   These functions all use the following data structure to contain
+   state, rather than global state variables. Taken and modified from
+   glibc 2.23 */
+
+struct pll_random_data
+{
+  int32_t *fptr;        /* Front pointer.  */
+  int32_t *rptr;        /* Rear pointer.  */
+  int32_t *state;       /* Array of state values.  */
+  int rand_type;        /* Type of random number generator.  */
+  int rand_deg;         /* Degree of random number generator.  */
+  int rand_sep;         /* Distance between front and rear.  */
+  int32_t *end_ptr;     /* Pointer behind state table.  */
+};
 
 /* common data */
 
@@ -1701,6 +1718,23 @@ PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
                                                     unsigned int * score,
                                                     unsigned int count,
                                                     unsigned int seed);
+
+/* functions in random.c */
+
+PLL_EXPORT extern int pll_random_r(struct pll_random_data * __buf,
+                                   int32_t * __result);
+
+PLL_EXPORT extern int pll_srandom_r(unsigned int __seed,
+                                    struct pll_random_data * __buf);
+
+PLL_EXPORT extern int pll_initstate_r(unsigned int __seed,
+                                      char * __statebuf,
+                                      size_t __statelen,
+                                      struct pll_random_data * __buf);
+
+PLL_EXPORT extern int pll_setstate_r(char * __statebuf,
+                                     struct pll_random_data * __buf);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

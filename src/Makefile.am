@@ -1,6 +1,6 @@
 lib_LTLIBRARIES=libpll.la
 
-AM_CFLAGS=-Wall -Wsign-compare -D_GNU_SOURCE -std=c99 -O3 -fPIC
+AM_CFLAGS=-Wall -Wsign-compare -D_GNU_SOURCE -std=c99 -O3 -fPIC --coverage
 
 LIBPLLHEADERS=\
 pll.h
@@ -36,7 +36,8 @@ lex_utree.l \
 lex_rtree.l \
 lex_phylip.l \
 fast_parsimony.c \
-stepwise.c
+stepwise.c \
+random.c
 
 libpll_la_CFLAGS = $(AM_CFLAGS)
 

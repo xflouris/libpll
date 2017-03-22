@@ -50,7 +50,7 @@ static unsigned int * create_shuffled(unsigned int n, unsigned int seed)
 {
   unsigned int i,j;
   char * statebuf;
-  struct random_data * buf;
+  struct pll_random_data * buf;
   
   unsigned int * x = (unsigned int *)malloc(n*sizeof(unsigned int));
   if (!x)
@@ -68,11 +68,11 @@ static unsigned int * create_shuffled(unsigned int n, unsigned int seed)
     return x;
 
   /* init re-entrant randomizer */
-  buf = (struct random_data *)calloc(1, sizeof(struct random_data));;
+  buf = (struct pll_random_data *)calloc(1, sizeof(struct pll_random_data));
   statebuf = (char *)calloc(RAND_STATE_SIZE,sizeof(char));
 
-  initstate_r(seed,statebuf,RAND_STATE_SIZE,buf);
-  srandom_r(seed,buf);
+  pll_initstate_r(seed,statebuf,RAND_STATE_SIZE,buf);
+  pll_srandom_r(seed,buf);
 
   /* perform Fisher-Yates shuffle */
   if (n > 1)
@@ -81,7 +81,7 @@ static unsigned int * create_shuffled(unsigned int n, unsigned int seed)
     while (1)
     {
       int rint;
-      random_r(buf,&rint);
+      pll_random_r(buf,&rint);
       double r = ((double)rint / RAND_MAX);
       j = (unsigned int)(r * (i+1));
 
