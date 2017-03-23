@@ -147,7 +147,11 @@ pll_partition_t * parse_msa_reduced(const char * filename,
   {
     data[i] = tipnodes[i]->clv_index;
     ENTRY entry;
+#ifdef __APPLE__
+    entry.key = xstrdup(tipnodes[i]->label);
+#else
     entry.key = tipnodes[i]->label;
+#endif
     entry.data = (void *)(data+i);
 
     hsearch(entry, ENTER);
@@ -207,3 +211,20 @@ void fatal(const char * format, ...)
   fprintf(stderr, "\n");
   exit(EXIT_FAILURE);
 }
+
+void * xmalloc(size_t size)
+{ 
+  void * t;
+  t = malloc(size);
+  if (!t)
+    fatal("Unable to allocate enough memory.");
+  
+  return t;
+} 
+  
+char * xstrdup(const char * s)
+{ 
+  size_t len = strlen(s);
+  char * p = (char *)xmalloc(len+1);
+  return strcpy(p,s);
+}  

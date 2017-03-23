@@ -72,7 +72,11 @@ int main(int argc, char * argv[])
   {
     data[i] = i;
     ENTRY entry;
+#ifdef __APPLE__
+    entry.key = xstrdup(tipnodes[i]->label);
+#else
     entry.key = tipnodes[i]->label;
+#endif
     entry.data = (void *)(data+i);
     hsearch(entry, ENTER);
   }

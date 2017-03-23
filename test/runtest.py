@@ -396,10 +396,13 @@ if __name__ == "__main__":
 
   header()
 
+  xmod = stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH
+  fmod = stat.S_IFREG
+
   # Get the test binaries
   if len(sys.argv) <= 2:
-    files=os.listdir("obj")
-    files=[filename for filename in files if filename != "README"]
+    files=[f for f in os.listdir("obj") if os.stat("obj/"+f).st_mode & fmod]
+    files=[f for f in files if os.stat("obj/"+f).st_mode & xmod]
   else:
     files=sys.argv[2:]
 

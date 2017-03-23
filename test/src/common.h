@@ -50,5 +50,7 @@ int cb_rfull_traversal(pll_rtree_t * node);
 
 /* print error and exit */
 void fatal(const char * format, ...) __attribute__ ((noreturn));
+char * xstrdup(const char * s);
+void * xmalloc(size_t size);
 
 #endif /* COMMON_H_ */
