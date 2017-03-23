@@ -1,6 +1,6 @@
 lib_LTLIBRARIES=libpll.la
 
-AM_CFLAGS=-Wall -Wsign-compare -D_GNU_SOURCE -std=c99 -O3 -fPIC --coverage
+AM_CFLAGS=-Wall -Wsign-compare -D_GNU_SOURCE -std=c99 -O3 -fPIC
 
 LIBPLLHEADERS=\
 pll.h
