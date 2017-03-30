@@ -15,7 +15,7 @@ typedef struct
 } node_info_t;
 
 /* a callback function for performing a partial traversal */
-static int cb_partial_traversal(pll_utree_t * node)
+static int cb_partial_traversal(pll_unode_t * node)
 {
   node_info_t * node_info;
 
@@ -60,34 +60,24 @@ static int cb_partial_traversal(pll_utree_t * node)
   return 1;
 }
 
-static void set_missing_branch_length_recursive(pll_utree_t * tree,
-                                                double length)
-{
-  if (tree)
-  {
-    /* set branch length to default if not set */
-    if (!tree->length)
-      tree->length = length;
-
-    if (tree->next)
-    {
-      if (!tree->next->length)
-        tree->next->length = length;
-
-      if (!tree->next->next->length)
-        tree->next->next->length = length;
-
-      set_missing_branch_length_recursive(tree->next->back, length);
-      set_missing_branch_length_recursive(tree->next->next->back, length);
-    }
-  }
-}
-
 /* branch lengths not present in the newick file get a value of 0.000001 */
 static void set_missing_branch_length(pll_utree_t * tree, double length)
 {
-  set_missing_branch_length_recursive(tree, length);
-  set_missing_branch_length_recursive(tree->back, length);
+  unsigned int i;
+
+  for (i = 0; i < tree->tip_count; ++i)
+    if (!tree->nodes[i]->length)
+      tree->nodes[i]->length = length;
+
+  for (i = tree->tip_count; i < tree->tip_count + tree->inner_count; ++i)
+  {
+    if (!tree->nodes[i]->length)
+      tree->nodes[i]->length = length;
+    if (!tree->nodes[i]->next->length)
+      tree->nodes[i]->next->length = length;
+    if (!tree->nodes[i]->next->next->length)
+      tree->nodes[i]->next->next->length = length;
+  }
 }
 
 int main(int argc, char * argv[])
@@ -99,13 +89,15 @@ int main(int argc, char * argv[])
   double * branch_lengths;
   pll_partition_t * partition;
   pll_operation_t * operations;
-  pll_utree_t ** travbuffer;
-  pll_utree_t ** inner_nodes_list;
+  pll_unode_t ** travbuffer;
+  pll_unode_t ** inner_nodes_list;
   unsigned int params_indices[N_RATE_CATS] = {0,0,0,0};
 
   /* parse the unrooted binary tree in newick format, and store the number
      of tip nodes in tip_nodes_count */
-  pll_utree_t * tree = pll_utree_parse_newick(TREEFILE, &tip_nodes_count);
+  pll_utree_t * tree = pll_utree_parse_newick(TREEFILE);
+
+  tip_nodes_count = tree->tip_count;
 
   unsigned int attributes = get_attributes(argc, argv);
 
@@ -124,11 +116,6 @@ int main(int argc, char * argv[])
   printf("Total number of nodes in tree: %d\n", nodes_count);
   printf("Number of branches in tree: %d\n", branch_count);
 
-  /*  obtain an array of pointers to tip nodes */
-  pll_utree_t ** tipnodes = (pll_utree_t  **)calloc(tip_nodes_count,
-                                                    sizeof(pll_utree_t *));
-  pll_utree_query_tipnodes(tree, tipnodes);
-
   /* create a libc hash table of size tip_nodes_count */
   hcreate(tip_nodes_count);
 
@@ -137,12 +124,13 @@ int main(int argc, char * argv[])
                                                sizeof(unsigned int));
   for (i = 0; i < tip_nodes_count; ++i)
   {
-    data[i] = i;
+    //data[i] = i;
+    data[i] = tree->nodes[i]->clv_index;
     ENTRY entry;
 #ifdef __APPLE__
-    entry.key = xstrdup(tipnodes[i]->label);
+    entry.key = xstrdup(tree->nodes[i]->label);
 #else
-    entry.key = tipnodes[i]->label;
+    entry.key = tree->nodes[i]->label;
 #endif
     entry.data = (void *)(data+i);
     hsearch(entry, ENTER);
@@ -249,7 +237,6 @@ int main(int argc, char * argv[])
 
   /* we no longer need these two arrays (keys and values of hash table... */
   free(data);
-  free(tipnodes);
 
   /* ...neither the sequences and the headers as they are already
      present in the form of probabilities in the tip CLVs */
@@ -264,7 +251,7 @@ int main(int argc, char * argv[])
 
   /* allocate a buffer for storing pointers to nodes of the tree in postorder
      traversal */
-  travbuffer = (pll_utree_t **)malloc(nodes_count * sizeof(pll_utree_t *));
+  travbuffer = (pll_unode_t **)malloc(nodes_count * sizeof(pll_unode_t *));
 
 
   branch_lengths = (double *)malloc(branch_count * sizeof(double));
@@ -273,9 +260,11 @@ int main(int argc, char * argv[])
                                                 sizeof(pll_operation_t));
 
   /* get inner nodes */
-  inner_nodes_list = (pll_utree_t **)malloc(inner_nodes_count *
-                                                sizeof(pll_utree_t *));
-  pll_utree_query_innernodes(tree, inner_nodes_list);
+  inner_nodes_list = (pll_unode_t **)malloc(inner_nodes_count *
+                                                sizeof(pll_unode_t *));
+  memcpy(inner_nodes_list,
+         tree->nodes+tip_nodes_count,
+         inner_nodes_count*sizeof(pll_unode_t *));
 
   /* get random directions for each inner node */
   for (i = 0; i < inner_nodes_count; ++i)
@@ -292,12 +281,13 @@ int main(int argc, char * argv[])
 
     /* randomly select an inner node */
     r = RAND % inner_nodes_count;
-    pll_utree_t * node = inner_nodes_list[r];
+    pll_unode_t * node = inner_nodes_list[r];
 
     /* compute a partial traversal starting from the randomly selected
        inner node */
 
     if (!pll_utree_traverse(node,
+                            PLL_TREE_TRAVERSE_POSTORDER,
                             cb_partial_traversal,
                             travbuffer,
                             &traversal_size))

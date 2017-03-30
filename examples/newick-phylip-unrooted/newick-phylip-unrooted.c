@@ -27,6 +27,8 @@
 #define STATES    4
 #define RATE_CATS 4
 
+#define COMPRESS
+
 static void fatal(const char * format, ...) __attribute__ ((noreturn));
 
 typedef struct
@@ -34,40 +36,47 @@ typedef struct
   int clv_valid;
 } node_info_t;
 
+static void * xmalloc(size_t size)
+{ 
+  void * t;
+  t = malloc(size);
+  if (!t)
+    fatal("Unable to allocate enough memory.");
+  
+  return t;
+} 
+  
+static char * xstrdup(const char * s)
+{ 
+  size_t len = strlen(s);
+  char * p = (char *)xmalloc(len+1);
+  return strcpy(p,s);
+} 
+
 /* a callback function for performing a full traversal */
-static int cb_full_traversal(pll_utree_t * node)
+static int cb_full_traversal(pll_unode_t * node)
 {
   return 1;
-}
-
-static void set_missing_branch_length_recursive(pll_utree_t * tree,
-                                                double length)
-{
-  if (tree)
-  {
-    /* set branch length to default if not set */
-    if (!tree->length)
-      tree->length = length;
-
-    if (tree->next)
-    {
-      if (!tree->next->length)
-        tree->next->length = length;
-
-      if (!tree->next->next->length)
-        tree->next->next->length = length;
-
-      set_missing_branch_length_recursive(tree->next->back, length);
-      set_missing_branch_length_recursive(tree->next->next->back, length);
-    }
-  }
 }
 
 /* branch lengths not present in the newick file get a value of 0.000001 */
 static void set_missing_branch_length(pll_utree_t * tree, double length)
 {
-  set_missing_branch_length_recursive(tree, length);
-  set_missing_branch_length_recursive(tree->back, length);
+  unsigned int i;
+
+  for (i = 0; i < tree->tip_count; ++i)
+    if (!tree->nodes[i]->length)
+      tree->nodes[i]->length = length;
+
+  for (i = tree->tip_count; i < tree->tip_count + tree->inner_count; ++i)
+  {
+    if (!tree->nodes[i]->length)
+      tree->nodes[i]->length = length;
+    if (!tree->nodes[i]->next->length)
+      tree->nodes[i]->next->length = length;
+    if (!tree->nodes[i]->next->next->length)
+      tree->nodes[i]->next->next->length = length;
+  } 
 }
 
 static void fatal(const char * format, ...)
@@ -90,7 +99,7 @@ int main(int argc, char * argv[])
   double * branch_lengths;
   pll_partition_t * partition;
   pll_operation_t * operations;
-  pll_utree_t ** travbuffer;
+  pll_unode_t ** travbuffer;
 
   /* we accept only two arguments - the newick tree (unrooted binary) and the
      alignment in the form of FASTA reads */
@@ -99,9 +108,11 @@ int main(int argc, char * argv[])
 
   /* parse the unrooted binary tree in newick format, and store the number
      of tip nodes in tip_nodes_count */
-  pll_utree_t * tree = pll_utree_parse_newick(argv[1], &tip_nodes_count);
+  pll_utree_t * tree = pll_utree_parse_newick(argv[1]);
   if (!tree)
     fatal("Tree must be an unrooted binary tree");
+
+  tip_nodes_count = tree->tip_count;
 
   /* fix all missing branch lengths (i.e. those that did not appear in the
      newick) to 0.000001 */
@@ -131,11 +142,6 @@ int main(int argc, char * argv[])
 
   */
 
-  /*  obtain an array of pointers to tip nodes */
-  pll_utree_t ** tipnodes = (pll_utree_t  **)calloc(tip_nodes_count,
-                                                    sizeof(pll_utree_t *));
-  pll_utree_query_tipnodes(tree, tipnodes);
-
   /* create a libc hash table of size tip_nodes_count */
   hcreate(tip_nodes_count);
 
@@ -144,9 +150,13 @@ int main(int argc, char * argv[])
                                                sizeof(unsigned int));
   for (i = 0; i < tip_nodes_count; ++i)
   {
-    data[i] = tipnodes[i]->clv_index;
+    data[i] = tree->nodes[i]->clv_index;
     ENTRY entry;
-    entry.key = tipnodes[i]->label;
+#ifdef __APPLE__
+    entry.key = xstrdup(tree->nodes[i]->label);
+#else
+    entry.key = tree->nodes[i]->label;
+#endif
     entry.data = (void *)(data+i);
     hsearch(entry, ENTER);
   }
@@ -160,13 +170,14 @@ int main(int argc, char * argv[])
   if (sequence_count != tip_nodes_count)
     fatal("Number of sequences does not match number of leaves in tree");
 
+#ifdef COMPRESS
   printf("Original sequence (alignment) length : %d\n", msa->length);
   unsigned int * weight = pll_compress_site_patterns(msa->sequence,
                                                      pll_map_nt,
                                                      tip_nodes_count,
                                                      &(msa->length));
   printf("Number of unique site patterns: %d\n", msa->length);
-
+#endif
 
   /* create the PLL partition instance
 
@@ -215,9 +226,11 @@ int main(int argc, char * argv[])
   /* set rate categories */
   pll_set_category_rates(partition, rate_cats);
 
+#ifdef COMPRESS
   /* set pattern weights and free the weights array */
   pll_set_pattern_weights(partition, weight);
   free(weight);
+#endif
 
   /* find sequences in hash table and link them with the corresponding taxa */
   for (i = 0; i < tip_nodes_count; ++i)
@@ -244,11 +257,10 @@ int main(int argc, char * argv[])
 
   /* we no longer need these two arrays (keys and values of hash table... */
   free(data);
-  free(tipnodes);
 
   /* allocate a buffer for storing pointers to nodes of the tree in postorder
      traversal */
-  travbuffer = (pll_utree_t **)malloc(nodes_count * sizeof(pll_utree_t *));
+  travbuffer = (pll_unode_t **)malloc(nodes_count * sizeof(pll_unode_t *));
 
 
   branch_lengths = (double *)malloc(branch_count * sizeof(double));
@@ -257,8 +269,11 @@ int main(int argc, char * argv[])
                                                 sizeof(pll_operation_t));
 
   /* perform a postorder traversal of the unrooted tree */
+  pll_unode_t * root = tree->nodes[tip_nodes_count+inner_nodes_count-1];
   unsigned int traversal_size;
-  if (!pll_utree_traverse(tree,
+
+  if (!pll_utree_traverse(root,
+                          PLL_TREE_TRAVERSE_POSTORDER,
                           cb_full_traversal,
                           travbuffer,
                           &traversal_size))
@@ -325,15 +340,15 @@ int main(int argc, char * argv[])
      whose frequency vector is to be used for each rate category */
 
   double logl = pll_compute_edge_loglikelihood(partition,
-                                               tree->clv_index,
-                                               tree->scaler_index,
-                                               tree->back->clv_index,
-                                               tree->back->scaler_index,
-                                               tree->pmatrix_index,
+                                               root->clv_index,
+                                               root->scaler_index,
+                                               root->back->clv_index,
+                                               root->back->scaler_index,
+                                               root->pmatrix_index,
                                                params_indices,
                                                NULL);
 
-  printf("Log-L: %f\n", logl);
+  printf("Log-L: %.15f\n", logl);
 
   /* destroy all structures allocated for the concrete PLL partition instance */
   pll_partition_destroy(partition);

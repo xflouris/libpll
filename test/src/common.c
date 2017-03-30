@@ -51,7 +51,6 @@ void skip_test ()
          It is intended to use with the test datasets that were
          validated in advance. */
 pll_partition_t * parse_msa(const char * filename,
-                           unsigned int taxa_count,
                            unsigned int states,
                            unsigned int rate_cats,
                            unsigned int rate_matrices,
@@ -59,7 +58,6 @@ pll_partition_t * parse_msa(const char * filename,
                            unsigned int attributes)
 {
   return parse_msa_reduced(filename,
-                          taxa_count,
                           states,
                           rate_cats,
                           rate_matrices,
@@ -69,7 +67,6 @@ pll_partition_t * parse_msa(const char * filename,
 }
 
 pll_partition_t * parse_msa_reduced(const char * filename,
-                            unsigned int taxa_count,
                             unsigned int states,
                             unsigned int rate_cats,
                             unsigned int rate_matrices,
@@ -78,6 +75,7 @@ pll_partition_t * parse_msa_reduced(const char * filename,
                             unsigned int max_sites)
 {
   unsigned int i;
+  unsigned int taxa_count = tree->tip_count;
   pll_partition_t * partition;
   long hdrlen, seqlen, seqno;
   char * seq = NULL,
@@ -133,10 +131,6 @@ pll_partition_t * parse_msa_reduced(const char * filename,
                                    taxa_count - 2,       /* scale buffers */
                                    attributes);
 
-  pll_utree_t ** tipnodes = (pll_utree_t  **)calloc(taxa_count,
-                                                    sizeof(pll_utree_t *));
-  pll_utree_query_tipnodes(tree, tipnodes);
-
   /* create a libc hash table of size tip_nodes_count */
   hcreate(taxa_count);
 
@@ -145,19 +139,17 @@ pll_partition_t * parse_msa_reduced(const char * filename,
                                                sizeof(unsigned int));
   for (i = 0; i < taxa_count; ++i)
   {
-    data[i] = tipnodes[i]->clv_index;
+    data[i] = tree->nodes[i]->clv_index;
     ENTRY entry;
 #ifdef __APPLE__
-    entry.key = xstrdup(tipnodes[i]->label);
+    entry.key = xstrdup(tree->nodes[i]->label);
 #else
-    entry.key = tipnodes[i]->label;
+    entry.key = tree->nodes[i]->label;
 #endif
     entry.data = (void *)(data+i);
 
     hsearch(entry, ENTER);
   }
-
-  free(tipnodes);
 
   for (i = 0; i < taxa_count; ++i)
   {
@@ -191,7 +183,7 @@ pll_partition_t * parse_msa_reduced(const char * filename,
   return partition;
 }
 
-int cb_full_traversal(pll_utree_t * node)
+int cb_full_traversal(pll_unode_t * node)
 {
   return 1;
 }

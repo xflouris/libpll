@@ -55,6 +55,8 @@ static double newton(pll_partition_t * partition,
   pll_update_sumtable(partition,
                       parent_clv_index,
                       child_clv_index,
+                      parent_scaler_index,
+                      child_scaler_index,
                       params_indices,
                       sumtable);
 

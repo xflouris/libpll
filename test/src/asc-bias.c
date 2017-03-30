@@ -46,12 +46,12 @@ static double test_branch_lengths[NUM_BRANCH_LENGTHS] =
                 {0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0};
 
 static unsigned int traversal_size, matrix_count, ops_count;
-static pll_utree_t ** travbuffer;
+static pll_unode_t ** travbuffer;
 static unsigned int * matrix_indices;
 static double * branch_lengths;
 static pll_operation_t * operations;
 
-void print_travbuffer(pll_utree_t ** travbuffer, unsigned int len)
+void print_travbuffer(pll_unode_t ** travbuffer, unsigned int len)
 {
   unsigned int i;
   for (i=0; i<len; ++i)
@@ -73,7 +73,7 @@ void print_operations(pll_operation_t * operations, unsigned int len)
 }
 
 static double eval(pll_partition_t * partition,
-                   pll_utree_t * tree,
+                   pll_unode_t * node,
                    double alpha,
                    double old_lnl)
 {
@@ -94,11 +94,11 @@ static double eval(pll_partition_t * partition,
                            matrix_count);
   pll_update_partials(partition, operations, ops_count);
   logl = pll_compute_edge_loglikelihood(partition,
-                                        tree->clv_index,
-                                        tree->scaler_index,
-                                        tree->back->clv_index,
-                                        tree->back->scaler_index,
-                                        tree->pmatrix_index,
+                                        node->clv_index,
+                                        node->scaler_index,
+                                        node->back->clv_index,
+                                        node->back->scaler_index,
+                                        node->pmatrix_index,
                                         params_indices,
                                         NULL);
 
@@ -114,10 +114,10 @@ static double eval(pll_partition_t * partition,
     sizeof(double), partition->alignment);
 
   pll_update_sumtable(partition,
-                      tree->clv_index,
-                      tree->back->clv_index,
-                      tree->scaler_index,
-                      tree->back->scaler_index,
+                      node->clv_index,
+                      node->back->clv_index,
+                      node->scaler_index,
+                      node->back->scaler_index,
                       params_indices,
                       sumtable);
 
@@ -127,8 +127,8 @@ static double eval(pll_partition_t * partition,
   {
     double branch_length = test_branch_lengths[i];
     if (!pll_compute_likelihood_derivatives(partition,
-                                            tree->scaler_index,
-                                            tree->back->scaler_index,
+                                            node->scaler_index,
+                                            node->back->scaler_index,
                                             branch_length,
                                             params_indices,
                                             sumtable,
@@ -142,15 +142,15 @@ static double eval(pll_partition_t * partition,
    /* update logLikelihood */
    pll_update_prob_matrices(partition,
                             params_indices,
-                            &(tree->pmatrix_index),
+                            &(node->pmatrix_index),
                             &branch_length,
                             1);
    upbl_logl = pll_compute_edge_loglikelihood(partition,
-                                         tree->clv_index,
-                                         tree->scaler_index,
-                                         tree->back->clv_index,
-                                         tree->back->scaler_index,
-                                         tree->pmatrix_index,
+                                         node->clv_index,
+                                         node->scaler_index,
+                                         node->back->clv_index,
+                                         node->back->scaler_index,
+                                         node->pmatrix_index,
                                          params_indices,
                                          NULL);
 
@@ -172,6 +172,7 @@ int main(int argc, char * argv[])
   unsigned int attributes;
   pll_partition_t * partition;
   pll_utree_t * tree;
+  pll_unode_t * root;
   unsigned int taxa_count, nodes_count, inner_nodes_count, branch_count;
   double alpha = 0.5;
   unsigned int rate_cats = 4;
@@ -182,31 +183,36 @@ int main(int argc, char * argv[])
   attributes = get_attributes(argc, argv);
   attributes |= PLL_ATTRIB_AB_FLAG;
 
-  tree = pll_utree_parse_newick(TRE_FILENAME, &taxa_count);
+  tree = pll_utree_parse_newick(TRE_FILENAME);
+
+  taxa_count = tree->tip_count;
+
   printf("Read %s: %u taxa\n", TRE_FILENAME, taxa_count);
 
+  root = tree->nodes[tree->tip_count+tree->inner_count-1];
   inner_nodes_count = taxa_count - 2;
   nodes_count  = taxa_count + inner_nodes_count;
   branch_count = 2*taxa_count - 3;
 
   /* build fixed structures */
-  travbuffer = (pll_utree_t **)malloc(nodes_count * sizeof(pll_utree_t *));
+  travbuffer = (pll_unode_t **)malloc(nodes_count * sizeof(pll_unode_t *));
   branch_lengths = (double *)malloc(branch_count * sizeof(double));
   matrix_indices = (unsigned int *)malloc(branch_count * sizeof(unsigned int));
   operations = (pll_operation_t *)malloc(inner_nodes_count *
                                                 sizeof(pll_operation_t));
 
-  partition = parse_msa(MSA_FILENAME, taxa_count, STATES, rate_cats, 1,
+  partition = parse_msa(MSA_FILENAME, STATES, rate_cats, 1,
                         tree, attributes);
   printf("Read %s: %u sites\n", MSA_FILENAME, partition->sites);
 
   for (i=0;i<3;++i)
   {
-    tree = tree->next;
+    root = root->next;
 
     pll_set_asc_bias_type(partition, 0);
 
-    pll_utree_traverse(tree,
+    pll_utree_traverse(root,
+                       PLL_TREE_TRAVERSE_POSTORDER,
                        cb_full_traversal,
                        travbuffer,
                        &traversal_size);
@@ -222,14 +228,14 @@ int main(int argc, char * argv[])
     /* test 1: no ascertainment bias correction */
     printf("\nTEST 1: NO ASC BIAS\n");
 
-    lnl_test[0] = eval(partition, tree, alpha, lnl_test[0]);
+    lnl_test[0] = eval(partition, root, alpha, lnl_test[0]);
 
     /* test 2: ascertainment bias correction */
     printf("\nTEST 2: ASC BIAS LEWIS\n");
 
     pll_set_asc_bias_type(partition, PLL_ATTRIB_AB_LEWIS);
 
-    lnl_test[1] = eval(partition, tree, alpha, lnl_test[1]);
+    lnl_test[1] = eval(partition, root, alpha, lnl_test[1]);
 
     /* attempt to update invariant sites proportion. This should fail */
     if (pll_update_invariant_sites_proportion(partition, 0, 0.5))
@@ -243,14 +249,14 @@ int main(int argc, char * argv[])
     pll_set_asc_bias_type(partition, PLL_ATTRIB_AB_FELSENSTEIN);
     pll_set_asc_state_weights(partition, invar_weights);
 
-    lnl_test[2] = eval(partition, tree, alpha, lnl_test[2]);
+    lnl_test[2] = eval(partition, root, alpha, lnl_test[2]);
 
     /* test 2: ascertainment bias correction */
     printf("\nTEST 2: ASC BIAS STAMATAKIS\n");
     pll_set_asc_bias_type(partition, PLL_ATTRIB_AB_STAMATAKIS);
     pll_set_asc_state_weights(partition, invar_weights);
 
-    lnl_test[3] = eval(partition, tree, alpha, lnl_test[3]);
+    lnl_test[3] = eval(partition, root, alpha, lnl_test[3]);
 
   }
     /* clean */

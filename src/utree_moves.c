@@ -21,7 +21,7 @@
 
 #include "pll.h"
 
-static int utree_find(pll_utree_t * start, pll_utree_t * target)
+static int utree_find(pll_unode_t * start, pll_unode_t * target)
 {
   /* checks whether the subtree rooted at 'start' (in the direction of
      start->next and start->next->next) contains the node 'target' */
@@ -44,8 +44,8 @@ static int utree_find(pll_utree_t * start, pll_utree_t * target)
   return 0;
 }
 
-static void utree_link(pll_utree_t * a,
-                       pll_utree_t * b,
+static void utree_link(pll_unode_t * a,
+                       pll_unode_t * b,
                        double length,
                        unsigned int pmatrix_index)
 {
@@ -57,24 +57,24 @@ static void utree_link(pll_utree_t * a,
   a->pmatrix_index = b->pmatrix_index = pmatrix_index;
 }
 
-static void utree_swap(pll_utree_t * t1, pll_utree_t * t2)
+static void utree_swap(pll_unode_t * t1, pll_unode_t * t2)
 {
   /* swaps the positions of trees t1 and t2. The two trees retain the branch
   lengths from their root to their respective parent nodes, and retain their
   pmatrix indices (i.e. no updating of pmatrices is required) */
 
-  pll_utree_t * temp = t1->back;
+  pll_unode_t * temp = t1->back;
 
   utree_link(t1, t2->back, t2->back->length, t2->back->pmatrix_index);
   utree_link(t2, temp, temp->length, temp->pmatrix_index);
 }
 
-PLL_EXPORT int pll_utree_nni(pll_utree_t * p,
+PLL_EXPORT int pll_utree_nni(pll_unode_t * p,
                              int type,
                              pll_utree_rb_t * rb)
 {
-  pll_utree_t * subtree1;
-  pll_utree_t * subtree2;
+  pll_unode_t * subtree1;
+  pll_unode_t * subtree2;
 
   if ((type != PLL_UTREE_MOVE_NNI_LEFT) && (type != PLL_UTREE_MOVE_NNI_RIGHT))
   {
@@ -116,8 +116,8 @@ static int utree_nni_rollback(pll_utree_rb_t * rb)
                        NULL);
 }
 
-PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
-                             pll_utree_t * r,
+PLL_EXPORT int pll_utree_spr(pll_unode_t * p,
+                             pll_unode_t * r,
                              pll_utree_rb_t * rb,
                              double * branch_lengths,
                              unsigned int * matrix_indices)
@@ -202,8 +202,8 @@ PLL_EXPORT int pll_utree_spr(pll_utree_t * p,
   }
 
   /* (b) connect u and v */
-  pll_utree_t * u = p->next->back;
-  pll_utree_t * v = p->next->next->back;
+  pll_unode_t * u = p->next->back;
+  pll_unode_t * v = p->next->next->back;
   utree_link(u,
              v,
              u->length + v->length,
@@ -304,8 +304,8 @@ static int utree_spr_rollback(pll_utree_rb_t * rb,
 /* this is a safer (but slower) function for performing an spr move, than
    pll_utree_spr(). See the last paragraph in the comments section of the
    pll_utree_spr() function for more details */
-PLL_EXPORT int pll_utree_spr_safe(pll_utree_t * p,
-                                  pll_utree_t * r,
+PLL_EXPORT int pll_utree_spr_safe(pll_unode_t * p,
+                                  pll_unode_t * r,
                                   pll_utree_rb_t * rb,
                                   double * branch_lengths,
                                   unsigned int * matrix_indices)

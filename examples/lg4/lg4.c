@@ -29,40 +29,47 @@
 
 static void fatal(const char * format, ...) __attribute__ ((noreturn));
 
+static void * xmalloc(size_t size)
+{ 
+  void * t;
+  t = malloc(size);
+  if (!t)
+    fatal("Unable to allocate enough memory.");
+  
+  return t;
+} 
+  
+static char * xstrdup(const char * s)
+{ 
+  size_t len = strlen(s);
+  char * p = (char *)xmalloc(len+1);
+  return strcpy(p,s);
+}  
+
 /* a callback function for performing a full traversal */
-static int cb_full_traversal(pll_utree_t * node)
+static int cb_full_traversal(pll_unode_t * node)
 {
   return 1;
-}
-
-static void set_missing_branch_length_recursive(pll_utree_t * tree,
-                                                double length)
-{
-  if (tree)
-  {
-    /* set branch length to default if not set */
-    if (!tree->length)
-      tree->length = length;
-
-    if (tree->next)
-    {
-      if (!tree->next->length)
-        tree->next->length = length;
-
-      if (!tree->next->next->length)
-        tree->next->next->length = length;
-
-      set_missing_branch_length_recursive(tree->next->back, length);
-      set_missing_branch_length_recursive(tree->next->next->back, length);
-    }
-  }
 }
 
 /* branch lengths not present in the newick file get a value of 0.000001 */
 static void set_missing_branch_length(pll_utree_t * tree, double length)
 {
-  set_missing_branch_length_recursive(tree, length);
-  set_missing_branch_length_recursive(tree->back, length);
+  unsigned int i;
+
+  for (i = 0; i < tree->tip_count; ++i)
+    if (!tree->nodes[i]->length)
+      tree->nodes[i]->length = length;
+
+  for (i = tree->tip_count; i < tree->tip_count + tree->inner_count; ++i)
+  {
+    if (!tree->nodes[i]->length)
+      tree->nodes[i]->length = length;
+    if (!tree->nodes[i]->next->length)
+      tree->nodes[i]->next->length = length;
+    if (!tree->nodes[i]->next->next->length)
+      tree->nodes[i]->next->next->length = length;
+  }
 }
 
 static void fatal(const char * format, ...)
@@ -84,7 +91,7 @@ int main(int argc, char * argv[])
   double * branch_lengths;
   pll_partition_t * partition;
   pll_operation_t * operations;
-  pll_utree_t ** travbuffer;
+  pll_unode_t ** travbuffer;
 
   /* we accept only two arguments - the newick tree (unrooted binary) and the
      alignment in the form of FASTA reads */
@@ -93,12 +100,15 @@ int main(int argc, char * argv[])
 
   /* parse the unrooted binary tree in newick format, and store the number
      of tip nodes in tip_nodes_count */
-  pll_utree_t * tree = pll_utree_parse_newick(argv[1], &tip_nodes_count);
+  pll_utree_t * tree = pll_utree_parse_newick(argv[1]);
+  if (!tree)
+    fatal("%s", pll_errmsg);
+
+  tip_nodes_count = tree->tip_count;
 
   /* fix all missing branch lengths (i.e. those that did not appear in the
      newick) to 0.000001 */
   set_missing_branch_length(tree, 0.000001);
-
 
   /* compute and show node count information */
   inner_nodes_count = tip_nodes_count - 2;
@@ -117,24 +127,23 @@ int main(int argc, char * argv[])
   char * newick = pll_utree_export_newick(tree);
   printf("%s\n", newick);
   free(newick);
- // */
-
-  /*  obtain an array of pointers to tip nodes */
-  pll_utree_t ** tipnodes = (pll_utree_t  **)calloc(tip_nodes_count,
-                                                    sizeof(pll_utree_t *));
-  pll_utree_query_tipnodes(tree, tipnodes);
+  */
 
   /* create a libc hash table of size tip_nodes_count */
   hcreate(tip_nodes_count);
 
   /* populate a libc hash table with tree tip labels */
-  unsigned int * data = (unsigned int *)malloc(tip_nodes_count *
-                                               sizeof(unsigned int));
+  unsigned int * data = (unsigned int *)xmalloc(tip_nodes_count *
+                                                sizeof(unsigned int));
   for (i = 0; i < tip_nodes_count; ++i)
   {
-    data[i] = tipnodes[i]->clv_index;
+    data[i] = tree->nodes[i]->clv_index;
     ENTRY entry;
-    entry.key = tipnodes[i]->label;
+#ifdef __APPLE__
+    entry.key = xstrdup(tree->nodes[i]->label);
+#else
+    entry.key = tree->nodes[i]->label;
+#endif
     entry.data = (void *)(data+i);
     hsearch(entry, ENTER);
   }
@@ -229,7 +238,6 @@ int main(int argc, char * argv[])
 
   /* we no longer need these two arrays (keys and values of hash table... */
   free(data);
-  free(tipnodes);
 
   /* ...neither the sequences and the headers as they are already
      present in the form of probabilities in the tip CLVs */
@@ -243,17 +251,21 @@ int main(int argc, char * argv[])
 
   /* allocate a buffer for storing pointers to nodes of the tree in postorder
      traversal */
-  travbuffer = (pll_utree_t **)malloc(nodes_count * sizeof(pll_utree_t *));
+  travbuffer = (pll_unode_t **)xmalloc(nodes_count * sizeof(pll_unode_t *));
 
-  branch_lengths = (double *)malloc(branch_count * sizeof(double));
-  matrix_indices = (unsigned int *)malloc(branch_count * sizeof(unsigned int));
-  operations = (pll_operation_t *)malloc(inner_nodes_count *
-                                                sizeof(pll_operation_t));
+  branch_lengths = (double *)xmalloc(branch_count * sizeof(double));
+  matrix_indices = (unsigned int *)xmalloc(branch_count * sizeof(unsigned int));
+  operations = (pll_operation_t *)xmalloc(inner_nodes_count *
+                                          sizeof(pll_operation_t));
 
-  /* compute a partial traversal starting from the randomly selected
-     inner node */
+  /* compute a partial postorder traversal starting from the inner node that
+     was the the root of the parsed 'unrooted' binary tree */
+  
+  pll_unode_t * root = tree->nodes[tip_nodes_count+inner_nodes_count-1];
   unsigned int traversal_size;
-  if (!pll_utree_traverse(tree,
+
+  if (!pll_utree_traverse(root,
+                          PLL_TREE_TRAVERSE_POSTORDER,
                           cb_full_traversal,
                           travbuffer,
                           &traversal_size))
@@ -323,11 +335,11 @@ int main(int argc, char * argv[])
      frequency vector is to be used */
 
   double logl = pll_compute_edge_loglikelihood(partition,
-                                               tree->clv_index,
-                                               tree->scaler_index,
-                                               tree->back->clv_index,
-                                               tree->back->scaler_index,
-                                               tree->pmatrix_index,
+                                               root->clv_index,
+                                               root->scaler_index,
+                                               root->back->clv_index,
+                                               root->back->scaler_index,
+                                               root->pmatrix_index,
                                                params_indices,
                                                NULL);
 
@@ -351,8 +363,8 @@ int main(int argc, char * argv[])
   double weights[4] = { 0.209224645, 0.224707726, 0.277599198, 0.288468431 };
   double rates[4] = { 0.498991136, 0.563680734, 0.808264032, 1.887769458 };
 
-  pll_set_category_rates (partition, rates);
-  pll_set_category_weights (partition, weights);
+  pll_set_category_rates(partition, rates);
+  pll_set_category_weights(partition, weights);
 
   /* update transition probability matrices */
   pll_update_prob_matrices(partition,
@@ -374,11 +386,11 @@ int main(int argc, char * argv[])
   pll_update_partials(partition, operations, ops_count);
 
   logl = pll_compute_edge_loglikelihood(partition,
-                                        tree->clv_index,
-                                        tree->scaler_index,
-                                        tree->back->clv_index,
-                                        tree->back->scaler_index,
-                                        tree->pmatrix_index,
+                                        root->clv_index,
+                                        root->scaler_index,
+                                        root->back->clv_index,
+                                        root->back->scaler_index,
+                                        root->pmatrix_index,
                                         params_indices,
                                         NULL);
 
@@ -391,11 +403,11 @@ int main(int argc, char * argv[])
   printf("\nLog-L (LG4X): %f\n", logl);
 
   logl = pll_compute_edge_loglikelihood(partition,
-                                        tree->back->clv_index,
-                                        tree->back->scaler_index,
-                                        tree->clv_index,
-                                        tree->scaler_index,
-                                        tree->pmatrix_index,
+                                        root->back->clv_index,
+                                        root->back->scaler_index,
+                                        root->clv_index,
+                                        root->scaler_index,
+                                        root->pmatrix_index,
                                         params_indices,
                                         NULL);
 

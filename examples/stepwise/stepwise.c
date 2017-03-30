@@ -24,7 +24,6 @@
 #include <search.h>
 #include <time.h>
 
-#define STATES    4
 #define RATE_CATS 4
 
 static void fatal(const char * format, ...) __attribute__ ((noreturn));
@@ -44,16 +43,51 @@ int main(int argc, char * argv[])
   unsigned int i;
   unsigned int tip_nodes_count, inner_nodes_count, nodes_count, branch_count;
   pll_partition_t * partition;
+  unsigned int arch = PLL_ATTRIB_ARCH_CPU;
 
   /* we accept only two arguments - the newick tree (unrooted binary) and the
      alignment in the form of FASTA reads */
-  if (argc != 3)
-    fatal(" syntax: %s [fasta] [seed]", argv[0]);
+  if (argc != 5)
+    fatal(" syntax: %s [fasta] [seed] [attrib] [states]", argv[0]);
 
   /* open FASTA file */
   pll_fasta_t * fp = pll_fasta_open(argv[1], pll_map_fasta);
   if (!fp)
     fatal("Error opening file %s", argv[1]);
+
+  if (!strcasecmp(argv[3], "avx"))
+    arch = PLL_ATTRIB_ARCH_AVX;
+  else if (!strcasecmp(argv[3], "avx2"))
+    arch = PLL_ATTRIB_ARCH_AVX2;
+  else if (!strcasecmp(argv[3], "sse"))
+    arch = PLL_ATTRIB_ARCH_SSE;
+  else if (!strcasecmp(argv[3], "tpavx"))
+    arch = PLL_ATTRIB_ARCH_AVX | PLL_ATTRIB_PATTERN_TIP;
+  else if (!strcasecmp(argv[3], "tpavx2"))
+    arch = PLL_ATTRIB_ARCH_AVX2 | PLL_ATTRIB_PATTERN_TIP;
+  else if (!strcasecmp(argv[3], "tpsse"))
+    arch = PLL_ATTRIB_ARCH_SSE | PLL_ATTRIB_PATTERN_TIP;
+  else if (!strcasecmp(argv[3], "tpcpu"))
+    arch = PLL_ATTRIB_ARCH_CPU| PLL_ATTRIB_PATTERN_TIP;
+
+  printf("Setting flags:\n");
+  if (arch & PLL_ATTRIB_ARCH_CPU)
+    printf("\tPLL_ATTRIB_ARCH_CPU\n");
+  if (arch & PLL_ATTRIB_ARCH_SSE)
+    printf("\tPLL_ATTRIB_ARCH_SSE\n");
+  if (arch & PLL_ATTRIB_ARCH_AVX)
+    printf("\tPLL_ATTRIB_ARCH_AVX\n");
+  if (arch & PLL_ATTRIB_ARCH_AVX2)
+    printf("\tPLL_ATTRIB_ARCH_AVX2\n");
+  if (arch & PLL_ATTRIB_PATTERN_TIP)
+    printf("\tPLL_ATTRIB_PATTERN_TIP\n");
+
+  unsigned int states = atoi(argv[4]);
+  unsigned const int * map = pll_map_nt;
+  if (states == 20)
+  {
+    map = pll_map_aa;
+  }
 
   char * seq = NULL;
   char * hdr = NULL;
@@ -121,7 +155,7 @@ int main(int argc, char * argv[])
   printf("Number of sites: %d\n", sites);
 
   unsigned int * weight = pll_compress_site_patterns(seqdata,
-                                                     pll_map_nt,
+                                                     map,
                                                      tip_nodes_count,
                                                      &sites);
   printf("Number of unique sites: %d\n", sites);
@@ -143,13 +177,13 @@ int main(int argc, char * argv[])
 
   partition = pll_partition_create(tip_nodes_count,
                                    inner_nodes_count,
-                                   STATES,
+                                   states,
                                    (unsigned int)sites,
                                    1,
                                    branch_count,
                                    RATE_CATS,
                                    inner_nodes_count,
-                                   PLL_ATTRIB_ARCH_CPU);
+                                   arch);
 
 
   /* set pattern weights and free the weights array */
@@ -158,7 +192,7 @@ int main(int argc, char * argv[])
 
   /* find sequences in hash table and link them with the corresponding taxa */
   for (i = 0; i < tip_nodes_count; ++i)
-    pll_set_tip_states(partition, i, pll_map_nt, seqdata[i]);
+    pll_set_tip_states(partition, i, map, seqdata[i]);
 
 
   unsigned int score;
@@ -167,7 +201,14 @@ int main(int argc, char * argv[])
 
   pll_utree_t * tree = pll_fastparsimony_stepwise(&parsimony, headers, &score,1,atoi(argv[2]));
   printf("Score: %u\n", score);
-  char * newick = pll_utree_export_newick(tree);
+
+  /* select a random inner node */
+  long int r = random() % tree->inner_count;
+  pll_unode_t * root = tree->nodes[tree->tip_count + r];
+
+  /* export the tree to newick format with the selected inner node as the root
+     of the unrooted binary tree */
+  char * newick = pll_utree_export_newick(root);
   printf("%s\n", newick);
   free(newick);
 

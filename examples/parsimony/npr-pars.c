@@ -265,7 +265,7 @@ int main(int argc, char * argv[])
   free(recops);
 
   /* we will no longer need the tree structure */
-  pll_rtree_destroy(tree);
+  pll_rtree_destroy(tree,NULL);
   
   /* destroy the parsimony structure */
   pll_parsimony_destroy(pars);

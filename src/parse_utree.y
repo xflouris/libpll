@@ -34,7 +34,7 @@ extern void pll_utree__delete_buffer(struct pll_utree_buffer_state * buffer);
 
 static unsigned int tip_cnt = 0;
 
-static void dealloc_data(pll_utree_t * node, void (*cb_destroy)(void *))
+static void dealloc_data(pll_unode_t * node, void (*cb_destroy)(void *))
 {
   if (node->data)
   {
@@ -43,7 +43,7 @@ static void dealloc_data(pll_utree_t * node, void (*cb_destroy)(void *))
   }
 }
 
-static void dealloc_tree_recursive(pll_utree_t * node,
+static void dealloc_graph_recursive(pll_unode_t * node,
                                    void (*cb_destroy)(void *))
 {
   if (!node->next)
@@ -53,8 +53,8 @@ static void dealloc_tree_recursive(pll_utree_t * node,
     return;
   }
 
-  dealloc_tree_recursive(node->next->back, cb_destroy);
-  dealloc_tree_recursive(node->next->next->back, cb_destroy);
+  dealloc_graph_recursive(node->next->back, cb_destroy);
+  dealloc_graph_recursive(node->next->next->back, cb_destroy);
 
   /* deallocate any extra data */
   dealloc_data(node,cb_destroy);
@@ -67,8 +67,8 @@ static void dealloc_tree_recursive(pll_utree_t * node,
   free(node);
 }
 
-PLL_EXPORT void pll_utree_destroy(pll_utree_t * root,
-                                  void (*cb_destroy)(void *))
+PLL_EXPORT void pll_utree_graph_destroy(pll_unode_t * root,
+                                        void (*cb_destroy)(void *))
 {
   if (!root) return;
   if (!(root->next))
@@ -79,11 +79,11 @@ PLL_EXPORT void pll_utree_destroy(pll_utree_t * root,
   }
 
   if (root->next)
-    dealloc_tree_recursive(root->next->back,cb_destroy);
+    dealloc_graph_recursive(root->next->back,cb_destroy);
   if (root->next->next)
-    dealloc_tree_recursive(root->next->next->back,cb_destroy);
+    dealloc_graph_recursive(root->next->next->back,cb_destroy);
   if (root->back)
-    dealloc_tree_recursive(root->back,cb_destroy);
+    dealloc_graph_recursive(root->back,cb_destroy);
 
   /* deallocate any extra data */
   dealloc_data(root,cb_destroy);
@@ -97,7 +97,43 @@ PLL_EXPORT void pll_utree_destroy(pll_utree_t * root,
   free(root);
 }
 
-static void pll_utree_error(pll_utree_t * tree, const char * s)
+PLL_EXPORT void pll_utree_destroy(pll_utree_t * tree,
+                                  void (*cb_destroy)(void *))
+{
+  unsigned int i;
+  pll_unode_t * node;
+
+  /* deallocate tip nodes */
+  for (i = 0; i < tree->tip_count; ++i)
+  {
+    if (tree->nodes[i]->label)
+      free(tree->nodes[i]->label);
+    free(tree->nodes[i]);
+  }
+
+  /* deallocate inner nodes */
+  for (i = tree->tip_count; i < tree->tip_count + tree->inner_count; ++i)
+  {
+    node = tree->nodes[i];
+
+    dealloc_data(node, cb_destroy);
+    dealloc_data(node->next, cb_destroy);
+    dealloc_data(node->next->next, cb_destroy);
+
+    if (node->label)
+      free(node->label);
+
+    free(node->next->next);
+    free(node->next);
+    free(node);
+  }
+
+  /* deallocate tree structure */
+  free(tree->nodes);
+  free(tree);
+}
+
+static void pll_utree_error(pll_unode_t * node, const char * s)
 {
   pll_errno = PLL_ERROR_NEWICK_SYNTAX;
   if (pll_utree_colstart == pll_utree_colend)
@@ -114,12 +150,12 @@ static void pll_utree_error(pll_utree_t * tree, const char * s)
 {
   char * s;
   char * d;
-  struct pll_utree * tree;
+  struct pll_unode_s * tree;
 }
 
 %error-verbose
-%parse-param {struct pll_utree * tree}
-%destructor { pll_utree_destroy($$,NULL); } subtree
+%parse-param {struct pll_unode_s * tree}
+%destructor { pll_utree_graph_destroy($$,NULL); } subtree
 %destructor { free($$); } STRING
 %destructor { free($$); } NUMBER
 %destructor { free($$); } label
@@ -139,11 +175,10 @@ static void pll_utree_error(pll_utree_t * tree, const char * s)
 
 input: OPAR subtree COMMA subtree COMMA subtree CPAR optional_label optional_length SEMICOLON
 {
-  tree->next               = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
+  tree->next               = (pll_unode_t *)calloc(1, sizeof(pll_unode_t));
 
-  tree->next->next         = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
+  tree->next->next         = (pll_unode_t *)calloc(1, sizeof(pll_unode_t));
   tree->next->next->next   = tree;
-
 
   tree->back               = $2;
   tree->next->back         = $4;
@@ -166,11 +201,11 @@ input: OPAR subtree COMMA subtree COMMA subtree CPAR optional_label optional_len
 
 subtree: OPAR subtree COMMA subtree CPAR optional_label optional_length
 {
-  $$                     = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
+  $$                     = (pll_unode_t *)calloc(1, sizeof(pll_unode_t));
 
-  $$->next               = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
+  $$->next               = (pll_unode_t *)calloc(1, sizeof(pll_unode_t));
 
-  $$->next->next         = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
+  $$->next->next         = (pll_unode_t *)calloc(1, sizeof(pll_unode_t));
   $$->next->next->next   = $$;
 
 
@@ -192,7 +227,7 @@ subtree: OPAR subtree COMMA subtree CPAR optional_label optional_length
 }
        | label optional_length
 {
-  $$ = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
+  $$ = (pll_unode_t *)calloc(1, sizeof(pll_unode_t));
 
   $$->label  = $1;
   $$->length = $2 ? atof($2) : 0;
@@ -209,7 +244,7 @@ number: NUMBER   { $$=$1;};
 
 %%
 
-static void recursive_assign_indices(pll_utree_t * node,
+static void recursive_assign_indices(pll_unode_t * node,
                                     unsigned int * tip_clv_index,
                                     unsigned int * inner_clv_index,
                                     int * inner_scaler_index,
@@ -258,7 +293,7 @@ static void recursive_assign_indices(pll_utree_t * node,
   *inner_node_index = *inner_node_index + 3;
 }
 
-PLL_EXPORT void pll_utree_reset_template_indices(pll_utree_t * node,
+PLL_EXPORT void pll_utree_reset_template_indices(pll_unode_t * node,
                                                  unsigned int tip_count)
 {
   unsigned int tip_clv_index = 0;
@@ -301,28 +336,133 @@ PLL_EXPORT void pll_utree_reset_template_indices(pll_utree_t * node,
   node->next->next->pmatrix_index = node->next->next->back->pmatrix_index;
 }
 
-PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
-                                                unsigned int * tip_count)
+static void fill_nodes_recursive(pll_unode_t * node,
+                                 pll_unode_t ** array,
+                                 unsigned int * tip_index,
+                                 unsigned int * inner_index)
 {
-  struct pll_utree * tree;
+  if (!node->next)
+  {
+    array[*tip_index] = node;
+    *tip_index = *tip_index + 1;
+    return;
+  }
+
+  fill_nodes_recursive(node->next->back,       array, tip_index, inner_index);
+  fill_nodes_recursive(node->next->next->back, array, tip_index, inner_index);
+
+  array[*inner_index] = node;
+  *inner_index = *inner_index + 1;
+}
+
+static unsigned int utree_count_tips_recursive(pll_unode_t * node)
+{
+  unsigned int count = 0;
+
+  if (!node->next)
+    return 1;
+
+  count += utree_count_tips_recursive(node->next->back);
+  count += utree_count_tips_recursive(node->next->next->back);
+
+  return count;
+}
+
+static unsigned int utree_count_tips(pll_unode_t * root)
+{
+  unsigned int count = 0;
+
+  if (!root->next && !root->back->next)
+    return 0;
+
+  if (!root->next)
+    root = root->back;
+
+  count += utree_count_tips_recursive(root->back);
+  count += utree_count_tips_recursive(root->next->back);
+  count += utree_count_tips_recursive(root->next->next->back);
+
+  return count;
+}
+
+/* wraps/encalupsates the unrooted tree graph into a tree structure
+   that contains a list of nodes, number of tips and number of inner
+   nodes. If 0 is passed as tip_count, then an additional recrursion
+   of the tree structure is done to detect the number of tips */
+PLL_EXPORT pll_utree_t * pll_utree_wraptree(pll_unode_t * root,
+                                            unsigned int tip_count)
+{
+  pll_utree_t * tree = (pll_utree_t *)malloc(sizeof(pll_utree_t));
+  if (!tree)
+  {
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    return PLL_FAILURE;
+  }
+
+  if (tip_count < 3 && tip_count != 0)
+  {
+    snprintf(pll_errmsg, 200, "Invalid tip_count value (%u).", tip_count);
+    pll_errno = PLL_ERROR_PARAM_INVALID;
+    return PLL_FAILURE;
+  }
+
+  if (tip_count == 0)
+  {
+    tip_count = utree_count_tips(root);
+    if (!tip_count)
+    {
+      snprintf(pll_errmsg, 200, "Input tree contains no inner nodes.");
+      pll_errno = PLL_ERROR_PARAM_INVALID;
+      return PLL_FAILURE;
+    }
+  }
+
+  tree->nodes = (pll_unode_t **)malloc((2*tip_count-2)*sizeof(pll_unode_t *));
+  if (!tree->nodes)
+  {
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    return PLL_FAILURE;
+  }
+  
+  unsigned int tip_index = 0;
+  unsigned int inner_index = tip_count;
+
+  fill_nodes_recursive(root->back,             tree->nodes, &tip_index, &inner_index);
+  fill_nodes_recursive(root->next->back,       tree->nodes, &tip_index, &inner_index);
+  fill_nodes_recursive(root->next->next->back, tree->nodes, &tip_index, &inner_index);
+
+  tree->nodes[inner_index] = root;
+  tree->tip_count = tip_count;
+  tree->edge_count = 2*tip_count-3;
+  tree->inner_count = tip_count-2;
+
+  return tree;
+}
+
+PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename)
+{
+  pll_utree_t * tree;
+
+  struct pll_unode_s * root;
 
   /* reset tip count */
   tip_cnt = 0;
 
-  tree = (pll_utree_t *)calloc(1, sizeof(pll_utree_t));
-
   pll_utree_in = fopen(filename, "r");
   if (!pll_utree_in)
   {
-    pll_utree_destroy(tree,NULL);
     pll_errno = PLL_ERROR_FILE_OPEN;
     snprintf(pll_errmsg, 200, "Unable to open file (%s)", filename);
     return PLL_FAILURE;
   }
-  else if (pll_utree_parse(tree))
+
+  root = (pll_unode_t *)calloc(1, sizeof(pll_unode_t));
+  if (pll_utree_parse(root))
   {
-    pll_utree_destroy(tree,NULL);
-    tree = NULL;
+    pll_utree_graph_destroy(root,NULL);
+    root = NULL;
     fclose(pll_utree_in);
     pll_utree_lex_destroy();
     return PLL_FAILURE;
@@ -332,24 +472,25 @@ PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename,
 
   pll_utree_lex_destroy();
 
-  *tip_count = tip_cnt;
+  /* initialize clv and scaler indices to the default template */
+  pll_utree_reset_template_indices(root, tip_cnt);
 
-  /* initialize clv and scaler indices */
-  pll_utree_reset_template_indices(tree, tip_cnt);
+  /* wrap tree */
+  tree = pll_utree_wraptree(root,tip_cnt);
 
   return tree;
 }
 
-PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(const char * s,
-                                                       unsigned int * tip_count)
+PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(const char * s)
 {
   int rc;
-  struct pll_utree * tree;
+  struct pll_unode_s * root;
+  pll_utree_t * tree = NULL;
 
   /* reset tip count */
   tip_cnt = 0;
 
-  if (!(tree = (pll_utree_t *)calloc(1, sizeof(pll_utree_t))))
+  if (!(root = (pll_unode_t *)calloc(1, sizeof(pll_unode_t))))
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
@@ -357,21 +498,20 @@ PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(const char * s,
   }
 
   struct pll_utree_buffer_state * buffer = pll_utree__scan_string(s);
-  rc = pll_utree_parse(tree);
+  rc = pll_utree_parse(root);
   pll_utree__delete_buffer(buffer);
 
   pll_utree_lex_destroy();
 
   if (!rc)
   {
-    *tip_count = tip_cnt;
-
     /* initialize clv and scaler indices */
-    pll_utree_reset_template_indices(tree, tip_cnt);
+    pll_utree_reset_template_indices(root, tip_cnt);
 
-    return tree;
+    tree = pll_utree_wraptree(root,tip_cnt);
   }
 
-  free(tree);
-  return NULL;
+  free(root);
+
+  return tree;
 }

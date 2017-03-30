@@ -38,45 +38,6 @@ typedef struct pll_svg_aux_s
   double max_tree_len;
 } pll_svg_aux_t;
 
-static void data_destroy_recursive(pll_utree_t * node)
-{
-  if (!node->next)
-  {
-    if (node->data)
-    {
-      free(node->data);
-      node->data = NULL;
-    }
-    return;
-  }
-
-  data_destroy_recursive(node->next->back);
-  data_destroy_recursive(node->next->next->back);
-
-  if (node->data)
-  {
-    free(node->data);
-    node->data = NULL;
-  }
-}
-
-static void data_destroy(pll_utree_t * root)
-{
-  if (!root) return;
-  if (!root->next)
-  {
-    if (root->data)
-    {
-      free(root->data);
-      root->data = NULL;
-    }
-    return;
-  }
-
-  data_destroy_recursive(root->back);
-  data_destroy_recursive(root);
-}
-
 static pll_svg_data_t * create_data(int height, double x, double y)
 {
   pll_svg_data_t * data = (pll_svg_data_t *)malloc(sizeof(pll_svg_data_t));
@@ -89,7 +50,7 @@ static pll_svg_data_t * create_data(int height, double x, double y)
   return data;
 }
 
-static int utree_height_recursive(pll_utree_t * node)
+static int utree_height_recursive(pll_unode_t * node)
 {
   if (!node->next)
   {
@@ -116,7 +77,7 @@ static int utree_height_recursive(pll_utree_t * node)
   return 1;
 }
 
-static int utree_set_height(pll_utree_t * root)
+static int utree_set_height(pll_unode_t * root)
 {
   if (!root->next) return PLL_FAILURE;
 
@@ -152,11 +113,11 @@ static void draw_circle(FILE * fp, double cx, double cy, double r)
           cx, cy, r);
 }
 
-static void utree_set_offset(pll_utree_t * node,
+static void utree_set_offset(pll_unode_t * node,
                              const pll_svg_attrib_t * attr,
                              const pll_svg_aux_t * aux)
 {
-  pll_utree_t * parent = NULL;
+  pll_unode_t * parent = NULL;
 
   /* scale node's branch length (edge towards parent) */
   pll_svg_data_t * data = (pll_svg_data_t *)(node->data);
@@ -188,13 +149,13 @@ static void utree_set_offset(pll_utree_t * node,
 }
 
 static void utree_plot(FILE * fp,
-                       pll_utree_t * node,
+                       pll_unode_t * node,
                        const pll_svg_attrib_t * attr,
                        pll_svg_aux_t * aux)
 {
   double y;
 //  static int tip_occ = 0;
-  pll_utree_t * parent = NULL;
+  pll_unode_t * parent = NULL;
 
   pll_svg_data_t * data = (pll_svg_data_t *)(node->data);
   pll_svg_data_t * parent_data = (pll_svg_data_t *)(node->back->data);
@@ -276,23 +237,17 @@ static void utree_plot(FILE * fp,
 
 static void utree_scaler_init(const pll_svg_attrib_t * attr,
                               pll_svg_aux_t * aux,
-                              pll_utree_t * root,
-                              unsigned int tip_count)
+                              pll_utree_t * tree)
 {
   unsigned int i;
   double len = 0;
   double label_len;
 
-  pll_utree_t ** node_list = (pll_utree_t **)malloc((size_t)tip_count *
-                                                    sizeof(pll_utree_t *));
-
-  pll_utree_query_tipnodes(root, node_list);
-
   /* compute the length of all tip-to-root paths and store the longest one in
      max_tree_len */
-  for (i = 0; i < tip_count; ++i)
+  for (i = 0; i < tree->tip_count; ++i)
   {
-    pll_utree_t * node = node_list[i];
+    pll_unode_t * node = tree->nodes[i];
 
     len = node->length;
     node = node->back;
@@ -316,7 +271,7 @@ static void utree_scaler_init(const pll_svg_attrib_t * attr,
       aux->max_tree_len = len;
 
     label_len = (attr->font_size / 1.5) * 
-                (node_list[i]->label ? strlen(node_list[i]->label) : 0);
+                (tree->nodes[i]->label ? strlen(tree->nodes[i]->label) : 0);
 
     len = (aux->canvas_width - label_len) / len;
     if (i == 0)
@@ -331,14 +286,12 @@ static void utree_scaler_init(const pll_svg_attrib_t * attr,
         aux->max_font_len = label_len;
       }
   }
-  free(node_list);
 }
 
 static void print_header(FILE * fp,
-                         pll_utree_t * root,
+                         pll_utree_t * tree,
                          const pll_svg_attrib_t * attr,
-                         pll_svg_aux_t * aux,
-                         unsigned int tip_count)
+                         pll_svg_aux_t * aux)
 {
   long svg_height;
 
@@ -346,10 +299,10 @@ static void print_header(FILE * fp,
 
   /* initialize pixel scaler (scaler) and compute max tree 
      length (max_tree_len) */
-  utree_scaler_init(attr, aux, root, tip_count);
+  utree_scaler_init(attr, aux, tree);
 
   svg_height = attr->margin_top + attr->legend_spacing + attr->margin_bottom + 
-               attr->tip_spacing * tip_count;
+               attr->tip_spacing * tree->tip_count;
 
   /* print svg header tag with dimensions and grey border */
   fprintf(fp, "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%ld\" "
@@ -393,8 +346,8 @@ static void print_header(FILE * fp,
 }
 
 static void svg_make(FILE * fp,
-                     pll_utree_t * root,
-                     unsigned int tip_count,
+                     pll_utree_t * tree,
+                     pll_unode_t * root,
                      const pll_svg_attrib_t * attr)
 {
 
@@ -406,7 +359,7 @@ static void svg_make(FILE * fp,
   aux.tip_occ = 0;
 
   /* print SVG header */
-  print_header(fp,root,attr,&aux,tip_count);
+  print_header(fp,tree,attr,&aux);
 
   /* compute position for each node */
   utree_set_offset(root,attr,&aux);
@@ -449,40 +402,61 @@ PLL_EXPORT void pll_svg_attrib_destroy(pll_svg_attrib_t * attrib)
 }
 
 PLL_EXPORT int pll_utree_export_svg(pll_utree_t * tree,
-                                    unsigned int tip_count,
+                                    pll_unode_t * root,
                                     const pll_svg_attrib_t * attribs,
                                     const char * filename)
 {
-  /* clone the tree */
-  pll_utree_t * cloned = pll_utree_clone(tree);
-  if (!cloned)
-    return PLL_FAILURE;
+  unsigned int i;
 
-  /* treat unrooted tree as rooted binary with a ternary root
-     and compute the height of each node */
-  if (!utree_set_height(cloned))
-  {
-    pll_utree_destroy(cloned,NULL);
+  /* clone the tree */
+  int rc = PLL_SUCCESS;
+
+  if (!root || !(root->next))
     return PLL_FAILURE;
-  }
 
   /* open output file for writing */
   FILE * fp = fopen(filename, "w");
   if (!fp)
   {
-    pll_utree_destroy(cloned,NULL);
     return PLL_FAILURE;
   }
 
-  /* create the svg */
-  svg_make(fp, cloned, tip_count, attribs);
 
-  /* destroy data element from nodes in the cloned tree, and deallocate
-     the tree */
-  data_destroy(cloned);
-  pll_utree_destroy(cloned,NULL);
+  /* backup data */
+  void ** data_old = (void **)malloc((tree->tip_count+tree->inner_count) *
+                                      sizeof(void *));
+  if (!data_old)
+  {
+    return PLL_FAILURE;
+  }
+
+  /* copy old data */
+  for (i = 0; i < tree->tip_count+tree->inner_count; ++i)
+  {
+    data_old[i] = tree->nodes[i]->data;
+    tree->nodes[i]->data = NULL;
+  }
+
+
+  /* treat unrooted tree as rooted binary with a ternary root
+     and compute the height of each node */
+  //if (!utree_set_height(cloned))
+  if (!utree_set_height(root))
+    rc = PLL_FAILURE;
+  else
+    svg_make(fp, tree, root, attribs);
 
   fclose(fp);
 
-  return PLL_SUCCESS;
+  /* restore old data */
+  for (i = 0; i < tree->tip_count+tree->inner_count; ++i)
+  {
+    if (tree->nodes[i]->data)
+      free(tree->nodes[i]->data);
+    tree->nodes[i]->data = data_old[i];
+  }
+  free(data_old);
+
+
+  return rc;
 }

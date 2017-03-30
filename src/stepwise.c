@@ -29,7 +29,7 @@ typedef struct
   int clv_valid;
 } node_info_t;
 
-static pll_utree_t ** travbuffer;
+static pll_unode_t ** travbuffer;
 static pll_pars_buildop_t * parsops;
 
 static char * xstrdup(const char * s)
@@ -98,7 +98,7 @@ static unsigned int * create_shuffled(unsigned int n, unsigned int seed)
   return x;
 }
 
-static void dealloc_data_onenode(pll_utree_t * node)
+static void dealloc_data_onenode(pll_unode_t * node)
 {
   if (node->data)
   {
@@ -107,7 +107,7 @@ static void dealloc_data_onenode(pll_utree_t * node)
   }
 }
 
-static void dealloc_data(pll_utree_t * node)
+static void dealloc_data(pll_unode_t * node)
 {
   dealloc_data_onenode(node);
   dealloc_data_onenode(node->next);
@@ -115,7 +115,7 @@ static void dealloc_data(pll_utree_t * node)
 }
 
 /* a callback function for performing a partial traversal */
-static int cb_partial_traversal(pll_utree_t * node)
+static int cb_partial_traversal(pll_unode_t * node)
 {
   node_info_t * node_info;
 
@@ -160,19 +160,19 @@ static int cb_partial_traversal(pll_utree_t * node)
   return 1;
 }
 
-static pll_utree_t * utree_inner_create(unsigned int i)
+static pll_unode_t * utree_inner_create(unsigned int i)
 {
-  pll_utree_t * node = (pll_utree_t *)calloc(1,sizeof(pll_utree_t));
+  pll_unode_t * node = (pll_unode_t *)calloc(1,sizeof(pll_unode_t));
   if (!node)
     return NULL;
   
-  node->next = (pll_utree_t *)calloc(1,sizeof(pll_utree_t));
+  node->next = (pll_unode_t *)calloc(1,sizeof(pll_unode_t));
   if (!node->next)
   {
     free(node);
     return NULL;
   }
-  node->next->next = (pll_utree_t *)calloc(1,sizeof(pll_utree_t));
+  node->next->next = (pll_unode_t *)calloc(1,sizeof(pll_unode_t));
   if (!node->next->next)
   {
     free(node->next);
@@ -189,16 +189,16 @@ static pll_utree_t * utree_inner_create(unsigned int i)
   return node;
 }
 
-static pll_utree_t * utree_tip_create(unsigned int i)
+static pll_unode_t * utree_tip_create(unsigned int i)
 {
-  pll_utree_t * node = (pll_utree_t *)calloc(1,sizeof(pll_utree_t));
+  pll_unode_t * node = (pll_unode_t *)calloc(1,sizeof(pll_unode_t));
   node->next = NULL;
   node->clv_index = i;
 
   return node;
 }
 
-static void utree_link(pll_utree_t * a, pll_utree_t * b)
+static void utree_link(pll_unode_t * a, pll_unode_t * b)
 {
   /*
 
@@ -214,7 +214,7 @@ static void utree_link(pll_utree_t * a, pll_utree_t * b)
   b->back = a;
 }
 
-static void utree_edgesplit(pll_utree_t * a, pll_utree_t * b, pll_utree_t * c)
+static void utree_edgesplit(pll_unode_t * a, pll_unode_t * b, pll_unode_t * c)
 {
   /*
                 *                                      *
@@ -239,9 +239,9 @@ static void utree_edgesplit(pll_utree_t * a, pll_utree_t * b, pll_utree_t * c)
 }
 
 static unsigned int utree_iterate(pll_parsimony_t ** list,
-                                  pll_utree_t ** edge_list,
-                                  pll_utree_t * inner_node,
-                                  pll_utree_t * tip_node,
+                                  pll_unode_t ** edge_list,
+                                  pll_unode_t * inner_node,
+                                  pll_unode_t * tip_node,
                                   unsigned int edge_count,
                                   unsigned int partition_count)
 {
@@ -256,12 +256,12 @@ static unsigned int utree_iterate(pll_parsimony_t ** list,
   min_cost = ~0u;
 
   /* find first empty slot in edge_list */
-  pll_utree_t ** empty_slot = edge_list + edge_count;
+  pll_unode_t ** empty_slot = edge_list + edge_count;
 
   for (i = 0; i < edge_count; ++i)
   {
     /* make the split */
-    pll_utree_t * d = edge_list[i]->back;
+    pll_unode_t * d = edge_list[i]->back;
     utree_edgesplit(edge_list[i], inner_node, inner_node->next); 
     utree_link(inner_node->next->next, tip_node);
 
@@ -271,6 +271,7 @@ static unsigned int utree_iterate(pll_parsimony_t ** list,
 
     /* make a partial traversal */
     if (!pll_utree_traverse(tip_node->back,
+                            PLL_TREE_TRAVERSE_POSTORDER,
                             cb_partial_traversal,
                             travbuffer,
                             &traversal_size))
@@ -321,7 +322,7 @@ static unsigned int utree_iterate(pll_parsimony_t ** list,
   return min_cost;
 }
 
-static void invalidate_node(pll_utree_t * node)
+static void invalidate_node(pll_unode_t * node)
 {
   node_info_t * info;
 
@@ -364,7 +365,7 @@ PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
   *cost = ~0u;
 
 
-  pll_utree_t * root;
+  pll_unode_t * root;
 
   /* check that all parsimony structures have the same number of tips and
      inner nodes */
@@ -385,7 +386,7 @@ PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
   /* 1. Make all allocations at the beginning and check everything was
         allocated, otherwise return an error */
 
-  travbuffer = (pll_utree_t **)malloc((2*tips_count-2) * sizeof(pll_utree_t *));
+  travbuffer = (pll_unode_t **)malloc((2*tips_count-2) * sizeof(pll_unode_t *));
 
   root = utree_inner_create(2*tips_count-3);
 
@@ -394,17 +395,17 @@ PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
                                          sizeof(pll_pars_buildop_t));
 
   /* create tip node list with a terminating NULL element */
-  pll_utree_t ** tip_node_list = (pll_utree_t **)calloc(tips_count+1,
-                                                        sizeof(pll_utree_t *));
+  pll_unode_t ** tip_node_list = (pll_unode_t **)calloc(tips_count+1,
+                                                        sizeof(pll_unode_t *));
 
   /* create inner node list for (tips_count - 3) inner nodes (root was already
      created, and leave the last slot NULL for termination */
-  pll_utree_t ** inner_node_list = (pll_utree_t **)calloc(tips_count - 2,
-                                                          sizeof(pll_utree_t *));
+  pll_unode_t ** inner_node_list = (pll_unode_t **)calloc(tips_count - 2,
+                                                          sizeof(pll_unode_t *));
 
   if (!inner_node_list || !parsops || !tip_node_list || !root || !travbuffer)
   {
-    pll_utree_destroy(root,NULL);
+    pll_utree_graph_destroy(root,NULL);
     free(parsops);
     free(inner_node_list);
     free(tip_node_list);
@@ -421,12 +422,12 @@ PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
     inner_node_list[i] = utree_inner_create(i+tips_count);
     if (!inner_node_list[i])
     {
-      pll_utree_destroy(root,NULL);
+      pll_utree_graph_destroy(root,NULL);
       free(parsops);
       free(tip_node_list);
       free(travbuffer);
       for (j = 0; j < i; ++j)
-        pll_utree_destroy(inner_node_list[j],NULL);
+        pll_utree_graph_destroy(inner_node_list[j],NULL);
       free(inner_node_list);
 
       pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -451,12 +452,12 @@ PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
     {
       free(tip_node_list[i]); 
 
-      pll_utree_destroy(root,NULL);
+      pll_utree_graph_destroy(root,NULL);
       free(parsops);
       free(inner_node_list);
       free(travbuffer);
       for (j = 0; j < i; ++j)
-        pll_utree_destroy(tip_node_list[j],NULL);
+        pll_utree_graph_destroy(tip_node_list[j],NULL);
       free(tip_node_list);
 
       pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -483,8 +484,8 @@ PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
   utree_link(root->next->next, tip_node_list[2]);
 
   /* available placements */
-  pll_utree_t ** edge_list = (pll_utree_t **)calloc(2*tips_count-3,
-                                                    sizeof(pll_utree_t *));
+  pll_unode_t ** edge_list = (pll_unode_t **)calloc(2*tips_count-3,
+                                                    sizeof(pll_unode_t *));
   edge_list[0] = root;
   edge_list[1] = root->next;
   edge_list[2] = root->next->next;
@@ -538,5 +539,8 @@ PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
   free(travbuffer);
   free(parsops);
 
-  return root;
+  /* wrap tree */
+  pll_utree_t * tree = pll_utree_wraptree(root,tips_count);
+
+  return tree;
 }
