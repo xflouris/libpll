@@ -188,7 +188,7 @@ int cb_full_traversal(pll_unode_t * node)
   return 1;
 }
 
-int cb_rfull_traversal(pll_rtree_t * node)
+int cb_rfull_traversal(pll_rnode_t * node)
 {
   return 1;
 }

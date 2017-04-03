@@ -29,8 +29,25 @@
 
 static void fatal(const char * format, ...) __attribute__ ((noreturn));
 
+static void * xmalloc(size_t size)
+{ 
+  void * t;
+  t = malloc(size);
+  if (!t)
+    fatal("Unable to allocate enough memory.");
+  
+  return t;
+} 
+  
+static char * xstrdup(const char * s)
+{ 
+  size_t len = strlen(s);
+  char * p = (char *)xmalloc(len+1);
+  return strcpy(p,s);
+} 
+
 /* a callback function for performing a full traversal */
-static int cb_full_traversal(pll_rtree_t * node)
+static int cb_full_traversal(pll_rnode_t * node)
 {
   return 1;
 }
@@ -54,7 +71,7 @@ int main(int argc, char * argv[])
   pll_parsimony_t * pars;
   pll_pars_buildop_t * operations;
   pll_pars_recop_t * recops;
-  pll_rtree_t ** travbuffer;
+  pll_rnode_t ** travbuffer;
 
   /* we accept only two arguments - the newick tree (unrooted binary) and the
      alignment in the form of PHYLIP reads */
@@ -63,11 +80,12 @@ int main(int argc, char * argv[])
 
   /* parse the unrooted binary tree in newick format, and store the number
      of tip nodes in tip_nodes_count */
-  pll_rtree_t * tree = pll_rtree_parse_newick(argv[1], &tip_nodes_count);
+  pll_rtree_t * tree = pll_rtree_parse_newick(argv[1]);
   if (!tree)
     fatal("Tree must be a rooted binary tree");
 
   /* compute and show node count information */
+  tip_nodes_count = tree->tip_count;
   inner_nodes_count = tip_nodes_count - 1;
   nodes_count = inner_nodes_count + tip_nodes_count;
   branch_count = nodes_count - 1;
@@ -91,22 +109,21 @@ int main(int argc, char * argv[])
 
   */
 
-  /*  obtain an array of pointers to tip nodes */
-  pll_rtree_t ** tipnodes = (pll_rtree_t  **)calloc(tip_nodes_count,
-                                                    sizeof(pll_rtree_t *));
-  pll_rtree_query_tipnodes(tree, tipnodes);
-
   /* create a libc hash table of size tip_nodes_count */
   hcreate(tip_nodes_count);
 
   /* populate a libc hash table with tree tip labels */
-  unsigned int * data = (unsigned int *)malloc(tip_nodes_count *
-                                               sizeof(unsigned int));
+  unsigned int * data = (unsigned int *)xmalloc(tip_nodes_count *
+                                                sizeof(unsigned int));
   for (i = 0; i < tip_nodes_count; ++i)
   {
-    data[i] = tipnodes[i]->clv_index;
+    data[i] = tree->nodes[i]->clv_index;
     ENTRY entry;
-    entry.key = tipnodes[i]->label;
+#ifdef __APPLE__
+    entry.key = xstrdup(tree->nodes[i]->label);
+#else
+    entry.key = tree->nodes[i]->label;
+#endif
     entry.data = (void *)(data+i);
     hsearch(entry, ENTER);
   }
@@ -172,19 +189,19 @@ int main(int argc, char * argv[])
 
   /* we no longer need these two arrays (keys and values of hash table... */
   free(data);
-  free(tipnodes);
 
   /* allocate a buffer for storing pointers to nodes of the tree in postorder
      traversal */
-  travbuffer = (pll_rtree_t **)malloc(nodes_count * sizeof(pll_rtree_t *));
+  travbuffer = (pll_rnode_t **)xmalloc(nodes_count * sizeof(pll_rnode_t *));
 
 
-  operations = (pll_pars_buildop_t *)malloc(inner_nodes_count *
-                                      sizeof(pll_pars_buildop_t));
+  operations = (pll_pars_buildop_t *)xmalloc(inner_nodes_count *
+                                             sizeof(pll_pars_buildop_t));
 
   /* perform a postorder traversal of the rooted tree */
   unsigned int traversal_size;
-  if (!pll_rtree_traverse(tree,
+  if (!pll_rtree_traverse(tree->root,
+                          PLL_TREE_TRAVERSE_POSTORDER,
                           cb_full_traversal,
                           travbuffer,
                           &traversal_size))
@@ -225,15 +242,16 @@ int main(int argc, char * argv[])
   }
 
   /* perform a preorder traversal of the rooted tree */
-  if (!pll_rtree_traverse_preorder(tree,
-                                   cb_full_traversal,
-                                   travbuffer,
-                                   &traversal_size))
+  if (!pll_rtree_traverse(tree->root,
+                          PLL_TREE_TRAVERSE_PREORDER,
+                          cb_full_traversal,
+                          travbuffer,
+                          &traversal_size))
     fatal("Function pll_rtree_traverse() requires inner nodes as parameters");
 
   /* create the reconstruct operations */
-  recops = (pll_pars_recop_t *)malloc(inner_nodes_count *
-                                      sizeof(pll_pars_recop_t));
+  recops = (pll_pars_recop_t *)xmalloc(inner_nodes_count *
+                                       sizeof(pll_pars_recop_t));
   pll_rtree_create_pars_recops(travbuffer,
                                traversal_size,
                                recops,

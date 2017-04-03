@@ -29,11 +29,6 @@
 
 static void fatal(const char * format, ...) __attribute__ ((noreturn));
 
-typedef struct
-{
-  int clv_valid;
-} node_info_t;
-
 static void * xmalloc(size_t size)
 { 
   void * t;

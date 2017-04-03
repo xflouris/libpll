@@ -34,26 +34,52 @@ extern void pll_rtree__delete_buffer(struct pll_rtree_buffer_state * buffer);
 
 static unsigned int tip_cnt = 0;
 
-PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * root,
-                                  void (*cb_destroy)(void *))
+static void dealloc_data(pll_rnode_t * node, void (*cb_destroy)(void *))
+{
+  if (node->data)
+  {
+    if (cb_destroy)
+      cb_destroy(node->data);
+  }
+}
+
+PLL_EXPORT void pll_rtree_graph_destroy(pll_rnode_t * root,
+                                        void (*cb_destroy)(void *))
 {
   if (!root) return;
 
-  pll_rtree_destroy(root->left, cb_destroy);
-  pll_rtree_destroy(root->right, cb_destroy);
+  pll_rtree_graph_destroy(root->left, cb_destroy);
+  pll_rtree_graph_destroy(root->right, cb_destroy);
 
-  if (root->data)
-  {
-    if (cb_destroy)
-      cb_destroy(root->data);
-  }
-
+  dealloc_data(root, cb_destroy);
   free(root->label);
   free(root);
 }
 
+PLL_EXPORT void pll_rtree_destroy(pll_rtree_t * tree,
+                                  void (*cb_destroy)(void *))
+{
+  unsigned int i;
+  pll_rnode_t * node;
 
-static void pll_rtree_error(pll_rtree_t * tree, const char * s)
+  /* deallocate all nodes */
+  for (i = 0; i < tree->tip_count + tree->inner_count; ++i)
+  {
+    node = tree->nodes[i];
+    dealloc_data(node, cb_destroy);
+
+    if (node->label)
+      free(node->label);
+
+    free(node);
+  }
+
+  /* deallocate tree structure */
+  free(tree->nodes);
+  free(tree);
+}
+
+static void pll_rtree_error(pll_rnode_t * node, const char * s)
 {
   pll_errno = PLL_ERROR_NEWICK_SYNTAX;
   if (pll_rtree_colstart == pll_rtree_colend)
@@ -70,12 +96,12 @@ static void pll_rtree_error(pll_rtree_t * tree, const char * s)
 {
   char * s;
   char * d;
-  struct pll_rtree * tree;
+  struct pll_rnode_s * tree;
 }
 
 %error-verbose
-%parse-param {struct pll_rtree * tree}
-%destructor { pll_rtree_destroy($$,NULL); } subtree
+%parse-param {struct pll_rnode_s * tree}
+%destructor { pll_rtree_graph_destroy($$,NULL); } subtree
 %destructor { free($$); } STRING
 %destructor { free($$); } NUMBER
 %destructor { free($$); } label
@@ -108,7 +134,7 @@ input: OPAR subtree COMMA subtree CPAR optional_label optional_length SEMICOLON
 
 subtree: OPAR subtree COMMA subtree CPAR optional_label optional_length
 {
-  $$ = (pll_rtree_t *)calloc(1, sizeof(pll_rtree_t));
+  $$ = (pll_rnode_t *)calloc(1, sizeof(pll_rnode_t));
   $$->left   = $2;
   $$->right  = $4;
   $$->label  = $6;
@@ -121,7 +147,7 @@ subtree: OPAR subtree COMMA subtree CPAR optional_label optional_length
 }
        | label optional_length
 {
-  $$ = (pll_rtree_t *)calloc(1, sizeof(pll_rtree_t));
+  $$ = (pll_rnode_t *)calloc(1, sizeof(pll_rnode_t));
   $$->label  = $1;
   $$->length = $2 ? atof($2) : 0;
   $$->left   = NULL;
@@ -138,7 +164,7 @@ number: NUMBER   {$$=$1;};
 
 %%
 
-static void recursive_assign_indices(pll_rtree_t * node,
+static void recursive_assign_indices(pll_rnode_t * node,
                                      unsigned int * tip_clv_index,
                                      unsigned int * inner_clv_index,
                                      int * inner_scaler_index,
@@ -176,7 +202,8 @@ static void recursive_assign_indices(pll_rtree_t * node,
   *inner_node_index = *inner_node_index + 1;
 }
 
-static void assign_indices(pll_rtree_t * root, unsigned int tip_count)
+PLL_EXPORT void pll_rtree_reset_template_indices(pll_rnode_t * root,
+                                                 unsigned int tip_count)
 {
   unsigned int tip_clv_index = 0;
   unsigned int inner_clv_index = tip_count;
@@ -203,33 +230,122 @@ static void assign_indices(pll_rtree_t * root, unsigned int tip_count)
   root->pmatrix_index = 0;
 }
 
-PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
-                                                unsigned int * tip_count)
+static void fill_nodes_recursive(pll_rnode_t * node,
+                                 pll_rnode_t ** array,
+                                 unsigned int * tip_index,
+                                 unsigned int * inner_index)
 {
-  struct pll_rtree * tree;
+  if (!node->left)
+  {
+    array[*tip_index] = node;
+    *tip_index = *tip_index + 1;
+    return;
+  }
+
+  fill_nodes_recursive(node->left,  array, tip_index, inner_index);
+  fill_nodes_recursive(node->right, array, tip_index, inner_index);
+
+  array[*inner_index] = node;
+  *inner_index = *inner_index + 1;
+}
+
+static unsigned int rtree_count_tips(pll_rnode_t * root)
+{
+  unsigned int count = 0;
+
+  if (root->left)
+    count += rtree_count_tips(root->left);
+  if (root->right)
+    count += rtree_count_tips(root->right);
+
+  if (!root->left && !root->right)
+    return 1;
+
+  return count;
+}
+
+PLL_EXPORT pll_rtree_t * pll_rtree_wraptree(pll_rnode_t * root,
+                                            unsigned int tip_count)
+{
+  pll_rtree_t * tree = (pll_rtree_t *)malloc(sizeof(pll_rtree_t));
+  if (!tree)
+  {
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    return PLL_FAILURE;
+  }
+
+  if (tip_count < 2 && tip_count != 0)
+  {
+    snprintf(pll_errmsg, 200, "Invalid tip_count value (%u).", tip_count);
+    pll_errno = PLL_ERROR_PARAM_INVALID;
+    return PLL_FAILURE;
+  }
+
+  if (tip_count == 0)
+  {
+    tip_count = rtree_count_tips(root);
+    if (tip_count < 2)
+    {
+      snprintf(pll_errmsg, 200, "Input tree contains no inner nodes.");
+      pll_errno = PLL_ERROR_PARAM_INVALID;
+      return PLL_FAILURE;
+    }
+  }
+
+  tree->nodes = (pll_rnode_t **)malloc((2*tip_count-1)*sizeof(pll_rnode_t *));
+  if (!tree->nodes)
+  {
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    return PLL_FAILURE;
+  }
+  
+  unsigned int tip_index = 0;
+  unsigned int inner_index = tip_count;
+
+  fill_nodes_recursive(root->left, tree->nodes, &tip_index, &inner_index);
+  fill_nodes_recursive(root->right,tree->nodes, &tip_index, &inner_index);
+  tree->nodes[inner_index] = root;
+
+  tree->tip_count = tip_count;
+  tree->edge_count = 2*tip_count-2;
+  tree->inner_count = tip_count-1;
+  tree->root = root;
+
+  return tree;
+}
+
+PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename)
+{
+  pll_rtree_t * tree;
+
+  struct pll_rnode_s * root;
 
   /* reset tip count */
   tip_cnt = 0;
 
-  if (!(tree = (pll_rtree_t *)calloc(1, sizeof(pll_rtree_t))))
+  /* open input file */
+  pll_rtree_in = fopen(filename, "r");
+  if (!pll_rtree_in)
+  {
+    pll_errno = PLL_ERROR_FILE_OPEN;
+    snprintf(pll_errmsg, 200, "Unable to open file (%s)", filename);
+    return PLL_FAILURE;
+  }
+
+  /* create root node */
+  if (!(root = (pll_rnode_t *)calloc(1, sizeof(pll_rnode_t))))
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return PLL_FAILURE;
   }
 
-  pll_rtree_in = fopen(filename, "r");
-  if (!pll_rtree_in)
+  if (pll_rtree_parse(root))
   {
-    pll_rtree_destroy(tree,NULL);
-    pll_errno = PLL_ERROR_FILE_OPEN;
-    snprintf(pll_errmsg, 200, "Unable to open file (%s)", filename);
-    return PLL_FAILURE;
-  }
-  else if (pll_rtree_parse(tree))
-  {
-    pll_rtree_destroy(tree,NULL);
-    tree = NULL;
+    pll_rtree_graph_destroy(root,NULL);
+    root = NULL;
     fclose(pll_rtree_in);
     pll_rtree_lex_destroy();
     return PLL_FAILURE;
@@ -239,24 +355,25 @@ PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick(const char * filename,
 
   pll_rtree_lex_destroy();
 
-  *tip_count = tip_cnt;
-
   /* initialize clv and scaler indices */
-  assign_indices(tree, tip_cnt);
+  pll_rtree_reset_template_indices(root, tip_cnt);
+
+  /* wrap tree */
+  tree = pll_rtree_wraptree(root,tip_cnt);
 
   return tree;
 }
 
-PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(const char * s,
-                                                       unsigned int * tip_count)
+PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(const char * s)
 {
   int rc;
-  struct pll_rtree * tree;
+  struct pll_rnode_s * root;
+  pll_rtree_t * tree = NULL;
 
   /* reset tip count */
   tip_cnt = 0;
 
-  if (!(tree = (pll_rtree_t *)calloc(1, sizeof(pll_rtree_t))))
+  if (!(root = (pll_rnode_t *)calloc(1, sizeof(pll_rnode_t))))
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
@@ -264,21 +381,20 @@ PLL_EXPORT pll_rtree_t * pll_rtree_parse_newick_string(const char * s,
   }
 
   struct pll_rtree_buffer_state * buffer = pll_rtree__scan_string(s);
-  rc = pll_rtree_parse(tree);
+  rc = pll_rtree_parse(root);
   pll_rtree__delete_buffer(buffer);
 
   pll_rtree_lex_destroy();
 
   if (!rc)
   {
-    *tip_count = tip_cnt;
-
     /* initialize clv and scaler indices */
-    assign_indices(tree, tip_cnt);
+    pll_rtree_reset_template_indices(root, tip_cnt);
 
-    return tree;
+    tree = pll_rtree_wraptree(root,tip_cnt);
   }
+  else
+    free(root);
 
-  free(tree);
-  return NULL;
+  return tree;
 }

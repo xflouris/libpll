@@ -25,18 +25,20 @@ int main(int argc, char * argv[])
   double * branch_lengths;
   pll_partition_t * partition;
   pll_operation_t * operations;
-  pll_rtree_t ** travbuffer;
-  pll_rtree_t ** inner_nodes_list;
+  pll_rnode_t ** travbuffer;
+  pll_rnode_t ** inner_nodes_list;
   unsigned int params_indices[N_RATE_CATS] = {0,0,0,0};
 
   /* parse the unrooted binary tree in newick format, and store the number
      of tip nodes in tip_nodes_count */
-  pll_rtree_t * tree = pll_rtree_parse_newick(TREEFILE, &tip_nodes_count);
+  pll_rtree_t * tree = pll_rtree_parse_newick(TREEFILE);
   if (!tree)
   {
     printf("Error reading tree\n");
     exit(1);
   }
+
+  tip_nodes_count = tree->tip_count;
 
   unsigned int attributes = get_attributes(argc, argv);
 
@@ -50,17 +52,13 @@ int main(int argc, char * argv[])
   printf("Total number of nodes in tree: %d\n", nodes_count);
   printf("Number of branches in tree: %d\n", branch_count);
 
-  pll_rtree_show_ascii(tree, PLL_UTREE_SHOW_LABEL |
-                             PLL_UTREE_SHOW_BRANCH_LENGTH |
-                             PLL_UTREE_SHOW_CLV_INDEX);
-  char * newick = pll_rtree_export_newick(tree);
+  pll_rtree_show_ascii(tree->root,
+                       PLL_UTREE_SHOW_LABEL |
+                       PLL_UTREE_SHOW_BRANCH_LENGTH |
+                       PLL_UTREE_SHOW_CLV_INDEX);
+  char * newick = pll_rtree_export_newick(tree->root);
   printf("%s\n", newick);
   free(newick);
-
-  /*  obtain an array of pointers to tip nodes */
-  pll_rtree_t ** tipnodes = (pll_rtree_t  **)calloc(tip_nodes_count,
-                                                    sizeof(pll_rtree_t *));
-  pll_rtree_query_tipnodes(tree, tipnodes);
 
   /* create a libc hash table of size tip_nodes_count */
   hcreate(tip_nodes_count);
@@ -73,9 +71,9 @@ int main(int argc, char * argv[])
     data[i] = i;
     ENTRY entry;
 #ifdef __APPLE__
-    entry.key = xstrdup(tipnodes[i]->label);
+    entry.key = xstrdup(tree->nodes[i]->label);
 #else
-    entry.key = tipnodes[i]->label;
+    entry.key = tree->nodes[i]->label;
 #endif
     entry.data = (void *)(data+i);
     hsearch(entry, ENTER);
@@ -181,7 +179,6 @@ int main(int argc, char * argv[])
 
   /* we no longer need these two arrays (keys and values of hash table... */
   free(data);
-  free(tipnodes);
 
   /* ...neither the sequences and the headers as they are already
      present in the form of probabilities in the tip CLVs */
@@ -195,7 +192,7 @@ int main(int argc, char * argv[])
 
   /* allocate a buffer for storing pointers to nodes of the tree in postorder
      traversal */
-  travbuffer = (pll_rtree_t **)malloc(nodes_count * sizeof(pll_rtree_t *));
+  travbuffer = (pll_rnode_t **)malloc(nodes_count * sizeof(pll_rnode_t *));
 
   branch_lengths = (double *)malloc(branch_count * sizeof(double));
   matrix_indices = (unsigned int *)malloc(branch_count * sizeof(int));
@@ -203,16 +200,19 @@ int main(int argc, char * argv[])
                                                 sizeof(pll_operation_t));
 
   /* get inner nodes */
-  inner_nodes_list = (pll_rtree_t **)malloc(inner_nodes_count *
-                                                sizeof(pll_rtree_t *));
-  pll_rtree_query_innernodes(tree, inner_nodes_list);
+  inner_nodes_list = (pll_rnode_t **)malloc(inner_nodes_count *
+                                                sizeof(pll_rnode_t *));
+  memcpy(inner_nodes_list,
+         tree->nodes+tip_nodes_count,
+         inner_nodes_count*sizeof(pll_rnode_t *));
 
   unsigned int traversal_size;
 
   /* compute a partial traversal starting from the randomly selected
      inner node */
 
-  if (!pll_rtree_traverse(tree,
+  if (!pll_rtree_traverse(tree->root,
+                          PLL_TREE_TRAVERSE_POSTORDER,
                           cb_rfull_traversal,
                           travbuffer,
                           &traversal_size))
@@ -271,8 +271,8 @@ int main(int argc, char * argv[])
        index for the concrete branch length, and the index of the model of whose
        frequency vector is to be used */
     double logl = pll_compute_root_loglikelihood(partition,
-                                                 tree->clv_index,
-                                                 tree->scaler_index,
+                                                 tree->root->clv_index,
+                                                 tree->root->scaler_index,
                                                  params_indices,
                                                  NULL);
 

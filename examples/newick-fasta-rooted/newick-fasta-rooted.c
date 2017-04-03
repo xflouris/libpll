@@ -29,35 +29,37 @@
 
 static void fatal(const char * format, ...) __attribute__ ((noreturn));
 
+static void * xmalloc(size_t size)
+{ 
+  void * t;
+  t = malloc(size);
+  if (!t)
+    fatal("Unable to allocate enough memory.");
+  
+  return t;
+} 
+  
+static char * xstrdup(const char * s)
+{ 
+  size_t len = strlen(s);
+  char * p = (char *)xmalloc(len+1);
+  return strcpy(p,s);
+} 
+
 /* a callback function for performing a full traversal */
-static int cb_full_traversal(pll_rtree_t * node)
+static int cb_full_traversal(pll_rnode_t * node)
 {
   return 1;
-}
-
-static void set_missing_branch_length_recursive(pll_rtree_t * tree,
-                                                double length)
-{
-  if (!tree) return;
-
-  if (!tree->length)
-    tree->length = length;
-
-  if (tree->left)
-    set_missing_branch_length_recursive(tree->left, length);
-
-  if (tree->right)
-    set_missing_branch_length_recursive(tree->right, length);
 }
 
 /* branch lengths not present in the newick file get a value of 0.000001 */
 static void set_missing_branch_length(pll_rtree_t * tree, double length)
 {
-  if (tree)
-  {
-    set_missing_branch_length_recursive(tree->left,  length);
-    set_missing_branch_length_recursive(tree->right, length);
-  }
+  unsigned int i;
+
+  for (i = 0; i < tree->tip_count + tree->inner_count; ++i)
+    if (!tree->nodes[i]->length)
+      tree->nodes[i]->length = length;
 }
 
 static void fatal(const char * format, ...)
@@ -79,20 +81,21 @@ int main(int argc, char * argv[])
   double * branch_lengths;
   pll_partition_t * partition;
   pll_operation_t * operations;
-  pll_rtree_t ** travbuffer;
+  pll_rnode_t ** travbuffer;
 
   if (argc != 3)
     fatal(" syntax: %s [newick] [fasta]", argv[0]);
 
-  pll_rtree_t * tree = pll_rtree_parse_newick(argv[1], &tip_nodes_count);
+  pll_rtree_t * tree = pll_rtree_parse_newick(argv[1]);
   if (!tree)
     fatal("Tree must be an rooted binary tree");
-
+  
   /* fix all missing branch lengths (i.e. those that did not appear in the
      newick) to 0.000001 */
   set_missing_branch_length(tree, 0.000001);
 
   /* compute and show node count information */
+  tip_nodes_count = tree->tip_count;
   inner_nodes_count = tip_nodes_count - 1;
   nodes_count = inner_nodes_count + tip_nodes_count;
   branch_count = nodes_count - 1;
@@ -114,22 +117,21 @@ int main(int argc, char * argv[])
 
   */
 
-  /*  obtain an array of pointers to tip names */
-  pll_rtree_t ** tipnodes = (pll_rtree_t  **)calloc(tip_nodes_count,
-                                                    sizeof(pll_rtree_t *));
-  pll_rtree_query_tipnodes(tree, tipnodes);
-
   /* create a libc hash table of size tip_count */
   hcreate(tip_nodes_count);
 
   /* populate a libc hash table with tree tip labels */
-  unsigned int * data = (unsigned int *)malloc(tip_nodes_count *
-                                               sizeof(unsigned int));
+  unsigned int * data = (unsigned int *)xmalloc(tip_nodes_count *
+                                                sizeof(unsigned int));
   for (i = 0; i < tip_nodes_count; ++i)
   {
-    data[i] = tipnodes[i]->clv_index;
+    data[i] = tree->nodes[i]->clv_index;
     ENTRY entry;
-    entry.key = tipnodes[i]->label;
+#ifdef __APPLE__
+    entry.key = xstrdup(tree->nodes[i]->label);
+#else
+    entry.key = tree->nodes[i]->label;
+#endif
     entry.data = (void *)(data+i);
     hsearch(entry, ENTER);
   }
@@ -228,7 +230,6 @@ int main(int argc, char * argv[])
 
   /* we no longer need these two arrays (keys and values of hash table... */
   free(data);
-  free(tipnodes);
 
   /* ...neither the sequences and the headers as they are already
      present in the form of probabilities in the tip CLVs */
@@ -243,18 +244,17 @@ int main(int argc, char * argv[])
 
   /* allocate a buffer for storing pointers to nodes of the tree in postorder
      traversal */
-  travbuffer = (pll_rtree_t **)malloc(nodes_count * sizeof(pll_rtree_t *));
+  travbuffer = (pll_rnode_t **)xmalloc(nodes_count * sizeof(pll_rnode_t *));
 
-
-
-  branch_lengths = (double *)malloc(branch_count * sizeof(double));
-  matrix_indices = (unsigned int *)malloc(branch_count * sizeof(unsigned int));
-  operations = (pll_operation_t *)malloc(inner_nodes_count *
-                                                sizeof(pll_operation_t));
+  branch_lengths = (double *)xmalloc(branch_count * sizeof(double));
+  matrix_indices = (unsigned int *)xmalloc(branch_count * sizeof(unsigned int));
+  operations = (pll_operation_t *)xmalloc(inner_nodes_count *
+                                          sizeof(pll_operation_t));
 
   /* perform a postorder traversal of the rooted tree */
   unsigned int traversal_size;
-  if (!pll_rtree_traverse(tree,
+  if (!pll_rtree_traverse(tree->root,
+                          PLL_TREE_TRAVERSE_POSTORDER,
                           cb_full_traversal,
                           travbuffer,
                           &traversal_size))
@@ -345,8 +345,8 @@ int main(int argc, char * argv[])
      frequency vector is to be used */
 
   double logl = pll_compute_root_loglikelihood(partition,
-                                               tree->clv_index,
-                                               tree->scaler_index,
+                                               tree->root->clv_index,
+                                               tree->root->scaler_index,
                                                params_indices,
                                                NULL);
 

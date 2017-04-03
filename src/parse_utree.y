@@ -48,6 +48,7 @@ static void dealloc_graph_recursive(pll_unode_t * node,
 {
   if (!node->next)
   {
+    dealloc_data(node,cb_destroy);
     free(node->label);
     free(node);
     return;
@@ -73,6 +74,7 @@ PLL_EXPORT void pll_utree_graph_destroy(pll_unode_t * root,
   if (!root) return;
   if (!(root->next))
   {
+    dealloc_data(root,cb_destroy);
     free(root->label);
     free(root);
     return;
@@ -458,7 +460,13 @@ PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename)
     return PLL_FAILURE;
   }
 
-  root = (pll_unode_t *)calloc(1, sizeof(pll_unode_t));
+  if (!(root = (pll_unode_t *)calloc(1, sizeof(pll_unode_t))))
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return PLL_FAILURE;
+  }
+
   if (pll_utree_parse(root))
   {
     pll_utree_graph_destroy(root,NULL);
@@ -510,8 +518,8 @@ PLL_EXPORT pll_utree_t * pll_utree_parse_newick_string(const char * s)
 
     tree = pll_utree_wraptree(root,tip_cnt);
   }
-
-  free(root);
+  else
+    free(root);
 
   return tree;
 }

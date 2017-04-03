@@ -288,21 +288,6 @@ PLL_EXPORT void pll_utree_create_operations(pll_unode_t ** trav_buffer,
   }
 }
 
-#if 0
-static int utree_every_recursive(pll_utree_t * tree,
-                                 int (*cb)(pll_utree_t *))
-{
-  if (!node->next)
-    return cb(node);
-
-  if (!cb(node))
-    return 0;
-
-  return (utree_every_recursive(node->next->back,cb) &&
-          utree_every_recursive(node->next->next->back,cb));
-}
-#endif
-
 PLL_EXPORT int pll_utree_every(pll_utree_t * tree,
                                int (*cb)(pll_unode_t *))
 {
@@ -312,10 +297,7 @@ PLL_EXPORT int pll_utree_every(pll_utree_t * tree,
   for (i = 0; i < tree->tip_count + tree->inner_count; ++i)
     rc &= cb(tree->nodes[i]);
 
-  return rc;
-    
-//  return (utree_every_recursive(node,cb) &&
-//          utree_every_recursive(node->back,cb));
+  return (rc ? PLL_SUCCESS : PLL_FAILURE);
 }
 
 static void utree_traverse_preorder(pll_unode_t * node,
@@ -576,7 +558,7 @@ PLL_EXPORT pll_utree_t * pll_utree_clone(pll_utree_t * tree)
   return pll_utree_wraptree(root, tree->tip_count);
 }
 
-static pll_unode_t * rtree_unroot(pll_rtree_t * root, pll_unode_t * back)
+static pll_unode_t * rtree_unroot(pll_rnode_t * root, pll_unode_t * back)
 {
   pll_unode_t * uroot = (void *)calloc(1,sizeof(pll_unode_t));
   if (!uroot)
@@ -625,8 +607,10 @@ static pll_unode_t * rtree_unroot(pll_rtree_t * root, pll_unode_t * back)
   return uroot;
 }
 
-PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * root)
+PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * tree)
 {
+  pll_rnode_t * root = tree->root;
+
   if (!root->left->left && !root->right->left)
   {
     pll_errno = PLL_ERROR_TREE_CONVERSION;
@@ -636,7 +620,7 @@ PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * root)
     return NULL;
   }
 
-  pll_rtree_t * new_root;
+  pll_rnode_t * new_root;
 
   pll_unode_t * uroot = (void *)calloc(1,sizeof(pll_unode_t));
   if (!uroot)

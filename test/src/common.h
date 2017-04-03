@@ -44,7 +44,7 @@ pll_partition_t * parse_msa_reduced(const char * filename,
                             unsigned int attributes,
                             unsigned int max_sites);
 int cb_full_traversal(pll_unode_t * node);
-int cb_rfull_traversal(pll_rtree_t * node);
+int cb_rfull_traversal(pll_rnode_t * node);
 
 /* print error and exit */
 void fatal(const char * format, ...) __attribute__ ((noreturn));
