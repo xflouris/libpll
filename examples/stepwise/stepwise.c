@@ -208,7 +208,7 @@ int main(int argc, char * argv[])
 
   /* export the tree to newick format with the selected inner node as the root
      of the unrooted binary tree */
-  char * newick = pll_utree_export_newick(root);
+  char * newick = pll_utree_export_newick(root,NULL);
   printf("%s\n", newick);
   free(newick);
 

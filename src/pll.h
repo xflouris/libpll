@@ -646,7 +646,8 @@ PLL_EXPORT pll_utree_t * pll_utree_wraptree(pll_unode_t * root,
 
 PLL_EXPORT void pll_utree_show_ascii(const pll_unode_t * tree, int options);
 
-PLL_EXPORT char * pll_utree_export_newick(const pll_unode_t * root);
+PLL_EXPORT char * pll_utree_export_newick(const pll_unode_t * root,
+                                   char * (*cb_serialize)(const pll_unode_t *));
 
 PLL_EXPORT int pll_utree_traverse(pll_unode_t * root,
                                   int traversal,
@@ -697,7 +698,8 @@ PLL_EXPORT void pll_msa_destroy(pll_msa_t * msa);
 
 PLL_EXPORT void pll_rtree_show_ascii(const pll_rnode_t * root, int options);
 
-PLL_EXPORT char * pll_rtree_export_newick(const pll_rnode_t * root);
+PLL_EXPORT char * pll_rtree_export_newick(const pll_rnode_t * root,
+                                   char * (*cb_serialize)(const pll_rnode_t *));
 
 PLL_EXPORT int pll_rtree_traverse(pll_rnode_t * root,
                                   int traversal,

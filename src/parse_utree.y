@@ -108,6 +108,7 @@ PLL_EXPORT void pll_utree_destroy(pll_utree_t * tree,
   /* deallocate tip nodes */
   for (i = 0; i < tree->tip_count; ++i)
   {
+    dealloc_data(tree->nodes[i], cb_destroy);
     if (tree->nodes[i]->label)
       free(tree->nodes[i]->label);
     free(tree->nodes[i]);

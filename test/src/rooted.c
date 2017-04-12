@@ -57,7 +57,7 @@ int main(int argc, char * argv[])
                        PLL_UTREE_SHOW_LABEL |
                        PLL_UTREE_SHOW_BRANCH_LENGTH |
                        PLL_UTREE_SHOW_CLV_INDEX);
-  char * newick = pll_rtree_export_newick(tree->root);
+  char * newick = pll_rtree_export_newick(tree->root,NULL);
   printf("%s\n", newick);
   free(newick);
 

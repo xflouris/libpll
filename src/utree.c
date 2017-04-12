@@ -146,23 +146,34 @@ PLL_EXPORT void pll_utree_show_ascii(const pll_unode_t * root, int options)
   free(active_node_order);
 }
 
-static char * newick_utree_recurse(const pll_unode_t * root)
+static char * newick_utree_recurse(const pll_unode_t * root,
+                                   char * (*cb_serialize)(const pll_unode_t *))
 {
   char * newick;
   int size_alloced;
   assert(root != NULL);
   if (!root->next)
-    size_alloced = asprintf(&newick, "%s:%f", root->label, root->length);
+  {
+    if (cb_serialize)
+    {
+      newick = cb_serialize(root);
+      size_alloced = strlen(newick);
+    }
+    else
+    {
+      size_alloced = asprintf(&newick, "%s:%f", root->label, root->length);
+    }
+  }
   else
   {
-    char * subtree1 = newick_utree_recurse(root->next->back);
+    char * subtree1 = newick_utree_recurse(root->next->back,cb_serialize);
     if (subtree1 == NULL)
     {
       pll_errno = PLL_ERROR_MEM_ALLOC;
       snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
       return NULL;
     }
-    char * subtree2 = newick_utree_recurse(root->next->next->back);
+    char * subtree2 = newick_utree_recurse(root->next->next->back,cb_serialize);
     if (subtree2 == NULL)
     {
       free(subtree1);
@@ -170,12 +181,26 @@ static char * newick_utree_recurse(const pll_unode_t * root)
       snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
       return NULL;
     }
-    size_alloced = asprintf(&newick,
-                            "(%s,%s)%s:%f",
-                            subtree1,
-                            subtree2,
-                            root->label ? root->label : "",
-                            root->length);
+
+    if (cb_serialize)
+    {
+      char * temp = cb_serialize(root);
+      size_alloced = asprintf(&newick,
+                              "(%s,%s)%s",
+                              subtree1,
+                              subtree2,
+                              temp);
+      free(temp);
+    }
+    else
+    {
+      size_alloced = asprintf(&newick,
+                              "(%s,%s)%s:%f",
+                              subtree1,
+                              subtree2,
+                              root->label ? root->label : "",
+                              root->length);
+    }
     free(subtree1);
     free(subtree2);
   }
@@ -189,7 +214,8 @@ static char * newick_utree_recurse(const pll_unode_t * root)
   return newick;
 }
 
-PLL_EXPORT char * pll_utree_export_newick(const pll_unode_t * root)
+PLL_EXPORT char * pll_utree_export_newick(const pll_unode_t * root,
+                                   char * (*cb_serialize)(const pll_unode_t *))
 {
   char * newick;
   int size_alloced;
@@ -197,14 +223,14 @@ PLL_EXPORT char * pll_utree_export_newick(const pll_unode_t * root)
 
   if (!root->next) root=root->back;
 
-  char * subtree1 = newick_utree_recurse(root->back);
+  char * subtree1 = newick_utree_recurse(root->back,cb_serialize);
   if (subtree1 == NULL)
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return NULL;
   }
-  char * subtree2 = newick_utree_recurse(root->next->back);
+  char * subtree2 = newick_utree_recurse(root->next->back,cb_serialize);
   if (subtree2 == NULL)
   {
     free(subtree1);
@@ -212,7 +238,7 @@ PLL_EXPORT char * pll_utree_export_newick(const pll_unode_t * root)
     snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return NULL;
   }
-  char * subtree3 = newick_utree_recurse(root->next->next->back);
+  char * subtree3 = newick_utree_recurse(root->next->next->back,cb_serialize);
   if (subtree3 == NULL)
   {
     free(subtree1);
@@ -222,12 +248,26 @@ PLL_EXPORT char * pll_utree_export_newick(const pll_unode_t * root)
     return NULL;
   }
 
-  size_alloced = asprintf(&newick,
-                          "(%s,%s,%s)%s:0.0;",
-                          subtree1,
-                          subtree2,
-                          subtree3,
-                          root->label ? root->label : "");
+  if (cb_serialize)
+  {
+    char * temp = cb_serialize(root);
+    size_alloced = asprintf(&newick,
+                            "(%s,%s,%s)%s",
+                            subtree1,
+                            subtree2,
+                            subtree3,
+                            temp);
+    free(temp);
+  }
+  else
+  {
+    size_alloced = asprintf(&newick,
+                            "(%s,%s,%s)%s:0.0;",
+                            subtree1,
+                            subtree2,
+                            subtree3,
+                            root->label ? root->label : "");
+  }  
   free(subtree1);
   free(subtree2);
   free(subtree3);

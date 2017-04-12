@@ -111,7 +111,7 @@ int main(int argc, char * argv[])
   pll_rtree_show_ascii(tree, PLL_UTREE_SHOW_LABEL |
                              PLL_UTREE_SHOW_BRANCH_LENGTH |
                              PLL_UTREE_SHOW_CLV_INDEX);
-  char * newick = pll_rtree_export_newick(tree);
+  char * newick = pll_rtree_export_newick(tree,NULL);
   printf("%s\n", newick);
   free(newick);
 
