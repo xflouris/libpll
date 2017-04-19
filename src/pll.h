@@ -581,11 +581,11 @@ PLL_EXPORT int pll_compute_gamma_cats(double alpha,
 
 /* functions in output.c */
 
-PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition,
+PLL_EXPORT void pll_show_pmatrix(const pll_partition_t * partition,
                                  unsigned int index,
                                  unsigned int float_precision);
 
-PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
+PLL_EXPORT void pll_show_clv(const pll_partition_t * partition,
                              unsigned int clv_index,
                              int scaler_index,
                              unsigned int float_precision);
@@ -663,7 +663,7 @@ PLL_EXPORT unsigned int pll_utree_query_innernodes(pll_utree_t * root,
                                                    pll_utree_t ** node_list);
 #endif
 
-PLL_EXPORT void pll_utree_create_operations(pll_unode_t ** trav_buffer,
+PLL_EXPORT void pll_utree_create_operations(pll_unode_t * const* trav_buffer,
                                             unsigned int trav_buffer_size,
                                             double * branches,
                                             unsigned int * pmatrix_indices,
@@ -671,18 +671,21 @@ PLL_EXPORT void pll_utree_create_operations(pll_unode_t ** trav_buffer,
                                             unsigned int * matrix_count,
                                             unsigned int * ops_count);
 
-PLL_EXPORT int pll_utree_check_integrity(pll_utree_t * root);
+PLL_EXPORT int pll_utree_check_integrity(const pll_utree_t * root);
 
-PLL_EXPORT pll_unode_t * pll_utree_graph_clone(pll_unode_t * root);
+PLL_EXPORT pll_unode_t * pll_utree_graph_clone(const pll_unode_t * root);
 
-PLL_EXPORT pll_utree_t * pll_utree_clone(pll_utree_t * root);
+PLL_EXPORT pll_utree_t * pll_utree_clone(const pll_utree_t * root);
 
 PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * tree);
 
 PLL_EXPORT int pll_utree_every(pll_utree_t * tree,
                                int (*cb)(pll_unode_t *));
 
-PLL_EXPORT void pll_utree_create_pars_buildops(pll_unode_t ** trav_buffer,
+PLL_EXPORT int pll_utree_every_const(const pll_utree_t * tree,
+                                     int (*cb)(const pll_unode_t *));
+
+PLL_EXPORT void pll_utree_create_pars_buildops(pll_unode_t * const* trav_buffer,
                                                unsigned int trav_buffer_size,
                                                pll_pars_buildop_t * ops,
                                                unsigned int * ops_count);

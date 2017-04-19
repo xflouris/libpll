@@ -281,7 +281,7 @@ PLL_EXPORT char * pll_utree_export_newick(const pll_unode_t * root,
   return (newick);
 }
 
-PLL_EXPORT void pll_utree_create_operations(pll_unode_t ** trav_buffer,
+PLL_EXPORT void pll_utree_create_operations(pll_unode_t * const* trav_buffer,
                                             unsigned int trav_buffer_size,
                                             double * branches,
                                             unsigned int * pmatrix_indices,
@@ -289,7 +289,7 @@ PLL_EXPORT void pll_utree_create_operations(pll_unode_t ** trav_buffer,
                                             unsigned int * matrix_count,
                                             unsigned int * ops_count)
 {
-  pll_unode_t * node;
+  const pll_unode_t * node;
   unsigned int i;
 
   *ops_count = 0;
@@ -330,6 +330,18 @@ PLL_EXPORT void pll_utree_create_operations(pll_unode_t ** trav_buffer,
 
 PLL_EXPORT int pll_utree_every(pll_utree_t * tree,
                                int (*cb)(pll_unode_t *))
+{
+  unsigned int i;
+  int rc = 1;
+
+  for (i = 0; i < tree->tip_count + tree->inner_count; ++i)
+    rc &= cb(tree->nodes[i]);
+
+  return (rc ? PLL_SUCCESS : PLL_FAILURE);
+}
+
+PLL_EXPORT int pll_utree_every_const(const pll_utree_t * tree,
+                                     int (*cb)(const pll_unode_t *))
 {
   unsigned int i;
   int rc = 1;
@@ -498,7 +510,7 @@ PLL_EXPORT unsigned int pll_utree_query_innernodes(pll_utree_t * root,
 #endif
 
 /* a callback function for checking tree integrity */
-static int cb_check_integrity(pll_unode_t * node)
+static int cb_check_integrity(const pll_unode_t * node)
 {
   unsigned int clv_index = node->clv_index;
   int scaler_index = node->scaler_index;
@@ -526,67 +538,67 @@ static int cb_check_integrity(pll_unode_t * node)
   return 1;
 }
 
-PLL_EXPORT int pll_utree_check_integrity(pll_utree_t * tree)
+PLL_EXPORT int pll_utree_check_integrity(const pll_utree_t * tree)
 {
-  return pll_utree_every(tree, cb_check_integrity);
+  return pll_utree_every_const(tree, cb_check_integrity);
 }
 
 /* TODO: Memory allocation checks were not implemented in this function!!! */
-static pll_unode_t * clone_node(pll_unode_t * node)
+static pll_unode_t * clone_node(const pll_unode_t * node)
 {
-  pll_unode_t * new = (pll_unode_t *)malloc(sizeof(pll_unode_t));
-  memcpy(new, node, sizeof(pll_unode_t));
+  pll_unode_t * new_node = (pll_unode_t *)malloc(sizeof(pll_unode_t));
+  memcpy(new_node, node, sizeof(pll_unode_t));
 
   if (node->label)
   {
-    new->label = (char *)malloc(strlen(node->label)+1);
-    strcpy(new->label,node->label);
+    new_node->label = (char *)malloc(strlen(node->label)+1);
+    strcpy(new_node->label,node->label);
   }
 
   if (node->next)
   {
-    new->next = (pll_unode_t *)malloc(sizeof(pll_unode_t));
-    memcpy(new->next, node->next, sizeof(pll_unode_t));
+    new_node->next = (pll_unode_t *)malloc(sizeof(pll_unode_t));
+    memcpy(new_node->next, node->next, sizeof(pll_unode_t));
 
-    new->next->next = (pll_unode_t *)malloc(sizeof(pll_unode_t));
-    memcpy(new->next->next, node->next->next, sizeof(pll_unode_t));
+    new_node->next->next = (pll_unode_t *)malloc(sizeof(pll_unode_t));
+    memcpy(new_node->next->next, node->next->next, sizeof(pll_unode_t));
 
-    new->next->next->next = new;
-    new->next->label = new->next->next->label = new->label;
+    new_node->next->next->next = new_node;
+    new_node->next->label = new_node->next->next->label = new_node->label;
   }
-  return new;
+  return new_node;
 }
 
-static void utree_recurse_clone(pll_unode_t * new, pll_unode_t * root)
+static void utree_recurse_clone(pll_unode_t * new_root, const pll_unode_t * root)
 {
   if (root->back)
   {
-    new->back = clone_node(root->back);
-    new->back->back = new;
+    new_root->back = clone_node(root->back);
+    new_root->back->back = new_root;
 
     if (root->back->next)
     {
-      utree_recurse_clone(new->back->next,       root->back->next);
-      utree_recurse_clone(new->back->next->next, root->back->next->next);
+      utree_recurse_clone(new_root->back->next,       root->back->next);
+      utree_recurse_clone(new_root->back->next->next, root->back->next->next);
     }
   }
 }
 
-PLL_EXPORT pll_unode_t * pll_utree_graph_clone(pll_unode_t * root)
+PLL_EXPORT pll_unode_t * pll_utree_graph_clone(const pll_unode_t * root)
 {
-  pll_unode_t * new = clone_node(root);
+  pll_unode_t * new_root = clone_node(root);
 
-  utree_recurse_clone(new, root);
+  utree_recurse_clone(new_root, root);
   if (root->next)
   {
-    utree_recurse_clone(new->next, root->next);
-    utree_recurse_clone(new->next->next, root->next->next);
+    utree_recurse_clone(new_root->next, root->next);
+    utree_recurse_clone(new_root->next->next, root->next->next);
   }
 
-  return new;
+  return new_root;
 }
 
-PLL_EXPORT pll_utree_t * pll_utree_clone(pll_utree_t * tree)
+PLL_EXPORT pll_utree_t * pll_utree_clone(const pll_utree_t * tree)
 {
   unsigned int root_index = tree->inner_count + tree->tip_count - 1;
 
@@ -725,12 +737,12 @@ PLL_EXPORT pll_utree_t * pll_rtree_unroot(pll_rtree_t * tree)
   return pll_utree_wraptree(uroot,0);
 }
 
-PLL_EXPORT void pll_utree_create_pars_buildops(pll_unode_t ** trav_buffer,
+PLL_EXPORT void pll_utree_create_pars_buildops(pll_unode_t * const* trav_buffer,
                                                unsigned int trav_buffer_size,
                                                pll_pars_buildop_t * ops,
                                                unsigned int * ops_count)
 {
-  pll_unode_t * node;
+  const pll_unode_t * node;
   unsigned int i;
 
   *ops_count = 0;

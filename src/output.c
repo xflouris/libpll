@@ -23,7 +23,7 @@
 
 static void unscale(double * prob, unsigned int times);
 
-PLL_EXPORT void pll_show_pmatrix(pll_partition_t * partition,
+PLL_EXPORT void pll_show_pmatrix(const pll_partition_t * partition,
                                  unsigned int index,
                                  unsigned int float_precision)
 {
@@ -53,7 +53,7 @@ static void unscale(double * prob, unsigned int times)
     *prob *= PLL_SCALE_THRESHOLD;
 }
 
-PLL_EXPORT void pll_show_clv(pll_partition_t * partition,
+PLL_EXPORT void pll_show_clv(const pll_partition_t * partition,
                              unsigned int clv_index,
                              int scaler_index,
                              unsigned int float_precision)
