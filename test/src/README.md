@@ -95,6 +95,10 @@ and 4 different proportions of invariant sites, from 0.0 to 0.9
 
 Validate Nearest Neighbor Interchange moves.
 
+## scaling
+
+Validate CLV scaling on large trees (per-site and per-rate scaling modes)
+
 ## treemove-spr
 
 Validate Subtree Prunning and Regrafting moves.
