@@ -79,7 +79,7 @@ static int alloc_pars_structs(pll_parsimony_t * parsimony,
   return PLL_SUCCESS;
 }
 
-static int check_informative_extended(pll_partition_t * partition,
+static int check_informative_extended(const pll_partition_t * partition,
                                       unsigned int index,
                                       unsigned int * singleton)
 {
@@ -123,7 +123,7 @@ static int check_informative_extended(pll_partition_t * partition,
   return 1;
 }
 
-static int check_informative(pll_partition_t * partition,
+static int check_informative(const pll_partition_t * partition,
                              unsigned int index,
                              unsigned int * singleton)
 {
@@ -189,7 +189,7 @@ static int check_informative(pll_partition_t * partition,
   return 1;
 }
 
-static int fill_parsimony_vectors(pll_partition_t * partition,
+static int fill_parsimony_vectors(const pll_partition_t * partition,
                                   pll_parsimony_t * parsimony)
 {
   unsigned int c;
@@ -359,7 +359,7 @@ static int fill_parsimony_vectors(pll_partition_t * partition,
   return PLL_SUCCESS;
 }
 
-static int pll_set_informative(pll_partition_t * partition,
+static int pll_set_informative(const pll_partition_t * partition,
                                pll_parsimony_t * parsimony)
 {
   unsigned int i;
@@ -395,7 +395,7 @@ static int pll_set_informative(pll_partition_t * partition,
   return PLL_SUCCESS;
 }
 
-PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score_4x4(const pll_parsimony_t * parsimony,
                                                          unsigned int node1_score_index,
                                                          unsigned int node2_score_index)
 {
@@ -513,7 +513,7 @@ PLL_EXPORT void pll_fastparsimony_update_vector_4x4(pll_parsimony_t * parsimony,
   parsimony->node_cost[op->parent_score_index] = score+score1+score2;
 }
 
-PLL_EXPORT pll_parsimony_t * pll_fastparsimony_init(pll_partition_t * partition)
+PLL_EXPORT pll_parsimony_t * pll_fastparsimony_init(const pll_partition_t * partition)
 {
   pll_parsimony_t * parsimony;
 
@@ -601,7 +601,7 @@ PLL_EXPORT void pll_fastparsimony_update_vector(pll_parsimony_t * parsimony,
   parsimony->node_cost[op->parent_score_index] = score+score1+score2;
 }
 
-static unsigned int fastparsimony_edge_score(pll_parsimony_t * parsimony,
+static unsigned int fastparsimony_edge_score(const pll_parsimony_t * parsimony,
                                              unsigned int node1_score_index,
                                              unsigned int node2_score_index)
 {
@@ -709,7 +709,7 @@ PLL_EXPORT void pll_fastparsimony_update_vectors(pll_parsimony_t * parsimony,
     fastparsimony_update_vectors(parsimony,ops,count);
 }
 
-PLL_EXPORT unsigned int pll_fastparsimony_edge_score(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_edge_score(const pll_parsimony_t * parsimony,
                                                      unsigned int node1_score_index,
                                                      unsigned int node2_score_index)
 {
@@ -766,7 +766,7 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score(pll_parsimony_t * parsimony
 }
 
 
-PLL_EXPORT unsigned int pll_fastparsimony_root_score(pll_parsimony_t * parsimony,
+PLL_EXPORT unsigned int pll_fastparsimony_root_score(const pll_parsimony_t * parsimony,
                                                      unsigned int root_index)
 {
   return parsimony->node_cost[root_index] +

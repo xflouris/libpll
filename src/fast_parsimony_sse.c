@@ -22,7 +22,7 @@
 #include "pll.h"
 
 PLL_EXPORT
-unsigned int pll_fastparsimony_edge_score_4x4_sse(pll_parsimony_t * parsimony,
+unsigned int pll_fastparsimony_edge_score_4x4_sse(const pll_parsimony_t * parsimony,
                                                   unsigned int node1_score_index,
                                                   unsigned int node2_score_index)
 {
@@ -285,7 +285,7 @@ void pll_fastparsimony_update_vector_sse(pll_parsimony_t * parsimony,
 }
 
 PLL_EXPORT
-unsigned int pll_fastparsimony_edge_score_sse(pll_parsimony_t * parsimony,
+unsigned int pll_fastparsimony_edge_score_sse(const pll_parsimony_t * parsimony,
                                               unsigned int node1_score_index,
                                               unsigned int node2_score_index)
 {

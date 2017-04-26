@@ -313,7 +313,7 @@ PLL_EXPORT int pll_fasta_getnext(pll_fasta_t * fd, char ** head,
   return PLL_FAILURE;
 }
 
-PLL_EXPORT long pll_fasta_getfilesize(pll_fasta_t * fd)
+PLL_EXPORT long pll_fasta_getfilesize(const pll_fasta_t * fd)
 {
   return fd->filesize;
 }

@@ -22,7 +22,7 @@
 #include "pll.h"
 
 PLL_EXPORT
-unsigned int pll_fastparsimony_edge_score_4x4_avx(pll_parsimony_t * parsimony,
+unsigned int pll_fastparsimony_edge_score_4x4_avx(const pll_parsimony_t * parsimony,
                                                   unsigned int node1_score_index,
                                                   unsigned int node2_score_index)
 {
@@ -33,7 +33,7 @@ unsigned int pll_fastparsimony_edge_score_4x4_avx(pll_parsimony_t * parsimony,
   unsigned int * node1[8];
   unsigned int * node2[8];
 
-  unsigned int ** vector = parsimony->packedvector;
+  unsigned int * const * vector = parsimony->packedvector;
   unsigned int vector_count = parsimony->packedvector_count;
 
   unsigned int score = 0;
@@ -330,7 +330,7 @@ void pll_fastparsimony_update_vector_avx(pll_parsimony_t * parsimony,
 }
 
 PLL_EXPORT
-unsigned int pll_fastparsimony_edge_score_avx(pll_parsimony_t * parsimony,
+unsigned int pll_fastparsimony_edge_score_avx(const pll_parsimony_t * parsimony,
                                               unsigned int node1_score_index,
                                               unsigned int node2_score_index)
 {

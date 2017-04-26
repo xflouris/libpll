@@ -335,7 +335,7 @@ static void invalidate_node(pll_unode_t * node)
 }
 
 PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
-                                                    char ** labels,
+                                                    char * const * labels,
                                                     unsigned int * cost,
                                                     unsigned int count,
                                                     unsigned int seed)

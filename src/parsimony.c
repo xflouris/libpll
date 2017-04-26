@@ -114,7 +114,7 @@ PLL_EXPORT void pll_parsimony_destroy(pll_parsimony_t * parsimony)
 PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
                                                   unsigned int states,
                                                   unsigned int sites,
-                                                  double * score_matrix,
+                                                  const double * score_matrix,
                                                   unsigned int score_buffers,
                                                   unsigned int ancestral_buffers)
 {
@@ -199,7 +199,7 @@ PLL_EXPORT pll_parsimony_t * pll_parsimony_create(unsigned int tips,
 }
                                                   
 PLL_EXPORT double pll_parsimony_build(pll_parsimony_t * pars,
-                                      pll_pars_buildop_t * operations,
+                                      const pll_pars_buildop_t * operations,
                                       unsigned int count)
 {
   unsigned int i,j,k,n;
@@ -305,7 +305,7 @@ PLL_EXPORT double pll_parsimony_score(pll_parsimony_t * pars,
 
 PLL_EXPORT void pll_parsimony_reconstruct(pll_parsimony_t * pars,
                                           const unsigned int * map,
-                                          pll_pars_recop_t * operations,
+                                          const pll_pars_recop_t * operations,
                                           unsigned int count)
 {
   unsigned int i,j,n;

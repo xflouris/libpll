@@ -50,7 +50,7 @@ PLL_EXPORT void pll_core_create_lookup_sse(unsigned int states,
                                            double * ttlookup,
                                            const double * left_matrix,
                                            const double * right_matrix,
-                                           unsigned int * tipmap,
+                                           const unsigned int * tipmap,
                                            unsigned int tipmap_size)
 {
   if (states == 4)

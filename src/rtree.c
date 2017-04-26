@@ -259,7 +259,7 @@ PLL_EXPORT char * pll_rtree_export_newick(const pll_rnode_t * root,
 }
 
 
-PLL_EXPORT void pll_rtree_create_operations(pll_rnode_t ** trav_buffer,
+PLL_EXPORT void pll_rtree_create_operations(pll_rnode_t * const* trav_buffer,
                                             unsigned int trav_buffer_size,
                                             double * branches,
                                             unsigned int * pmatrix_indices,
@@ -455,7 +455,7 @@ PLL_EXPORT unsigned int pll_rtree_query_innernodes(pll_rtree_t * root,
 }
 #endif
 
-PLL_EXPORT void pll_rtree_create_pars_buildops(pll_rnode_t ** trav_buffer,
+PLL_EXPORT void pll_rtree_create_pars_buildops(pll_rnode_t * const* trav_buffer,
                                                unsigned int trav_buffer_size,
                                                pll_pars_buildop_t * ops,
                                                unsigned int * ops_count)
@@ -480,7 +480,7 @@ PLL_EXPORT void pll_rtree_create_pars_buildops(pll_rnode_t ** trav_buffer,
   }
 }
 
-PLL_EXPORT void pll_rtree_create_pars_recops(pll_rnode_t ** trav_buffer,
+PLL_EXPORT void pll_rtree_create_pars_recops(pll_rnode_t * const* trav_buffer,
                                              unsigned int trav_buffer_size,
                                              pll_pars_recop_t * ops,
                                              unsigned int * ops_count)
