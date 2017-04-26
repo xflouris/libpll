@@ -21,7 +21,7 @@
 
 #include "pll.h"
 
-static void fill_parent_scaler(unsigned int sites,
+static void fill_parent_scaler(unsigned int scaler_size,
                                unsigned int * parent_scaler,
                                const unsigned int * left_scaler,
                                const unsigned int * right_scaler)
@@ -29,19 +29,19 @@ static void fill_parent_scaler(unsigned int sites,
   unsigned int i;
 
   if (!left_scaler && !right_scaler)
-    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+    memset(parent_scaler, 0, sizeof(unsigned int) * scaler_size);
   else if (left_scaler && right_scaler)
   {
-    memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * sites);
-    for (i = 0; i < sites; ++i)
+    memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * scaler_size);
+    for (i = 0; i < scaler_size; ++i)
       parent_scaler[i] += right_scaler[i];
   }
   else
   {
     if (left_scaler)
-      memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * sites);
+      memcpy(parent_scaler, left_scaler, sizeof(unsigned int) * scaler_size);
     else
-      memcpy(parent_scaler, right_scaler, sizeof(unsigned int) * sites);
+      memcpy(parent_scaler, right_scaler, sizeof(unsigned int) * scaler_size);
   }
 }
 
@@ -51,15 +51,19 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4(unsigned int sites,
                                                unsigned int * parent_scaler,
                                                const unsigned char * left_tipchars,
                                                const unsigned char * right_tipchars,
-                                               const double * lookup)
+                                               const double * lookup,
+                                               unsigned int attrib)
 {
   unsigned int j,k,n;
   unsigned int states = 4;
   unsigned int span = states * rate_cats;
   const double * offset;
 
+  size_t scaler_size = (attrib & PLL_ATTRIB_RATE_SCALERS) ?
+                                                        sites*rate_cats : sites;
+
   if (parent_scaler)
-    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+    memset(parent_scaler, 0, sizeof(unsigned int) * scaler_size);
 
   for (n = 0; n < sites; ++n)
   {
@@ -100,7 +104,8 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
                                          parent_scaler,
                                          left_tipchars,
                                          right_tipchars,
-                                         lookup);
+                                         lookup,
+                                         attrib);
     else
       pll_core_update_partial_tt_sse(states,
                                      sites,
@@ -110,7 +115,8 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
                                      left_tipchars,
                                      right_tipchars,
                                      lookup,
-                                     tipmap_size);
+                                     tipmap_size,
+                                     attrib);
 
     return;
   }
@@ -173,9 +179,11 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
 
   unsigned int span = states * rate_cats;
   unsigned int log2_maxstates = (unsigned int)ceil(log2(tipmap_size));
+  size_t scaler_size = (attrib & PLL_ATTRIB_RATE_SCALERS) ?
+                                                        sites*rate_cats : sites;
 
   if (parent_scaler)
-    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+    memset(parent_scaler, 0, sizeof(unsigned int) * scaler_size);
 
   for (n = 0; n < sites; ++n)
   {
@@ -203,9 +211,12 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
                                                unsigned int attrib)
 {
   unsigned int states = 4;
-  unsigned int scaling;
   unsigned int i,j,k,n;
   unsigned int span = states * rate_cats;
+
+  unsigned int scale_mode;  /* 0 = none, 1 = per-site, 2 = per-rate */
+  unsigned int site_scale;
+  unsigned int init_mask;
 
   const double * lmat;
   const double * rmat;
@@ -221,7 +232,8 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
                                        right_clv,
                                        left_matrix,
                                        right_matrix,
-                                       right_scaler);
+                                       right_scaler,
+                                       attrib);
     return;
   }
   #endif
@@ -258,18 +270,33 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
   }
   #endif
 
+  /* init scaling-related stuff */
   if (parent_scaler)
-    fill_parent_scaler(sites, parent_scaler, NULL, right_scaler);
+  {
+    /* determine the scaling mode and init the vars accordingly */
+    scale_mode = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 2 : 1;
+    init_mask = (scale_mode == 1) ? 1 : 0;
+    const size_t scaler_size = (scale_mode == 2) ? sites * rate_cats : sites;
+
+    /* update the parent scaler with the scaler of the right child */
+    fill_parent_scaler(scaler_size, parent_scaler, NULL, right_scaler);
+  }
+  else
+  {
+    /* scaling disabled / not required */
+    scale_mode = init_mask = 0;
+  }
 
   for (n = 0; n < sites; ++n)
   {
     lmat = left_matrix;
     rmat = right_matrix;
 
-    scaling = (parent_scaler) ? 1 : 0;
+    site_scale = init_mask;
 
     for (k = 0; k < rate_cats; ++k)
     {
+      unsigned int rate_scale = 1;
       for (i = 0; i < states; ++i)
       {
         double terma = 0;
@@ -285,17 +312,35 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
           lstate >>= 1;
         }
         parent_clv[i] = terma*termb;
+
+        rate_scale &= (parent_clv[i] < PLL_SCALE_THRESHOLD);
+
         lmat += states;
         rmat += states;
-
-        scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
       }
+
+      /* check if scaling is needed for the current rate category */
+      if (scale_mode == 2)
+      {
+        /* PER-RATE SCALING: if *all* entries of the *rate* CLV were below
+         * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+        if (rate_scale)
+        {
+          for (i = 0; i < states; ++i)
+            parent_clv[i] *= PLL_SCALE_FACTOR;
+          parent_scaler[n*rate_cats + k] += 1;
+        }
+      }
+      else
+        site_scale = site_scale && rate_scale;
+
       parent_clv += states;
       right_clv  += states;
     }
-    /* if *all* entries of the site CLV were below the threshold then scale
-       (all) entries by PLL_SCALE_FACTOR */
-    if (scaling)
+
+    /* PER-SITE SCALING: if *all* entries of the *site* CLV were below
+     * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+    if (site_scale)
     {
       parent_clv -= span;
       for (i = 0; i < span; ++i)
@@ -323,6 +368,8 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
   int scaling;
   unsigned int i,j,k,n;
   unsigned int span = states * rate_cats;
+  size_t scaler_size = (attrib & PLL_ATTRIB_RATE_SCALERS) ?
+                                                        sites*rate_cats : sites;
 
   const double * lmat;
   const double * rmat;
@@ -339,7 +386,8 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
                                          right_clv,
                                          left_matrix,
                                          right_matrix,
-                                         right_scaler);
+                                         right_scaler,
+                                         attrib);
     else
       pll_core_update_partial_ti_sse(states,
                                      sites,
@@ -352,7 +400,8 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
                                      right_matrix,
                                      right_scaler,
                                      tipmap,
-                                     tipmap_size);
+                                     tipmap_size,
+                                     attrib);
     return;
   }
 #endif
@@ -411,7 +460,7 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
   }
 
   if (parent_scaler)
-    fill_parent_scaler(sites, parent_scaler, NULL, right_scaler);
+    fill_parent_scaler(scaler_size, parent_scaler, NULL, right_scaler);
 
   for (n = 0; n < sites; ++n)
   {
@@ -472,7 +521,10 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                            unsigned int attrib)
 {
   unsigned int i,j,k,n;
-  unsigned int scaling;
+
+  unsigned int scale_mode;  /* 0 = none, 1 = per-site, 2 = per-rate */
+  unsigned int site_scale;
+  unsigned int init_mask;
 
   const double * lmat;
   const double * rmat;
@@ -492,7 +544,8 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
                                    left_matrix,
                                    right_matrix,
                                    left_scaler,
-                                   right_scaler);
+                                   right_scaler,
+                                   attrib);
     return;
   }
 #endif
@@ -533,19 +586,33 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
   }
 #endif
 
-  /* add up the scale vectors of the two children if available */
+  /* init scaling-related stuff */
   if (parent_scaler)
-    fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
+  {
+    /* determine the scaling mode and init the vars accordingly */
+    scale_mode = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 2 : 1;
+    init_mask = (scale_mode == 1) ? 1 : 0;
+    const size_t scaler_size = (scale_mode == 2) ? sites * rate_cats : sites;
+
+    /* add up the scale vectors of the two children if available */
+    fill_parent_scaler(scaler_size, parent_scaler, left_scaler, right_scaler);
+  }
+  else
+  {
+    /* scaling disabled / not required */
+    scale_mode = init_mask = 0;
+  }
 
   /* compute CLV */
   for (n = 0; n < sites; ++n)
   {
     lmat = left_matrix;
     rmat = right_matrix;
-    scaling = (parent_scaler) ? 1 : 0;
+    site_scale = init_mask;
 
     for (k = 0; k < rate_cats; ++k)
     {
+      unsigned int rate_scale = 1;
       for (i = 0; i < states; ++i)
       {
         double terma = 0;
@@ -556,18 +623,35 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
           termb += rmat[j] * right_clv[j];
         }
         parent_clv[i] = terma*termb;
+
+        rate_scale &= (parent_clv[i] < PLL_SCALE_THRESHOLD);
+
         lmat += states;
         rmat += states;
-
-        scaling = scaling && (parent_clv[i] < PLL_SCALE_THRESHOLD);
       }
+
+      /* check if scaling is needed for the current rate category */
+      if (scale_mode == 2)
+      {
+        /* PER-RATE SCALING: if *all* entries of the *rate* CLV were below
+         * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+        if (rate_scale)
+        {
+          for (i = 0; i < states; ++i)
+            parent_clv[i] *= PLL_SCALE_FACTOR;
+          parent_scaler[n*rate_cats + k] += 1;
+        }
+      }
+      else
+        site_scale = site_scale && rate_scale;
+
       parent_clv += states;
       left_clv   += states;
       right_clv  += states;
     }
-    /* if *all* entries of the site CLV were below the threshold then scale
-       (all) entries by PLL_SCALE_FACTOR */
-    if (scaling)
+    /* PER-SITE SCALING: if *all* entries of the *site* CLV were below
+     * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+    if (site_scale)
     {
       parent_clv -= span;
       for (i = 0; i < span; ++i)

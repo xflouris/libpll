@@ -19,12 +19,14 @@
     Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 */
 
+#include <limits.h>
 #include "pll.h"
 
 PLL_EXPORT int pll_core_update_sumtable_ti_4x4(unsigned int sites,
                                                unsigned int rate_cats,
                                                const double * parent_clv,
                                                const unsigned char * left_tipchars,
+                                               const unsigned int * parent_scaler,
                                                double ** eigenvecs,
                                                double ** inv_eigenvecs,
                                                double ** freqs,
@@ -45,9 +47,46 @@ PLL_EXPORT int pll_core_update_sumtable_ti_4x4(unsigned int sites,
 
   unsigned int states = 4;
 
+  unsigned int min_scaler;
+  unsigned int * rate_scalings = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  /* powers of scale threshold for undoing the scaling */
+  double scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      scale_minlh[i] = scale_factor;
+    }
+  }
+
   /* build sumtable */
   for (n = 0; n < sites; n++)
   {
+    if (per_rate_scaling)
+    {
+      /* compute minimum per-rate scaler -> common per-site scaler */
+      min_scaler = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < min_scaler)
+          min_scaler = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - min_scaler,
+                                   PLL_SCALE_RATE_MAXDIFF);
+      }
+    }
+
     for (i = 0; i < rate_cats; ++i)
     {
       t_eigenvecs = eigenvecs[i];
@@ -67,12 +106,18 @@ PLL_EXPORT int pll_core_update_sumtable_ti_4x4(unsigned int sites,
           tipstate >>= 1;
         }
         sum[j] = lefterm * righterm;
+
+        if (rate_scalings && rate_scalings[i] > 0)
+          sum[j] *= scale_minlh[rate_scalings[i]-1];
       }
 
       t_clvc += states;
       sum += states;
     }
   }
+
+  if (rate_scalings)
+    free(rate_scalings);
 
   return PLL_SUCCESS;
 }
@@ -109,10 +154,13 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
                                            rate_cats,
                                            parent_clv,
                                            child_clv,
+                                           parent_scaler,
+                                           child_scaler,
                                            eigenvecs,
                                            inv_eigenvecs,
                                            freqs,
-                                           sumtable);
+                                           sumtable,
+                                           attrib);
   }
 #endif
 #ifdef HAVE_AVX
@@ -150,9 +198,47 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
   }
 #endif
 
+  unsigned int min_scaler;
+  unsigned int * rate_scalings = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  /* powers of scale threshold for undoing the scaling */
+  double scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      scale_minlh[i] = scale_factor;
+    }
+  }
+
   /* build sumtable */
   for (n = 0; n < sites; n++)
   {
+    if (per_rate_scaling)
+    {
+      /* compute minimum per-rate scaler -> common per-site scaler */
+      min_scaler = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        rate_scalings[i] += (child_scaler) ? child_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < min_scaler)
+          min_scaler = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - min_scaler,
+                                   PLL_SCALE_RATE_MAXDIFF);
+      }
+    }
+
     for (i = 0; i < rate_cats; ++i)
     {
       t_eigenvecs     = eigenvecs[i];
@@ -169,12 +255,18 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
           righterm += t_eigenvecs[j * states + k] * t_clvc[k];
         }
         sum[j] = lefterm * righterm;
+
+        if (rate_scalings && rate_scalings[i] > 0)
+          sum[j] *= scale_minlh[rate_scalings[i]-1];
       }
       t_clvc += states;
       t_clvp += states;
       sum += states;
     }
   }
+
+  if (rate_scalings)
+    free(rate_scalings);
 
   return PLL_SUCCESS;
 }
@@ -214,11 +306,13 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
                                            rate_cats,
                                            parent_clv,
                                            left_tipchars,
+                                           parent_scaler,
                                            eigenvecs,
                                            inv_eigenvecs,
                                            freqs,
                                            tipmap,
-                                           sumtable);
+                                           sumtable,
+                                           attrib);
   }
 #endif
 #ifdef HAVE_AVX
@@ -265,6 +359,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
                                            rate_cats,
                                            parent_clv,
                                            left_tipchars,
+                                           parent_scaler,
                                            eigenvecs,
                                            inv_eigenvecs,
                                            freqs,

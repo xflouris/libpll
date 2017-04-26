@@ -46,22 +46,22 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
   unsigned int states = 4;
 
   unsigned int min_scaler = 0;
-  unsigned int * rate_scale_factors = NULL;
+  unsigned int * rate_scalings = NULL;
   int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
 
-  if (per_rate_scaling)
-    rate_scale_factors = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
-
   /* powers of scale threshold for undoing the scaling */
-  __m256d v_scale_minlh[5] = {
-      _mm256_set1_pd(1.0),
-      _mm256_set1_pd(PLL_SCALE_THRESHOLD),
-      _mm256_set1_pd(PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD),
-      _mm256_set1_pd(PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD *
-                     PLL_SCALE_THRESHOLD),
-      _mm256_set1_pd(PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD *
-                     PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD)
-  };
+  __m256d v_scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      v_scale_minlh[i] = _mm256_set1_pd(scale_factor);
+    }
+  }
 
   /* transposed inv_eigenvecs */
   double * tt_inv_eigenvecs = (double *) pll_aligned_alloc (
@@ -95,10 +95,17 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
       min_scaler = UINT_MAX;
       for (i = 0; i < rate_cats; ++i)
       {
-        rate_scale_factors[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
-        rate_scale_factors[i] += (child_scaler) ? child_scaler[n*rate_cats+i] : 0;
-        if (rate_scale_factors[i] < min_scaler)
-          min_scaler = rate_scale_factors[i];
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        rate_scalings[i] += (child_scaler) ? child_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < min_scaler)
+          min_scaler = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - min_scaler,
+                                   PLL_SCALE_RATE_MAXDIFF);
       }
     }
 
@@ -170,12 +177,9 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
       __m256d v_sum = _mm256_mul_pd (v_lefterm_sum, v_righterm_sum);
 
       /* apply per-rate scalers */
-      if (per_rate_scaling)
+      if (rate_scalings && rate_scalings[i] > 0)
       {
-        int scalings = rate_scale_factors[i] - min_scaler > 4 ?
-            4 : (rate_scale_factors[i] - min_scaler);
-
-        v_sum = _mm256_mul_pd(v_sum, v_scale_minlh[scalings]);
+        v_sum = _mm256_mul_pd(v_sum, v_scale_minlh[rate_scalings[i]-1]);
       }
 
       _mm256_store_pd (sum, v_sum);
@@ -188,8 +192,8 @@ static int core_update_sumtable_ii_4x4_avx(unsigned int sites,
 
   pll_aligned_free (tt_inv_eigenvecs);
 
-  if (rate_scale_factors)
-    free(rate_scale_factors);
+  if (rate_scalings)
+    free(rate_scalings);
 
   return PLL_SUCCESS;
 }
@@ -413,22 +417,22 @@ static int core_update_sumtable_ti_4x4_avx(unsigned int sites,
   const double * t_eigenvecs_trans;
 
   unsigned int min_scaler = 0;
-  unsigned int * rate_scale_factors = NULL;
+  unsigned int * rate_scalings = NULL;
   int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
 
-  if (per_rate_scaling)
-    rate_scale_factors = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
-
   /* powers of scale threshold for undoing the scaling */
-  __m256d v_scale_minlh[5] = {
-      _mm256_set1_pd(1.0),
-      _mm256_set1_pd(PLL_SCALE_THRESHOLD),
-      _mm256_set1_pd(PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD),
-      _mm256_set1_pd(PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD *
-                     PLL_SCALE_THRESHOLD),
-      _mm256_set1_pd(PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD *
-                     PLL_SCALE_THRESHOLD * PLL_SCALE_THRESHOLD)
-  };
+  __m256d v_scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      v_scale_minlh[i] = _mm256_set1_pd(scale_factor);
+    }
+  }
 
   double * eigenvecs_trans = (double *) pll_aligned_alloc (
       (states * states * rate_cats) * sizeof(double),
@@ -513,9 +517,16 @@ static int core_update_sumtable_ti_4x4_avx(unsigned int sites,
       min_scaler = UINT_MAX;
       for (i = 0; i < rate_cats; ++i)
       {
-        rate_scale_factors[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
-        if (rate_scale_factors[i] < min_scaler)
-          min_scaler = rate_scale_factors[i];
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < min_scaler)
+          min_scaler = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - min_scaler,
+                                   PLL_SCALE_RATE_MAXDIFF);
       }
     }
 
@@ -541,12 +552,9 @@ static int core_update_sumtable_ti_4x4_avx(unsigned int sites,
       __m256d v_sum = _mm256_mul_pd(v_lefterm, v_righterm);
 
       /* apply per-rate scalers */
-      if (per_rate_scaling)
+      if (rate_scalings && rate_scalings[i] > 0)
       {
-        int scalings = rate_scale_factors[i] - min_scaler > 4 ?
-            4 : (rate_scale_factors[i] - min_scaler);
-
-        v_sum = _mm256_mul_pd(v_sum, v_scale_minlh[scalings]);
+        v_sum = _mm256_mul_pd(v_sum, v_scale_minlh[rate_scalings[i]-1]);
       }
 
       _mm256_store_pd(sum, v_sum);
@@ -561,8 +569,8 @@ static int core_update_sumtable_ti_4x4_avx(unsigned int sites,
   pll_aligned_free(eigenvecs_trans);
   pll_aligned_free(precomp_left);
 
-  if (rate_scale_factors)
-    free(rate_scale_factors);
+  if (rate_scalings)
+    free(rate_scalings);
 
   return PLL_SUCCESS;
 }
