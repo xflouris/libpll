@@ -55,6 +55,9 @@
 #define PLL_FAILURE  0
 #define PLL_SUCCESS  1
 
+#define PLL_FALSE  0
+#define PLL_TRUE   1
+
 #define PLL_ALIGNMENT_CPU   8
 #define PLL_ALIGNMENT_SSE  16
 #define PLL_ALIGNMENT_AVX  32
@@ -505,7 +508,8 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
 
 PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
                                unsigned int tip_index,
-                               const double * clv);
+                               const double * clv,
+                               int padding);
 
 PLL_EXPORT void pll_set_pattern_weights(pll_partition_t * partition,
                                         const unsigned int * pattern_weights);

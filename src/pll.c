@@ -988,7 +988,8 @@ PLL_EXPORT int pll_set_tip_states(pll_partition_t * partition,
 //TODO: <DOC> We should account for padding before calling this function
 PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
                                unsigned int tip_index,
-                               const double * clv)
+                               const double * clv,
+                               int padding)
 {
   unsigned int i,j,k;
 
@@ -1009,7 +1010,7 @@ PLL_EXPORT int pll_set_tip_clv(pll_partition_t * partition,
       memcpy(tipclv, clv, partition->states*sizeof(double));
       tipclv += partition->states_padded;
     }
-    clv += partition->states_padded;
+    clv += padding ? partition->states_padded : partition->states;
   }
 
   /* if asc_bias is set, we initialize the additional positions */
