@@ -101,7 +101,7 @@ const unsigned int pll_map_aa[256] =
 
 
 /*
-  map for fasta parsing
+  maps for fasta and phylip parsing
 
   legal symbols: ?*- 0123456789 abcdefghijklmnopqrstuvxyz (also upper case)
   fatal symbols: period (.), ascii 0-8, ascii 14-31
@@ -109,8 +109,37 @@ const unsigned int pll_map_aa[256] =
   stripped: !"#$&'()+,/:;<=>@^_`æøåÆØÅ§¨´
 
   includes both amino acid and nucleotide sequences, adapt to nt only
+
+  TODO: Would be more suitable to create separate maps for parsing nt data,
+  aa data, binary, etc
 */
 
+const unsigned int pll_map_phylip[256] =
+  {
+    /*
+    0=stripped, 1=legal, 2=fatal, 3=silently stripped
+    @   A   B   C   D   E   F   G   H   I   J   K   L   M   N   O
+    P   Q   R   S   T   U   V   W   X   Y   Z   [   \   ]   ^   _
+    */
+
+/*  0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F        */
+    2,  2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  3,  2,  2,  /* 0 */
+    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  /* 1 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  0,  /* 2 */
+    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  1,  /* 3 */
+    0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  /* 4 */
+    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  /* 5 */
+    0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  1,  1,  1,  1,  0,  /* 6 */
+    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  /* 7 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  /* 8 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  /* 9 */
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  /* A */
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  /* B */
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  /* C */
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  /* D */
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  /* E */
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0   /* F */
+  };
 const unsigned int pll_map_fasta[256] =
   {
     /*

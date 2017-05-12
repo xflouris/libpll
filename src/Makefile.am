@@ -31,13 +31,12 @@ core_pmatrix.c \
 core_likelihood.c \
 parse_utree.y \
 parse_rtree.y \
-parse_phylip.y \
 lex_utree.l \
 lex_rtree.l \
-lex_phylip.l \
 fast_parsimony.c \
 stepwise.c \
-random.c
+random.c \
+phylip.c
 
 libpll_la_CFLAGS = $(AM_CFLAGS)
 

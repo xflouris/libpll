@@ -93,7 +93,6 @@ int main(int argc, char * argv[])
 {
   unsigned int i;
   unsigned int tip_nodes_count, inner_nodes_count, nodes_count, branch_count;
-  unsigned int sequence_count;
   unsigned int matrix_count, ops_count;
   unsigned int * matrix_indices;
   double * branch_lengths;
@@ -104,7 +103,7 @@ int main(int argc, char * argv[])
   /* we accept only two arguments - the newick tree (unrooted binary) and the
      alignment in the form of FASTA reads */
   if (argc != 3)
-    fatal(" syntax: %s [newick] [fasta]", argv[0]);
+    fatal(" syntax: %s [newick] [phylip]", argv[0]);
 
   /* parse the unrooted binary tree in newick format, and store the number
      of tip nodes in tip_nodes_count */
@@ -162,12 +161,18 @@ int main(int argc, char * argv[])
   }
 
   /* read PHYLIP alignment */
-  pll_msa_t * msa = pll_phylip_parse_msa(argv[2], &sequence_count);
+  pll_phylip_t * fd = pll_phylip_open(argv[2], pll_map_phylip);
+  if (!fd)
+    fatal(pll_errmsg);
+
+  pll_msa_t * msa = pll_phylip_parse_interleaved(fd);
   if (!msa)
     fatal(pll_errmsg);
 
+  pll_phylip_close(fd);
+
   /* compress site patterns */
-  if (sequence_count != tip_nodes_count)
+  if ((unsigned int)(msa->count) != tip_nodes_count)
     fatal("Number of sequences does not match number of leaves in tree");
 
 #ifdef COMPRESS

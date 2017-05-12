@@ -118,26 +118,30 @@
 #define PLL_ERROR_FASTA_UNPRINTABLECHAR    104
 #define PLL_ERROR_FASTA_INVALIDHEADER      105
 #define PLL_ERROR_PHYLIP_SYNTAX            106
-#define PLL_ERROR_NEWICK_SYNTAX            107
-#define PLL_ERROR_MEM_ALLOC                108
-#define PLL_ERROR_PARAM_INVALID            109
-#define PLL_ERROR_TIPDATA_ILLEGALSTATE     110
-#define PLL_ERROR_TIPDATA_ILLEGALFUNCTION  111
-#define PLL_ERROR_TREE_CONVERSION          112
-#define PLL_ERROR_INVAR_INCOMPAT           113
-#define PLL_ERROR_INVAR_PROPORTION         114
-#define PLL_ERROR_INVAR_PARAMINDEX         115
-#define PLL_ERROR_INVAR_NONEFOUND          116
-#define PLL_ERROR_AB_INVALIDMETHOD         117
-#define PLL_ERROR_AB_NOSUPPORT             118
-#define PLL_ERROR_SPR_TERMINALBRANCH       119
-#define PLL_ERROR_SPR_NOCHANGE             120
-#define PLL_ERROR_NNI_INVALIDMOVE          121
-#define PLL_ERROR_NNI_TERMINALBRANCH       122
-#define PLL_ERROR_STEPWISE_STRUCT          123
-#define PLL_ERROR_STEPWISE_TIPS            124
-#define PLL_ERROR_STEPWISE_UNSUPPORTED     125
-#define PLL_ERROR_EINVAL                   126
+#define PLL_ERROR_PHYLIP_LONGSEQ           107
+#define PLL_ERROR_PHYLIP_NONALIGNED        108
+#define PLL_ERROR_PHYLIP_ILLEGALCHAR       109
+#define PLL_ERROR_PHYLIP_UNPRINTABLECHAR   110
+#define PLL_ERROR_NEWICK_SYNTAX            111
+#define PLL_ERROR_MEM_ALLOC                112
+#define PLL_ERROR_PARAM_INVALID            113
+#define PLL_ERROR_TIPDATA_ILLEGALSTATE     114
+#define PLL_ERROR_TIPDATA_ILLEGALFUNCTION  115
+#define PLL_ERROR_TREE_CONVERSION          116
+#define PLL_ERROR_INVAR_INCOMPAT           117
+#define PLL_ERROR_INVAR_PROPORTION         118
+#define PLL_ERROR_INVAR_PARAMINDEX         119
+#define PLL_ERROR_INVAR_NONEFOUND          120
+#define PLL_ERROR_AB_INVALIDMETHOD         121
+#define PLL_ERROR_AB_NOSUPPORT             122
+#define PLL_ERROR_SPR_TERMINALBRANCH       123
+#define PLL_ERROR_SPR_NOCHANGE             124
+#define PLL_ERROR_NNI_INVALIDMOVE          125
+#define PLL_ERROR_NNI_TERMINALBRANCH       126
+#define PLL_ERROR_STEPWISE_STRUCT          127
+#define PLL_ERROR_STEPWISE_TIPS            128
+#define PLL_ERROR_STEPWISE_UNSUPPORTED     129
+#define PLL_ERROR_EINVAL                   130
 
 /* utree specific */
 
@@ -242,6 +246,22 @@ typedef struct pll_fasta
   long stripped_count;
   long stripped[256];
 } pll_fasta_t;
+
+/* Simple structure for handling PHYLIP parsing */
+typedef struct pll_phylip_s
+{
+  FILE * fp;
+  char * line;
+  size_t line_size;
+  size_t line_maxsize;
+  char buffer[PLL_LINEALLOC];
+  const unsigned int * chrstatus;
+  long no;
+  long filesize;
+  long lineno;
+  long stripped_count;
+  long stripped[256];
+} pll_phylip_t;
 
 /* Simple unrooted and rooted tree structure for parsing newick */
 
@@ -410,6 +430,7 @@ PLL_EXPORT extern const unsigned int pll_map_bin[256];
 PLL_EXPORT extern const unsigned int pll_map_nt[256];
 PLL_EXPORT extern const unsigned int pll_map_aa[256];
 PLL_EXPORT extern const unsigned int pll_map_fasta[256];
+PLL_EXPORT extern const unsigned int pll_map_phylip[256];
 
 PLL_EXPORT extern const double pll_aa_rates_dayhoff[190];
 PLL_EXPORT extern const double pll_aa_rates_lg[190];
@@ -695,12 +716,20 @@ PLL_EXPORT void pll_utree_create_pars_buildops(pll_unode_t * const* trav_buffer,
                                                pll_pars_buildop_t * ops,
                                                unsigned int * ops_count);
 
-/* functions in parse_phylip.y */
-
-PLL_EXPORT pll_msa_t * pll_phylip_parse_msa(const char * filename,
-                                            unsigned int * msa_count);
+/* functions in phylip.c */
 
 PLL_EXPORT void pll_msa_destroy(pll_msa_t * msa);
+
+PLL_EXPORT pll_phylip_t * pll_phylip_open(const char * filename,
+                                          const unsigned int * map);
+
+PLL_EXPORT int pll_phylip_rewind(pll_phylip_t * fd);
+
+PLL_EXPORT void pll_phylip_close(pll_phylip_t * fd);
+
+PLL_EXPORT pll_msa_t * pll_phylip_parse_interleaved(pll_phylip_t * fd);
+
+PLL_EXPORT pll_msa_t * pll_phylip_parse_sequential(pll_phylip_t * fd);
 
 /* functions in rtree.c */
 

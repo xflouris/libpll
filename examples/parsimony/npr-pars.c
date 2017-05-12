@@ -66,7 +66,6 @@ int main(int argc, char * argv[])
 {
   unsigned int i,j,n;
   unsigned int tip_nodes_count, inner_nodes_count, nodes_count, branch_count;
-  unsigned int sequence_count;
   unsigned int ops_count;
   pll_parsimony_t * pars;
   pll_pars_buildop_t * operations;
@@ -129,11 +128,17 @@ int main(int argc, char * argv[])
   }
 
   /* read PHYLIP alignment */
-  pll_msa_t * msa = pll_phylip_parse_msa(argv[2], &sequence_count);
+  pll_phylip_t * fd = pll_phylip_open(argv[2], pll_map_phylip);
+  if (!fd)
+    fatal(pll_errmsg);
+
+  pll_msa_t * msa = pll_phylip_parse_interleaved(fd);
   if (!msa)
     fatal(pll_errmsg);
 
-  if (sequence_count != tip_nodes_count)
+  pll_phylip_close(fd);
+
+  if ((unsigned int)(msa->count) != tip_nodes_count)
     fatal("Number of sequences does not match number of leaves in tree");
 
   /* create the PLL parsimony instance
