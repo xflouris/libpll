@@ -101,7 +101,7 @@ int main(int argc, char * argv[])
 
   /* fixed rate categories */
   double rate_cats[4];
-  pll_compute_gamma_cats(alpha, 4, rate_cats);
+  pll_compute_gamma_cats(alpha, 4, rate_cats, PLL_GAMMA_RATES_MEAN);
 
   /* set frequencies to the parameter sets */
   pll_set_frequencies(partition, 0, frequencies[0]);

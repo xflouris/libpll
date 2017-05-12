@@ -103,7 +103,7 @@ int main(int argc, char * argv[])
   double branch_lengths[4] = { 0.5, 0.5, 0.3, 0.2};
   unsigned int matrix_indices[4] = { 0, 1, 2, 3 };
 
-  if (pll_compute_gamma_cats(alpha, n_cat_gamma, rate_cats) == PLL_FAILURE)
+  if (pll_compute_gamma_cats(alpha, n_cat_gamma, rate_cats, PLL_GAMMA_RATES_MEAN) == PLL_FAILURE)
   {
     printf("Error %d: %s\n", pll_errno, pll_errmsg);
     fatal("Fail computing gamma cats");

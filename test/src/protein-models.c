@@ -99,7 +99,7 @@ int main(int argc, char * argv[])
 
   double * rate_cats = (double *) malloc(N_RATE_CATS * sizeof(double));
 
-  if (pll_compute_gamma_cats(ALPHA, N_RATE_CATS, rate_cats) == PLL_FAILURE)
+  if (pll_compute_gamma_cats(ALPHA, N_RATE_CATS, rate_cats, PLL_GAMMA_RATES_MEAN) == PLL_FAILURE)
   {
     printf("Fail computing the gamma rates\n");
     exit(1);

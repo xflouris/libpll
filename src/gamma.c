@@ -219,7 +219,8 @@ l4:
 
 PLL_EXPORT int pll_compute_gamma_cats(double alpha,
                                       unsigned int categories,
-                                      double * output_rates)
+                                      double * output_rates,
+                                      int rates_mode)
 {
   unsigned int i;
 
@@ -245,7 +246,21 @@ PLL_EXPORT int pll_compute_gamma_cats(double alpha,
   {
     output_rates[0] = 1.0;
   }
-  else
+  else if (rates_mode == PLL_GAMMA_RATES_MEDIAN)
+  {
+    double
+      middle = 1.0 / (2.0 * categories),
+      t = 0.0;
+
+    for(i = 0; i < categories; i++)
+      output_rates[i] = POINT_GAMMA((double)(i * 2 + 1) * middle, alfa, beta);
+
+    for (i = 0; i < categories; i++)
+      t += output_rates[i];
+     for( i = 0; i < categories; i++)
+       output_rates[i] *= factor / t;
+  }
+  else if (rates_mode == PLL_GAMMA_RATES_MEAN)
   {
     gammaProbs = (double *)malloc(categories * sizeof(double));
 
@@ -265,6 +280,12 @@ PLL_EXPORT int pll_compute_gamma_cats(double alpha,
       output_rates[i] = (gammaProbs[i] - gammaProbs[i - 1]) * factor;
 
     free(gammaProbs);
+  }
+  else
+  {
+    pll_errno = PLL_ERROR_PARAM_INVALID;
+    snprintf(pll_errmsg, 200, "Invalid GAMMA disrcretization mode (%d)", rates_mode);
+    return PLL_FAILURE;
   }
 
   return PLL_SUCCESS;

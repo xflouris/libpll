@@ -171,7 +171,7 @@ static int smalltest (unsigned int attributes)
   operations[2].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
   operations[2].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
 
-  pll_compute_gamma_cats (ALPHA, N_RATE_CATS, rate_cats);
+  pll_compute_gamma_cats (ALPHA, N_RATE_CATS, rate_cats, PLL_GAMMA_RATES_MEAN);
   pll_set_subst_params (partition, 0, subst_params);
   pll_set_frequencies (partition, 0, frequencies);
   pll_set_category_rates (partition, rate_cats);

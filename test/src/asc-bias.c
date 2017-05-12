@@ -84,7 +84,7 @@ static double eval(pll_partition_t * partition,
 
   pll_set_subst_params(partition, 0, subst_params);
   pll_set_frequencies(partition, 0, frequencies);
-  pll_compute_gamma_cats(alpha, partition->rate_cats, categories);
+  pll_compute_gamma_cats(alpha, partition->rate_cats, categories, PLL_GAMMA_RATES_MEAN);
   pll_set_category_rates(partition, categories);
 
   pll_update_prob_matrices(partition,

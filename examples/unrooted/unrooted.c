@@ -54,7 +54,7 @@ int main(int argc, char * argv[])
 
   /* discretized category rates from a gamma distribution with alpha shape 1 */
   double rate_cats[4];
-  pll_compute_gamma_cats(alpha, 4, rate_cats);
+  pll_compute_gamma_cats(alpha, 4, rate_cats, PLL_GAMMA_RATES_MEAN);
 
   /* set frequencies */
   pll_set_frequencies(partition, 0, frequencies);

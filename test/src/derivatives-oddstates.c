@@ -165,7 +165,7 @@ int main(int argc, char * argv[])
 
         double * rate_cats = (double *) malloc(n_cat_gamma[k] * sizeof(double));
 
-        if (pll_compute_gamma_cats(alpha[i], n_cat_gamma[k], rate_cats) == PLL_FAILURE)
+        if (pll_compute_gamma_cats(alpha[i], n_cat_gamma[k], rate_cats, PLL_GAMMA_RATES_MEAN) == PLL_FAILURE)
         {
           printf("Fail computing the gamma rates\n");
           continue;

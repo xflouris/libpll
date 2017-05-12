@@ -211,7 +211,7 @@ int eval(pll_partition_t * partition, double alpha)
   unsigned int i;
   double d_f, dd_f;
 
-  pll_compute_gamma_cats(alpha, n_cat_gamma, rate_cats);
+  pll_compute_gamma_cats(alpha, n_cat_gamma, rate_cats, PLL_GAMMA_RATES_MEAN);
   pll_set_category_rates(partition, rate_cats);
 
   printf("scaling = ");

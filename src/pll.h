@@ -151,6 +151,10 @@
 #define PLL_UTREE_SHOW_SCALER_INDEX      (1 << 3)
 #define PLL_UTREE_SHOW_PMATRIX_INDEX     (1 << 4)
 
+/* GAMMA discretization modes */
+#define PLL_GAMMA_RATES_MEAN             0
+#define PLL_GAMMA_RATES_MEDIAN           1
+
 /* structures and data types */
 
 typedef struct pll_partition
@@ -603,7 +607,8 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
 
 PLL_EXPORT int pll_compute_gamma_cats(double alpha,
                                       unsigned int categories,
-                                      double * output_rates);
+                                      double * output_rates,
+                                      int rates_mode);
 
 /* functions in output.c */
 

@@ -116,7 +116,7 @@ int main(int argc, char * argv[])
   double * persite_lnl = (double *) malloc(n_sites * sizeof(double));
   double checksum;
 
-  if (pll_compute_gamma_cats(alpha, n_cat_gamma, rate_cats) == PLL_FAILURE)
+  if (pll_compute_gamma_cats(alpha, n_cat_gamma, rate_cats, PLL_GAMMA_RATES_MEAN) == PLL_FAILURE)
   {
     printf("Error %d: %s\n", pll_errno, pll_errmsg);
     fatal("Fail computing gamma cats");

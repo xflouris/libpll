@@ -22,14 +22,21 @@
 
 #define N_ALPHAS  3
 #define N_CATS    3
+#define N_MODES   2
 #define N_STATES  7
 #define N_SUBST_PARAMS 21 // N_STATES*(N_STATES-1)/2
 #define FLOAT_PRECISION 4
+
+#define MODENAME(m) (m == PLL_GAMMA_RATES_MEAN ? "MEAN" : "MEDIAN")
 
 static double alpha[N_ALPHAS] =
   { 0.1, 1.25, 100 };
 static unsigned int n_cat_gamma[N_CATS] =
   { 1, 4, 6 };
+
+static int modes[N_MODES] =
+  { PLL_GAMMA_RATES_MEDIAN, PLL_GAMMA_RATES_MEAN };
+
 
 /* odd map with 7 states (a,b,c,d,e,f,g) */
 const unsigned int odd_map[256] =
@@ -47,8 +54,8 @@ const unsigned int odd_map[256] =
 
 int main (int argc, char * argv[])
 {
-  unsigned int i, j, k;
-  double lk_scores[N_ALPHAS * N_CATS];
+  unsigned int i, j, k, m;
+  double lk_scores[N_ALPHAS * N_CATS * N_MODES];
   unsigned int n_sites = 20;
   unsigned int n_tips = 5;
   pll_operation_t * operations;
@@ -85,6 +92,22 @@ int main (int argc, char * argv[])
   operations[2].parent_scaler_index = PLL_SCALE_BUFFER_NONE;
   operations[2].child1_scaler_index = PLL_SCALE_BUFFER_NONE;
   operations[2].child2_scaler_index = PLL_SCALE_BUFFER_NONE;
+
+  /* test illegal alpha value */
+  double invalid_alpha = 0;
+  double * rate_cats = (double *) malloc (4 * sizeof(double));
+  if (pll_compute_gamma_cats (invalid_alpha, 4, rate_cats, PLL_GAMMA_RATES_MEAN) == PLL_FAILURE)
+  {
+    if (pll_errno != PLL_ERROR_PARAM_INVALID)
+      printf ("Error is %d instead of %d\n", pll_errno,
+      PLL_ERROR_PARAM_INVALID);
+  }
+  else
+  {
+    printf ("Computing gamma rates for alpha = %f should have failed\n",
+            invalid_alpha);
+  }
+  free (rate_cats);
 
   for (k = 0; k < N_CATS; ++k)
   {
@@ -147,77 +170,62 @@ int main (int argc, char * argv[])
 
     for (i = 0; i < N_ALPHAS; ++i)
     {
-
-      printf ("\n\n TEST alpha(ncats) = %6.2f(%2d)\n\n", alpha[i],
-              n_cat_gamma[k]);
-
-      double * rate_cats = (double *) malloc (n_cat_gamma[k] * sizeof(double));
-
-      if (pll_compute_gamma_cats (alpha[i], n_cat_gamma[k],
-                                  rate_cats) == PLL_FAILURE)
+      for (m = 0; m < N_MODES; ++m)
       {
-        printf ("Fail computing the gamma rates\n");
-        continue;
-      }
+        printf ("\n\n TEST alpha(ncats) = %6.2f(%2d), mode = %s\n\n",
+                alpha[i], n_cat_gamma[k], MODENAME(m));
 
-      printf ("Rates: ");
-      for (j = 0; j < n_cat_gamma[k]; j++)
-      {
-        printf ("%8.5f ", rate_cats[j]);
-        if ((j % 4) == 3)
-          printf ("\n       ");
-      }
-      printf ("\n");
+        double * rate_cats = (double *) malloc (n_cat_gamma[k] * sizeof(double));
 
-      pll_set_category_rates (partition, rate_cats);
-      free (rate_cats);
+        if (pll_compute_gamma_cats (alpha[i], n_cat_gamma[k],
+                                    rate_cats, modes[m]) == PLL_FAILURE)
+        {
+          printf ("Fail computing the gamma rates\n");
+          continue;
+        }
 
-      pll_update_prob_matrices(partition,
-                               params_indices,
-                               matrix_indices,
-                               branch_lengths,
-                               4);
-
-      pll_update_partials (partition, operations, 3);
-
-      for (j = 0; j < 4; ++j)
-      {
-        printf ("[%d] P-matrix for branch length %f\n", i, branch_lengths[j]);
-        pll_show_pmatrix (partition, j, FLOAT_PRECISION);
+        printf ("Rates: ");
+        for (j = 0; j < n_cat_gamma[k]; j++)
+        {
+          printf ("%8.5f ", rate_cats[j]);
+          if ((j % 4) == 3)
+            printf ("\n       ");
+        }
         printf ("\n");
+
+        pll_set_category_rates (partition, rate_cats);
+        free (rate_cats);
+
+        pll_update_prob_matrices(partition,
+                                 params_indices,
+                                 matrix_indices,
+                                 branch_lengths,
+                                 4);
+
+        pll_update_partials (partition, operations, 3);
+
+        for (j = 0; j < 4; ++j)
+        {
+          printf ("[%d] P-matrix for branch length %f\n", i, branch_lengths[j]);
+          pll_show_pmatrix (partition, j, FLOAT_PRECISION);
+          printf ("\n");
+        }
+
+        printf ("[%d] CLV 5: ", i);
+        pll_show_clv (partition, 5, PLL_SCALE_BUFFER_NONE, FLOAT_PRECISION + 1);
+        printf ("[%d] CLV 6: ", i);
+        pll_show_clv (partition, 6, PLL_SCALE_BUFFER_NONE, FLOAT_PRECISION + 1);
+        printf ("[%d] CLV 7: ", i);
+        pll_show_clv (partition, 7, PLL_SCALE_BUFFER_NONE, FLOAT_PRECISION);
+
+        lk_scores[k * N_ALPHAS * N_MODES + i*N_MODES + m] = pll_compute_edge_loglikelihood (
+            partition, 6,
+            PLL_SCALE_BUFFER_NONE,
+            7,
+            PLL_SCALE_BUFFER_NONE,
+            0, params_indices, NULL);
       }
-
-      printf ("[%d] CLV 5: ", i);
-      pll_show_clv (partition, 5, PLL_SCALE_BUFFER_NONE, FLOAT_PRECISION + 1);
-      printf ("[%d] CLV 6: ", i);
-      pll_show_clv (partition, 6, PLL_SCALE_BUFFER_NONE, FLOAT_PRECISION + 1);
-      printf ("[%d] CLV 7: ", i);
-      pll_show_clv (partition, 7, PLL_SCALE_BUFFER_NONE, FLOAT_PRECISION);
-
-      lk_scores[k * N_ALPHAS + i] = pll_compute_edge_loglikelihood (
-          partition, 6,
-          PLL_SCALE_BUFFER_NONE,
-          7,
-          PLL_SCALE_BUFFER_NONE,
-          0, params_indices, NULL);
     }
-
-    /* test illegal alpha value */
-    double invalid_alpha = 0;
-    double * rate_cats = (double *) malloc (4 * sizeof(double));
-    if (pll_compute_gamma_cats (invalid_alpha, 4, rate_cats) == PLL_FAILURE)
-    {
-      if (pll_errno != PLL_ERROR_PARAM_INVALID)
-        printf ("Error is %d instead of %d\n", pll_errno,
-        PLL_ERROR_PARAM_INVALID);
-    }
-    else
-    {
-      printf ("Computing gamma rates for alpha = %f should have failed\n",
-              invalid_alpha);
-    }
-    free (rate_cats);
-
     pll_partition_destroy (partition);
   }
 
@@ -226,8 +234,12 @@ int main (int argc, char * argv[])
   {
     for (i = 0; i < N_ALPHAS; ++i)
     {
-      printf ("ti/tv:alpha(ncats) = %6.2f(%2d)   logL: %17.6f\n", alpha[i],
-              n_cat_gamma[k], lk_scores[k * N_ALPHAS + i]);
+      for (m = 0; m < N_MODES; ++m)
+      {
+        printf ("ti/tv:alpha(ncats) = %6.2f(%2d), mode = %6s    logL: %17.6f\n",
+                alpha[i], n_cat_gamma[k], MODENAME(modes[m]),
+                lk_scores[k * N_ALPHAS * N_MODES + i * N_MODES + m]);
+      }
     }
   }
 

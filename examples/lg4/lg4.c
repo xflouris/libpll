@@ -287,7 +287,7 @@ int main(int argc, char * argv[])
 
   /* compute the discretized category rates from a gamma distribution
      with alpha shape 1 and store them in rate_cats  */
-  pll_compute_gamma_cats(1.00000, 4, rate_cats);
+  pll_compute_gamma_cats(1.00000, 4, rate_cats, PLL_GAMMA_RATES_MEAN);
 
   /* set rate categories */
   pll_set_category_rates(partition, rate_cats);

@@ -96,7 +96,7 @@ int main(int argc, char * argv[])
   double * persite_lnl = (double *) malloc(n_sites * sizeof(double));
   double checksum;
 
-  if (pll_compute_gamma_cats(alpha, n_cat_gamma, rate_cats) == PLL_FAILURE)
+  if (pll_compute_gamma_cats(alpha, n_cat_gamma, rate_cats, PLL_GAMMA_RATES_MEAN) == PLL_FAILURE)
   {
     printf("Error %d: %s\n", pll_errno, pll_errmsg);
     fatal("Fail computing gamma cats");
@@ -142,7 +142,7 @@ int main(int argc, char * argv[])
 
   /* test illegal alpha value */
   double invalid_alpha = 0;
-  if (pll_compute_gamma_cats(invalid_alpha, N_CAT_GAMMA, rate_cats) == PLL_FAILURE)
+  if (pll_compute_gamma_cats(invalid_alpha, N_CAT_GAMMA, rate_cats, PLL_GAMMA_RATES_MEAN) == PLL_FAILURE)
   {
     if (pll_errno != PLL_ERROR_PARAM_INVALID)
      printf("Error is %d instead of %d\n", pll_errno, PLL_ERROR_PARAM_INVALID);
