@@ -48,7 +48,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   unsigned int states_padded = states;
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     if (states == 4)
     {
@@ -85,7 +85,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     if (states == 4)
     {
@@ -122,7 +122,7 @@ PLL_EXPORT double pll_core_root_loglikelihood(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     if (states == 4)
     {
@@ -241,7 +241,7 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
   unsigned int states_padded = states;
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     return pll_core_edge_loglikelihood_ti_4x4_sse(sites,
                                                   rate_cats,
@@ -260,7 +260,7 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
   }
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     return pll_core_edge_loglikelihood_ti_4x4_avx(sites,
                                                   rate_cats,
@@ -279,7 +279,7 @@ double pll_core_edge_loglikelihood_ti_4x4(unsigned int sites,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     return pll_core_edge_loglikelihood_ti_4x4_avx(sites,
                                                   rate_cats,
@@ -445,7 +445,7 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
   unsigned int states_padded = states;
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     if (states == 4)
     {
@@ -488,7 +488,7 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     if (states == 4)
     {
@@ -549,7 +549,7 @@ double pll_core_edge_loglikelihood_ti(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     if (states == 4)
     {
@@ -705,7 +705,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   unsigned int states_padded = states;
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     if (states == 4)
     {
@@ -749,7 +749,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     if (states == 4)
     {
@@ -793,7 +793,7 @@ double pll_core_edge_loglikelihood_ii(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     if (states == 4)
     {

@@ -147,7 +147,7 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
   const double * t_freqs;
 
 #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     return pll_core_update_sumtable_ii_sse(states,
                                            sites,
@@ -164,7 +164,7 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
   }
 #endif
 #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     return pll_core_update_sumtable_ii_avx(states,
                                            sites,
@@ -181,7 +181,7 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
   }
 #endif
 #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     return pll_core_update_sumtable_ii_avx2(states,
                                            sites,
@@ -299,7 +299,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
   unsigned int states_padded = states;
 
 #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     return pll_core_update_sumtable_ti_sse(states,
                                            sites,
@@ -316,7 +316,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
   }
 #endif
 #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     return pll_core_update_sumtable_ti_avx(states,
                                            sites,
@@ -334,7 +334,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
   }
 #endif
 #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     return pll_core_update_sumtable_ti_avx2(states,
                                            sites,
@@ -530,14 +530,14 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 
 // SSE3 vectorization in missing as of now
 #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     states_padded = (states+1) & 0xFFFFFFFE;
   }
 #endif
 
 #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     states_padded = (states+3) & 0xFFFFFFFC;
 
@@ -558,7 +558,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
   else
 #endif
 #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     states_padded = (states+3) & 0xFFFFFFFC;
 

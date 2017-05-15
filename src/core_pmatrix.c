@@ -48,7 +48,7 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
 
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     if (states == 4)
     {
@@ -70,7 +70,7 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
   }
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     if (states == 4)
     {
@@ -106,7 +106,7 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     if (states == 4)
     {

@@ -245,17 +245,17 @@ static int fill_parsimony_vectors(const pll_partition_t * partition,
                (bitcount % PLL_BITVECTOR_SIZE != 0);
   
 #ifdef HAVE_SSE3
-  if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE)
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
     bitvectors = (bitvectors+3) & 0xFFFFFFFC;
 #endif
 
 #ifdef HAVE_AVX
-  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX)
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
     bitvectors = (bitvectors+7) & 0xFFFFFFF8;
 #endif
 
 #ifdef HAVE_AVX2
-  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2)
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
     bitvectors = (bitvectors+7) & 0xFFFFFFF8;
 #endif
   
@@ -651,17 +651,17 @@ static void fastparsimony_update_vectors_4x4(pll_parsimony_t * parsimony,
   {
     op = &(ops[i]);
 #ifdef HAVE_SSE3
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
       pll_fastparsimony_update_vector_4x4_sse(parsimony,op);
     else
 #endif
 #ifdef HAVE_AVX
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
       pll_fastparsimony_update_vector_4x4_avx(parsimony,op);
     else
 #endif
 #ifdef HAVE_AVX2
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
       pll_fastparsimony_update_vector_4x4_avx2(parsimony,op);
     else
 #endif
@@ -680,17 +680,17 @@ static int fastparsimony_update_vectors(pll_parsimony_t * parsimony,
   {
     op = &(ops[i]);
 #ifdef HAVE_SSE3
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
       pll_fastparsimony_update_vector_sse(parsimony,op);
     else
 #endif
 #ifdef HAVE_AVX
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
       pll_fastparsimony_update_vector_avx(parsimony,op);
     else
 #endif
 #ifdef HAVE_AVX2
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
       pll_fastparsimony_update_vector_avx2(parsimony,op);
     else
 #endif
@@ -716,19 +716,19 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score(const pll_parsimony_t * par
   if (parsimony->states == 4)
   {
 #ifdef HAVE_SSE3
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
       return pll_fastparsimony_edge_score_4x4_sse(parsimony,
                                                   node1_score_index,
                                                   node2_score_index);
 #endif
 #ifdef HAVE_AVX
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
       return pll_fastparsimony_edge_score_4x4_avx(parsimony,
                                                   node1_score_index,
                                                   node2_score_index);
 #endif
 #ifdef HAVE_AVX2
-    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2)
+    if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
       return pll_fastparsimony_edge_score_4x4_avx2(parsimony,
                                                    node1_score_index,
                                                    node2_score_index);
@@ -739,21 +739,21 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score(const pll_parsimony_t * par
   }
 
 #ifdef HAVE_SSE3
-  if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE)
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
     return pll_fastparsimony_edge_score_sse(parsimony,
                                             node1_score_index,
                                             node2_score_index);
   else
 #endif
 #ifdef HAVE_AVX
-  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX)
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
     return pll_fastparsimony_edge_score_avx(parsimony,
                                             node1_score_index,
                                             node2_score_index);
   else
 #endif
 #ifdef HAVE_AVX2
-  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2)
+  if (parsimony->attributes & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
     return pll_fastparsimony_edge_score_avx2(parsimony,
                                              node1_score_index,
                                              node2_score_index);

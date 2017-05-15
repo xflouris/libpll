@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([libpll], [0.2.0], [Tomas.Flouri@h-its.org])
+AC_INIT([libpll], [0.3.0], [Tomas.Flouri@h-its.org])
 AM_INIT_AUTOMAKE([subdir-objects])
 AC_LANG([C])
 AC_CONFIG_SRCDIR([src/pll.c])
@@ -52,37 +52,39 @@ AC_CHECK_FUNCS([asprintf memcpy memset posix_memalign])
 
 have_avx2=no
 have_avx=no
-have_sse=no
+have_sse3=no
 have_ps2pdf=no
 
-AX_EXT
-
-if test "x${ax_cv_have_fma3_ext}" = "xyes"; then
-  have_avx2=yes
-fi
-
-if test "x${ax_cv_have_avx_ext}" = "xyes"; then
-  have_avx=yes
-fi
-
-if test "x${ax_cv_have_sse3_ext}" = "xyes"; then
-  have_sse3=yes
-fi
-
-AC_ARG_ENABLE(avx2, AS_HELP_STRING([--disable-avx2], [Build without AVX2/FMA support]))
-AS_IF([test "x${ax_cv_have_fma3_ext}" = "xyes"], [
-  have_avx2=yes
-])
-
-AC_ARG_ENABLE(avx, AS_HELP_STRING([--disable-avx], [Build without AVX support]))
-AS_IF([test "x${ax_cv_have_avx_ext}" = "xyes"], [
-  have_avx=yes
-])
-
-AC_ARG_ENABLE(sse,i AS_HELP_STRING([--disable-sse],[Build without SSE support]))
-AS_IF([test "x${ax_cv_have_sse3_ext}" = "xyes"], [
-  have_sse3=yes
-])
+# Compile-time detection of processor features - now disabled
+#AX_EXT
+#
+#if test "x${ax_cv_have_fma3_ext}" = "xyes"; then
+#  have_avx2=yes
+#fi
+#
+#if test "x${ax_cv_have_avx_ext}" = "xyes"; then
+#  have_avx=yes
+#fi
+#
+#if test "x${ax_cv_have_sse3_ext}" = "xyes"; then
+#  have_sse3=yes
+#fi
+#
+#AC_ARG_ENABLE(avx2, AS_HELP_STRING([--disable-avx2], [Build without AVX2/FMA support]))
+#AS_IF([test "x${ax_cv_have_fma3_ext}" = "xyes"], [
+#  have_avx2=yes
+#])
+#
+#AC_ARG_ENABLE(avx, AS_HELP_STRING([--disable-avx], [Build without AVX support]))
+#AS_IF([test "x${ax_cv_have_avx_ext}" = "xyes"], [
+#  have_avx=yes
+#])
+#
+#AC_ARG_ENABLE(sse, AS_HELP_STRING([--disable-sse],[Build without SSE support]))
+#AS_IF([test "x${ax_cv_have_sse3_ext}" = "xyes"], [
+#  have_sse3=yes
+#])
+#
 
 AC_ARG_ENABLE(pdfman, AS_HELP_STRING([--disable-pdfman], [Disable PDF manual creation]))
 AS_IF([test "x$enable_pdfman" != "xno"], [
@@ -92,6 +94,24 @@ AS_IF([test "x$enable_pdfman" != "xno"], [
     AC_MSG_WARN([*** ps2pdf is required to build a PDF version of the manual])
     have_ps2pdf=no
   fi
+])
+
+AC_ARG_ENABLE(sse, AS_HELP_STRING([--disable-sse], [Build without SSE support]))
+AS_IF([test "x$enable_sse" != "xno"], [
+  have_sse3=yes
+  AC_DEFINE([HAVE_SSE3], [1], [Define to 1 to support Streaming SIMD Extensions 3])
+])
+
+AC_ARG_ENABLE(avx, AS_HELP_STRING([--disable-avx], [Build without AVX support]))
+AS_IF([test "x$enable_avx" != "xno"], [
+  have_avx=yes
+  AC_DEFINE([HAVE_AVX], [1], [Define to 1 to support Advanced Vector Extensions])
+])
+
+AC_ARG_ENABLE(avx2, AS_HELP_STRING([--disable-avx2], [Build without AVX2/FMA support]))
+AS_IF([test "x$enable_avx2" != "xno"], [
+  have_avx2=yes
+  AC_DEFINE([HAVE_AVX2], [1], [Define to 1 to support Advanced Vector Extensions 2])
 ])
 
 AM_CONDITIONAL(HAVE_AVX2, test "x${have_avx2}" = "xyes")

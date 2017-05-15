@@ -36,7 +36,9 @@ lex_rtree.l \
 fast_parsimony.c \
 stepwise.c \
 random.c \
-phylip.c
+phylip.c \
+hardware.c \
+init.c
 
 libpll_la_CFLAGS = $(AM_CFLAGS)
 

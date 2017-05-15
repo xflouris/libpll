@@ -49,6 +49,7 @@
 #define PLL_MIN(a,b) ((a) < (b) ? (a) : (b))
 #define PLL_MAX(a,b) ((a) > (b) ? (a) : (b))
 #define PLL_SWAP(x,y) do { __typeof__ (x) _t = x; x = y; y = _t; } while(0)
+#define PLL_STAT(x) (pll_hardware && pll_hardware->x)
 
 /* constants */
 
@@ -159,6 +160,24 @@
 #define PLL_GAMMA_RATES_MEDIAN           1
 
 /* structures and data types */
+
+typedef struct pll_hardware_s
+{
+  /* cpu features */
+  int altivec_present;
+  int mmx_present;
+  int sse_present;
+  int sse2_present;
+  int sse3_present;
+  int ssse3_present;
+  int sse41_present;
+  int sse42_present;
+  int popcnt_present;
+  int avx_present;
+  int avx2_present;
+
+  /* TODO: add chip,core,mem info */
+} pll_hardware_t;
 
 typedef struct pll_partition
 {
@@ -432,6 +451,7 @@ struct pll_random_data
 
 PLL_EXPORT extern __thread int pll_errno;
 PLL_EXPORT extern __thread char pll_errmsg[200];
+PLL_EXPORT extern pll_hardware_t * pll_hardware;
 
 PLL_EXPORT extern const unsigned int pll_map_bin[256];
 PLL_EXPORT extern const unsigned int pll_map_nt[256];
@@ -1848,6 +1868,19 @@ PLL_EXPORT extern int pll_initstate_r(unsigned int __seed,
 
 PLL_EXPORT extern int pll_setstate_r(char * __statebuf,
                                      struct pll_random_data * __buf);
+
+/* functions in hardware.c */
+
+PLL_EXPORT int pll_hardware_probe(void);
+
+PLL_EXPORT void pll_hardware_dump();
+
+/* functions in init.c */
+
+PLL_EXPORT void pll_init(void) __attribute__((constructor));
+
+PLL_EXPORT void pll_fini(void) __attribute__((destructor));
+
 
 #ifdef __cplusplus
 } /* extern "C" */

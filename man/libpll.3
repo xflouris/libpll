@@ -576,5 +576,15 @@ bug releases may not be mentioned):
 .TP
 .BR v0.2.0\~ "released September 9th, 2016"
 First public release.
+.TP
+.BR v0.3.0\~ "released May 15th, 2017"
+Added faster vectorizations for 20-state and arbitrary-state models, unweighted
+parsimony functions, randomized stepwise addition, portable functions for
+parsing trees from C-strings, per-rate category scalers for preventing
+numberical underflows. Modified newick exporting function to accept callbacks
+for custom printing. Fixed derivatives computation, parsing of branch lengths,
+invariant sites computation, log-likelihood computation for cases where we have
+scaling and patterns, ascertainment bias computation, per-site log-likelihood
+computation, memory leaks. Added run-time detection of hardware.
 .RE
 .LP

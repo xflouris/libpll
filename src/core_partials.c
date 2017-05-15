@@ -95,7 +95,7 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
   const double * offset;
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     if (states == 4)
       pll_core_update_partial_tt_4x4_sse(sites,
@@ -123,7 +123,7 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
   
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     if (states == 4)
       pll_core_update_partial_tt_4x4_avx(sites,
@@ -150,7 +150,7 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     if (states == 4)
       pll_core_update_partial_tt_4x4_avx(sites,
@@ -222,7 +222,7 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
   const double * rmat;
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     pll_core_update_partial_ti_4x4_sse(sites,
                                        rate_cats,
@@ -238,7 +238,7 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
   }
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     pll_core_update_partial_ti_4x4_avx(sites,
                                        rate_cats,
@@ -254,7 +254,7 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     pll_core_update_partial_ti_4x4_avx(sites,
                                        rate_cats,
@@ -375,7 +375,7 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
   const double * rmat;
 
 #ifdef HAVE_SSE3
-  if ((attrib & PLL_ATTRIB_ARCH_SSE))
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     if (states == 4)
       pll_core_update_partial_ti_4x4_sse(sites,
@@ -406,7 +406,7 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
   }
 #endif
 #ifdef HAVE_AVX
-  if ((attrib & PLL_ATTRIB_ARCH_AVX))
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     pll_core_update_partial_ti_avx(states,
                                    sites,
@@ -425,7 +425,7 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
   }
 #endif
 #ifdef HAVE_AVX2
-  if ((attrib & PLL_ATTRIB_ARCH_AVX2))
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     pll_core_update_partial_ti_avx(states,
                                    sites,
@@ -532,7 +532,7 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
   unsigned int span = states * rate_cats;
 
 #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     pll_core_update_partial_ii_sse(states,
                                    sites,
@@ -550,7 +550,7 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
   }
 #endif
 #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     pll_core_update_partial_ii_avx(states,
                                    sites,
@@ -568,20 +568,20 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
   }
 #endif
 #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     pll_core_update_partial_ii_avx2(states,
-                                   sites,
-                                   rate_cats,
-                                   parent_clv,
-                                   parent_scaler,
-                                   left_clv,
-                                   right_clv,
-                                   left_matrix,
-                                   right_matrix,
-                                   left_scaler,
-                                   right_scaler,
-                                   attrib);
+                                    sites,
+                                    rate_cats,
+                                    parent_clv,
+                                    parent_scaler,
+                                    left_clv,
+                                    right_clv,
+                                    left_matrix,
+                                    right_matrix,
+                                    left_scaler,
+                                    right_scaler,
+                                    attrib);
     return;
   }
 #endif
@@ -733,7 +733,7 @@ PLL_EXPORT void pll_core_create_lookup(unsigned int states,
 {
 
   #ifdef HAVE_SSE3
-  if (attrib & PLL_ATTRIB_ARCH_SSE)
+  if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
     if (states == 4)
       pll_core_create_lookup_4x4_sse(rate_cats,
@@ -752,7 +752,7 @@ PLL_EXPORT void pll_core_create_lookup(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX
-  if (attrib & PLL_ATTRIB_ARCH_AVX)
+  if (attrib & PLL_ATTRIB_ARCH_AVX && PLL_STAT(avx_present))
   {
     if (states == 4)
       pll_core_create_lookup_4x4_avx(rate_cats,
@@ -771,7 +771,7 @@ PLL_EXPORT void pll_core_create_lookup(unsigned int states,
   }
   #endif
   #ifdef HAVE_AVX2
-  if (attrib & PLL_ATTRIB_ARCH_AVX2)
+  if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
     if (states == 4)
       pll_core_create_lookup_4x4_avx(rate_cats,
