@@ -94,4 +94,4 @@ matrix:
       env:
         - COMPILER=clang-4.0
 
-script: ./autogen.sh && CC=$COMPILER ./configure && --make && make check
+script: ./autogen.sh && CC=$COMPILER ./configure && make && make check
