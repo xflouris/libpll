@@ -214,7 +214,7 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
 
         for (j = 0; j < states; ++j)
           for (k = 0; k < states; ++k)
-            temp[j*states+k] = inv_evecs[j*states+k] * expd[k];
+            temp[j*states+k] = inv_evecs[j*states_padded+k] * expd[k];
 
         for (j = 0; j < states; ++j)
         {
@@ -224,7 +224,7 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
             for (m = 0; m < states; ++m)
             {
               pmat[j*states_padded+k] +=
-                  temp[j*states+m] * evecs[m*states+k];
+                  temp[j*states+m] * evecs[m*states_padded+k];
             }
           }
         }

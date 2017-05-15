@@ -146,6 +146,8 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
   const double * t_inv_eigenvecs;
   const double * t_freqs;
 
+  unsigned int states_padded = states;
+
 #ifdef HAVE_SSE3
   if (attrib & PLL_ATTRIB_ARCH_SSE && PLL_STAT(sse3_present))
   {
@@ -251,8 +253,9 @@ PLL_EXPORT int pll_core_update_sumtable_ii(unsigned int states,
         righterm = 0;
         for (k = 0; k < states; ++k)
         {
-          lefterm  += t_clvp[k] * t_freqs[k] * t_inv_eigenvecs[k * states + j];
-          righterm += t_eigenvecs[j * states + k] * t_clvc[k];
+          lefterm  += t_clvp[k] * t_freqs[k] *
+                                      t_inv_eigenvecs[k * states_padded + j];
+          righterm += t_eigenvecs[j * states_padded + k] * t_clvc[k];
         }
         sum[j] = lefterm * righterm;
 
@@ -385,8 +388,8 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
         for (k = 0; k < states; ++k)
         {
           lefterm += (tipstate & 1) * t_freqs[k]
-              * t_inv_eigenvecs[k * states + j];
-          righterm += t_eigenvecs[j * states + k] * t_clvc[k];
+              * t_inv_eigenvecs[k * states_padded + j];
+          righterm += t_eigenvecs[j * states_padded + k] * t_clvc[k];
           tipstate >>= 1;
         }
         sum[j] = lefterm * righterm;

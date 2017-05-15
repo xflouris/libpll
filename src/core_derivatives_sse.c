@@ -208,8 +208,8 @@ PLL_EXPORT int pll_core_update_sumtable_ii_sse(unsigned int states,
 
         for (k = 0; k < states; ++k)
         {
-          lterm += clvp[k] * freqs[k] * invev[k*states+j];
-          rterm += ev[j*states+k] * clvc[k];
+          lterm += clvp[k] * freqs[k] * invev[k*states_padded+j];
+          rterm += ev[j*states_padded+k] * clvc[k];
         }
 
         sum[j] = lterm*rterm;
@@ -288,8 +288,8 @@ PLL_EXPORT int pll_core_update_sumtable_ti_sse(unsigned int states,
 
         for (k = 0; k < states; ++k)
         {
-          lterm += (tipstate & 1) * freqs[k] * invev[k*states+j];
-          rterm += ev[j*states+k] * clvc[k];
+          lterm += (tipstate & 1) * freqs[k] * invev[k*states_padded+j];
+          rterm += ev[j*states_padded+k] * clvc[k];
           tipstate >>= 1;
         }
         sum[j] = lterm*rterm;

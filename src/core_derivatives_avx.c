@@ -273,9 +273,9 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx(unsigned int states,
       for (k = 0; k < states; ++k)
       {
         tt_inv_eigenvecs[i * states_padded * states_padded + j * states_padded
-            + k] = inv_eigenvecs[i][k * states + j] * t_freqs[k];
+            + k] = inv_eigenvecs[i][k * states_padded + j] * t_freqs[k];
         tt_eigenvecs[i * states_padded * states_padded + j * states_padded
-            + k] = eigenvecs[i][j * states + k];
+            + k] = eigenvecs[i][j * states_padded + k];
       }
   }
 
@@ -636,7 +636,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
       for (k = 0; k < states_padded; ++k)
       {
         eigenvecs_padded[i*states_padded*states_padded + j*states_padded + k] =
-            (j < states && k < states) ? eigenvecs[i][j*states + k] : 0.;
+            (j < states && k < states) ? eigenvecs[i][j*states_padded + k] : 0.;
       }
   }
 
@@ -659,7 +659,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
           /* special case for non-ambiguous state */
           __m256d v_freqs = _mm256_set1_pd(freqs[i][ss]);
           __m256d v_eigen = _mm256_load_pd(inv_eigenvecs[i] +
-                                                       ss*states + j);
+                                                       ss*states_padded + j);
           v_lefterm =  _mm256_mul_pd(v_eigen, v_freqs);
         }
         else
@@ -671,7 +671,7 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx(unsigned int states,
             {
               __m256d v_freqs = _mm256_set1_pd(freqs[i][k]);
               __m256d v_eigen = _mm256_load_pd(inv_eigenvecs[i] +
-                                                           k*states + j);
+                                                           k*states_padded + j);
 
               v_lefterm = _mm256_add_pd(v_lefterm,
                                         _mm256_mul_pd(v_eigen, v_freqs));

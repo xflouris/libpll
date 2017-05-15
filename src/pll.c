@@ -604,6 +604,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                "Unable to allocate enough memory for eigenvectors.");
       return PLL_FAILURE;
     }
+    memset(partition->eigenvecs[i], 0, states * states_padded * sizeof(double));
     /* TODO: don't forget to add code for SSE/AVX */
   }
 
@@ -632,6 +633,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                "Unable to allocate enough memory for inverse eigenvectors.");
       return PLL_FAILURE;
     }
+    memset(partition->inv_eigenvecs[i], 0, states * states_padded * sizeof(double));
     /* TODO: don't forget to add code for SSE/AVX */
   }
 
@@ -660,6 +662,7 @@ PLL_EXPORT pll_partition_t * pll_partition_create(unsigned int tips,
                "Unable to allocate enough memory for eigenvalues.");
       return PLL_FAILURE;
     }
+    memset(partition->eigenvals[i], 0, states_padded * sizeof(double));
     /* TODO: don't forget to add code for SSE/AVX */
   }
 

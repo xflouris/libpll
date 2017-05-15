@@ -262,6 +262,7 @@ PLL_EXPORT int pll_update_eigen(pll_partition_t * partition,
   double * subst_params = partition->subst_params[params_index];
 
   unsigned int states = partition->states;
+  unsigned int states_padded = partition->states_padded;
 
   a = create_ratematrix(subst_params,
                         freqs,
@@ -291,25 +292,32 @@ PLL_EXPORT int pll_update_eigen(pll_partition_t * partition,
 
   /* store eigen vectors */
   for (i = 0; i < states; ++i)
-    memcpy(eigenvecs + i*states, a[i], states*sizeof(double));
+    memcpy(eigenvecs + i*states_padded, a[i], states*sizeof(double));
 
   /* store eigen values */
   memcpy(eigenvals, d, states*sizeof(double));
 
   /* store inverse eigen vectors */
   for (k = 0, i = 0; i < states; ++i)
-    for (j = i; j < states*states; j += states)
+  {
+    for (j = i; j < states_padded*states; j += states_padded)
       inv_eigenvecs[k++] = eigenvecs[j];
+
+    /* account for padding */
+    k += states_padded - states;
+  }
+
+  assert(k == states_padded*states);
 
   /* multiply the inverse eigen vectors from the left with sqrt(pi)^-1 */
   for (i = 0; i < states; ++i)
     for (j = 0; j < states; ++j)
-      inv_eigenvecs[i*states+ j] /= sqrt(freqs[i]);
+      inv_eigenvecs[i*states_padded+ j] /= sqrt(freqs[i]);
 
   /* multiply the eigen vectors from the right with sqrt(pi) */
   for (i = 0; i < states; ++i)
     for (j = 0; j < states; ++j)
-      eigenvecs[i*states+j] *= sqrt(freqs[j]);
+      eigenvecs[i*states_padded+j] *= sqrt(freqs[j]);
 
   partition->eigen_decomp_valid[params_index] = 1;
 
