@@ -33,6 +33,19 @@
 #include "config.h"
 #endif
 
+#if (!defined(__clang__) && defined(__GNUC__) && (__GNUC__ < 4 || \
+     (__GNUC__ == 4 && __GNUC_MINOR__ < 7)))
+  #if ((__GNUC__ == 4) && (__GNUC_MINOR__ == 6))
+    #if (defined(HAVE_AVX2))
+      #error "GCC 4.6.x. Please run ./configure --disable-avx2"
+    #endif
+  #else
+    #if (defined(HAVE_AVX2) || defined(HAVE_AVX))
+      #error "GCC < 4.6. Please run ./configure --disable-avx --disable-avx2"
+    #endif
+  #endif
+#endif
+
 #ifdef HAVE_X86INTRIN_H
 #include <x86intrin.h>
 #endif

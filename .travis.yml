@@ -9,7 +9,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-4.6']
       env:
-        - COMPILER=gcc-4.6
+        - COMPILER=gcc-4.6 CONFPARAMS="--disable-avx2"
 
     - os: linux
       compiler: gcc
@@ -18,7 +18,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-4.7']
       env:
-        - COMPILER=gcc-4.7
+        - COMPILER=gcc-4.7 CONFPARAMS=""
 
     - os: linux
       compiler: gcc
@@ -27,7 +27,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-4.8']
       env:
-        - COMPILER=gcc-4.8
+        - COMPILER=gcc-4.8 CONFPARAMS=""
 
     - os: linux
       compiler: gcc
@@ -36,7 +36,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-4.9']
       env:
-        - COMPILER=gcc-4.9
+        - COMPILER=gcc-4.9 CONFPARAMS=""
 
     - os: linux
       compiler: gcc
@@ -45,7 +45,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-5']
       env:
-        - COMPILER=gcc-5
+        - COMPILER=gcc-5 CONFPARAMS=""
 
     - os: linux
       compiler: gcc
@@ -54,7 +54,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['gcc-6']
       env:
-        - COMPILER=gcc-6
+        - COMPILER=gcc-6 CONFPARAMS=""
 
     - os: linux
       compiler: clang
@@ -63,7 +63,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.5']
           packages: ['clang-3.5']
       env:
-        - COMPILER=clang-3.5
+        - COMPILER=clang-3.5 CONFPARAMS=""
 
     - os: linux
       compiler: clang
@@ -72,7 +72,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.6']
           packages: ['clang-3.6']
       env:
-        - COMPILER=clang-3.6
+        - COMPILER=clang-3.6 CONFPARAMS=""
 
     - os: linux
       compiler: clang
@@ -81,7 +81,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.7']
           packages: ['clang-3.7']
       env:
-        - COMPILER=clang-3.7
+        - COMPILER=clang-3.7 CONFPARAMS=""
 
     - os: linux
       compiler: clang
@@ -90,7 +90,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.8']
           packages: ['clang-3.8']
       env:
-        - COMPILER=clang-3.8
+        - COMPILER=clang-3.8 CONFPARAMS=""
 
     - os: linux
       dist: trusty
@@ -100,7 +100,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-3.9']
           packages: ['clang-3.9']
       env:
-        - COMPILER=clang-3.9
+        - COMPILER=clang-3.9 CONFPARAMS=""
 
     - os: linux
       dist: trusty
@@ -110,6 +110,6 @@ matrix:
           sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
           packages: ['clang-4.0']
       env:
-        - COMPILER=clang-4.0
+        - COMPILER=clang-4.0 CONFPARAMS=""
 
-script: ./autogen.sh && CC=$COMPILER ./configure && make && make check
+script: ./autogen.sh && CC=$COMPILER ./configure $CONFPARAMS && make && make check
