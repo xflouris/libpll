@@ -26,10 +26,13 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
-#include <x86intrin.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
+
+#ifdef HAVE_X86INTRIN_H
+#include <x86intrin.h>
 #endif
 
 /* platform specific */
@@ -49,7 +52,8 @@
 #define PLL_MIN(a,b) ((a) < (b) ? (a) : (b))
 #define PLL_MAX(a,b) ((a) > (b) ? (a) : (b))
 #define PLL_SWAP(x,y) do { __typeof__ (x) _t = x; x = y; y = _t; } while(0)
-#define PLL_STAT(x) (pll_hardware && pll_hardware->x)
+#define PLL_STAT(x) ((pll_hardware.init || pll_hardware_probe()) \
+                     && pll_hardware.x)
 
 /* constants */
 
@@ -163,6 +167,7 @@
 
 typedef struct pll_hardware_s
 {
+  int init;
   /* cpu features */
   int altivec_present;
   int mmx_present;
@@ -451,7 +456,7 @@ struct pll_random_data
 
 PLL_EXPORT extern __thread int pll_errno;
 PLL_EXPORT extern __thread char pll_errmsg[200];
-PLL_EXPORT extern pll_hardware_t * pll_hardware;
+PLL_EXPORT extern pll_hardware_t pll_hardware;
 
 PLL_EXPORT extern const unsigned int pll_map_bin[256];
 PLL_EXPORT extern const unsigned int pll_map_nt[256];
@@ -1875,12 +1880,7 @@ PLL_EXPORT int pll_hardware_probe(void);
 
 PLL_EXPORT void pll_hardware_dump();
 
-/* functions in init.c */
-
-PLL_EXPORT void pll_init(void) __attribute__((constructor));
-
-PLL_EXPORT void pll_fini(void) __attribute__((destructor));
-
+PLL_EXPORT void pll_hardware_ignore();
 
 #ifdef __cplusplus
 } /* extern "C" */

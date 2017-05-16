@@ -24,7 +24,7 @@
 __thread int pll_errno;
 __thread char pll_errmsg[200] = {0};
 
-pll_hardware_t * pll_hardware = NULL;
+pll_hardware_t pll_hardware = {0,0,0,0,0,0,0,0,0,0,0,0};
 
 static void dealloc_partition_data(pll_partition_t * partition);
 
