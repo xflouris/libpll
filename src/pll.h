@@ -19,6 +19,8 @@
     Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 */
 
+#ifndef PLL_H
+#define PLL_H
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -1884,4 +1886,5 @@ PLL_EXPORT void pll_hardware_ignore();
 
 #ifdef __cplusplus
 } /* extern "C" */
+#endif
 #endif
