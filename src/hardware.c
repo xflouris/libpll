@@ -21,6 +21,82 @@
 
 #include "pll.h"
 
+#if (defined(__GNUC__) && (__GNUC__ < 4 || \
+      (__GNUC__ == 4 && __GNUC_MINOR__ < 8))) || \
+    (defined(__clang__) && (__clang_major__ < 3 || \
+      (__clang_major__ == 3 && __clang_minor__ < 9)))
+  
+  #if defined(__i386__) && defined(__PIC__)
+    #if (defined(__GNUC__) && __GNUC__ < 3)
+#define cpuid(level, count, a, b, c, d)                 \
+  __asm__ ("xchgl\t%%ebx, %k1\n\t"                      \
+           "cpuid\n\t"                                  \
+           "xchgl\t%%ebx, %k1\n\t"                      \
+           : "=a" (a), "=&r" (b), "=c" (c), "=d" (d)    \
+           : "0" (level), "2" (count))
+    #else
+#define cpuid(level, count, a, b, c, d)                 \
+  __asm__ ("xchg{l}\t{%%}ebx, %k1\n\t"                  \
+           "cpuid\n\t"                                  \
+           "xchg{l}\t{%%}ebx, %k1\n\t"                  \
+           : "=a" (a), "=&r" (b), "=c" (c), "=d" (d)    \
+           : "0" (level), "2" (count))
+    #endif
+  #elif defined(__x86_64__) && (defined(__code_model_medium__) || \
+        defined(__code_model_large__)) && defined(__PIC__)
+#define cpuid(level, count, a, b, c, d)                 \
+  __asm__ ("xchg{q}\t{%%}rbx, %q1\n\t"                  \
+           "cpuid\n\t"                                  \
+           "xchg{q}\t{%%}rbx, %q1\n\t"                  \
+           : "=a" (a), "=&r" (b), "=c" (c), "=d" (d)    \
+           : "0" (level), "2" (count))
+  #else
+#define cpuid(level, count, a, b, c, d)                 \
+  __asm__ ("cpuid\n\t"                                  \
+           : "=a" (a), "=b" (b), "=c" (c), "=d" (d)     \
+           : "0" (level), "2" (count))
+  #endif
+
+static void cpu_features_detect()
+{
+  unsigned int a,b,c,d;
+
+  memset(&pll_hardware,0,sizeof(pll_hardware_t));
+
+  pll_hardware.init            = 1;
+
+#if defined(__PPC__)
+  pll_hardware.altivec_present = 1;
+#else
+
+  cpuid(0,0,a,b,c,d);
+  unsigned int maxlevel = a & 0xff;
+
+  if (maxlevel >= 1)
+  {
+    cpuid(1,0,a,b,c,d);
+    pll_hardware.mmx_present    = (d >> 23) & 1;
+    pll_hardware.sse_present    = (d >> 25) & 1;
+    pll_hardware.sse2_present   = (d >> 26) & 1;
+    pll_hardware.sse3_present   = (c >>  0) & 1;
+    pll_hardware.ssse3_present  = (c >>  9) & 1;
+    pll_hardware.sse41_present  = (c >> 19) & 1;
+    pll_hardware.sse42_present  = (c >> 20) & 1;
+    pll_hardware.popcnt_present = (c >> 23) & 1;
+    pll_hardware.avx_present    = (c >> 28) & 1;
+
+    if (maxlevel >= 7)
+    {
+      cpuid(7,0,a,b,c,d);
+      pll_hardware.avx2_present = (b >> 5) & 1;
+    }
+  }
+#endif
+}
+
+#else
+
+
 static void cpu_features_detect()
 {
   memset(&pll_hardware,0,sizeof(pll_hardware_t));
@@ -41,6 +117,8 @@ static void cpu_features_detect()
   pll_hardware.avx2_present    = __builtin_cpu_supports("avx2");
 #endif
 }
+
+#endif
 
 static void cpu_features_show()
 {
