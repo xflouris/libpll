@@ -2,6 +2,17 @@
 All notable changes to `libpll` will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.3.1] - 2017-05-17
+### Added
+ - Checks for older versions of clang and gcc to use assembly instructions
+   for cpu features detection
+ - Include guards for pll.h
+### Fixed
+ - Correct updating of padded eigen-decomposition arrays for models with a
+   number of states not being a power of two
+ - Changed to the usage of builtin functions for cpu features detection
+ - Check for x86intrin.h
+
 ## [0.3.0] - 2017-05-15
 ### Added
  - Run-time detection of cpu features
