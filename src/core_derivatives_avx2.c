@@ -18,7 +18,7 @@
     Exelixis Lab, Heidelberg Instutute for Theoretical Studies
     Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 */
-
+#include <limits.h>
 #include "pll.h"
 
 PLL_EXPORT int pll_core_update_sumtable_ii_avx2(unsigned int states,
@@ -62,6 +62,32 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx2(unsigned int states,
   }
 
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
+
+  /* scaling stuff */
+  unsigned int min_scaler = 0;
+  unsigned int * rate_scalings = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  /* powers of scale threshold for undoing the scaling */
+  __m256d v_scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    if (!rate_scalings)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf (pll_errmsg, 200, "Cannot allocate memory for rate scalers");
+      return PLL_FAILURE;
+    }
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      v_scale_minlh[i] = _mm256_set1_pd(scale_factor);
+    }
+  }
 
   /* padded eigenvecs */
   double * tt_eigenvecs = (double *) pll_aligned_alloc (
@@ -107,6 +133,26 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx2(unsigned int states,
   /* vectorized loop from update_sumtable() */
   for (n = 0; n < sites; n++)
   {
+    /* compute per-rate scalers and obtain minimum value (within site) */
+    if (per_rate_scaling)
+    {
+      min_scaler = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        rate_scalings[i] += (child_scaler) ? child_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < min_scaler)
+          min_scaler = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - min_scaler,
+                                   PLL_SCALE_RATE_MAXDIFF);
+      }
+    }
+
     const double * c_eigenvecs      = tt_eigenvecs;
     const double * ct_inv_eigenvecs = tt_inv_eigenvecs;
     for (i = 0; i < rate_cats; ++i)
@@ -201,6 +247,13 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx2(unsigned int states,
 
         /* update sum */
         __m256d v_prod = _mm256_mul_pd (v_lefterm_sum, v_righterm_sum);
+
+        /* apply per-rate scalers */
+        if (rate_scalings && rate_scalings[i] > 0)
+        {
+          v_prod = _mm256_mul_pd(v_prod, v_scale_minlh[rate_scalings[i]-1]);
+        }
+
         _mm256_store_pd (sum + j, v_prod);
       }
 
@@ -212,6 +265,8 @@ PLL_EXPORT int pll_core_update_sumtable_ii_avx2(unsigned int states,
 
   pll_aligned_free (tt_inv_eigenvecs);
   pll_aligned_free (tt_eigenvecs);
+  if (rate_scalings)
+    free(rate_scalings);
 
   return PLL_SUCCESS;
 }
@@ -254,6 +309,31 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx2(unsigned int states,
 
   unsigned int i, j, k, n;
   unsigned int tipstate;
+
+  unsigned int min_scaler = 0;
+  unsigned int * rate_scalings = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  /* powers of scale threshold for undoing the scaling */
+  __m256d v_scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    if (!rate_scalings)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf (pll_errmsg, 200, "Cannot allocate memory for rate scalers");
+      return PLL_FAILURE;
+    }
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      v_scale_minlh[i] = _mm256_set1_pd(scale_factor);
+    }
+  }
 
   double * sum = sumtable;
   const double * t_clvc = parent_clv;
@@ -332,6 +412,25 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx2(unsigned int states,
   /* build sumtable */
   for (n = 0; n < sites; n++)
   {
+    /* compute per-rate scalers and obtain minimum value (within site) */
+    if (per_rate_scaling)
+    {
+      min_scaler = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < min_scaler)
+          min_scaler = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - min_scaler,
+                                   PLL_SCALE_RATE_MAXDIFF);
+      }
+    }
+
     tipstate = (unsigned int) left_tipchars[n];
 
     unsigned int loffset = tipstate * span;
@@ -397,6 +496,13 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx2(unsigned int states,
         __m256d v_lefterm = _mm256_load_pd(t_precomp + j);
 
         __m256d v_sum = _mm256_mul_pd(v_lefterm, v_righterm);
+
+        /* apply per-rate scalers */
+        if (rate_scalings && rate_scalings[i] > 0)
+        {
+          v_sum = _mm256_mul_pd(v_sum, v_scale_minlh[rate_scalings[i]-1]);
+        }
+
         _mm256_store_pd(sum + j, v_sum);
       }
 
@@ -408,6 +514,8 @@ PLL_EXPORT int pll_core_update_sumtable_ti_avx2(unsigned int states,
 
   pll_aligned_free(eigenvecs_padded);
   pll_aligned_free(precomp_left);
+  if (rate_scalings)
+    free(rate_scalings);
 
   return PLL_SUCCESS;
 }

@@ -271,9 +271,46 @@ PLL_EXPORT int pll_core_update_sumtable_ti_sse(unsigned int states,
 
   unsigned int states_padded = (states+1) & 0xFFFFFFFE;
 
+  unsigned int min_scaler;
+  unsigned int * rate_scalings = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  /* powers of scale threshold for undoing the scaling */
+  double scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      scale_minlh[i] = scale_factor;
+    }
+  }
+
   /* build sumtable: non-vectorized version, general case */
   for (n = 0; n < sites; n++)
   {
+    if (per_rate_scaling)
+    {
+      /* compute minimum per-rate scaler -> common per-site scaler */
+      min_scaler = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < min_scaler)
+          min_scaler = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - min_scaler,
+                                   PLL_SCALE_RATE_MAXDIFF);
+      }
+    }
+
     for (i = 0; i < rate_cats; ++i)
     {
       ev    = eigenvecs[i];
@@ -293,11 +330,18 @@ PLL_EXPORT int pll_core_update_sumtable_ti_sse(unsigned int states,
           tipstate >>= 1;
         }
         sum[j] = lterm*rterm;
+
+        if (rate_scalings && rate_scalings[i] > 0)
+          sum[j] *= scale_minlh[rate_scalings[i]-1];
       }
 
       clvc += states_padded;
       sum += states_padded;
     }
   }
+
+  if (rate_scalings)
+    free(rate_scalings);
+
   return PLL_SUCCESS;
 }

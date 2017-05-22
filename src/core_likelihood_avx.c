@@ -420,7 +420,8 @@ double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
                                                 const double * invar_proportion,
                                                 const int * invar_indices,
                                                 const unsigned int * freqs_indices,
-                                                double * persite_lnl)
+                                                double * persite_lnl,
+                                                unsigned int attrib)
 {
   unsigned int n,i,j,m;
   double logl = 0;
@@ -434,7 +435,6 @@ double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
   double site_lk, inv_site_lk;
 
   unsigned int cstate;
-  unsigned int scale_factors;
   unsigned int states = 20;
   unsigned int states_padded = states;
 
@@ -444,6 +444,32 @@ double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
 
   unsigned int span = states_padded * rate_cats;
   unsigned int maxstates = tipmap_size;
+
+  /* scaling stuff */
+  unsigned int site_scalings;
+  unsigned int * rate_scalings = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  /* powers of scale threshold for undoing the scaling */
+  double scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    if (!rate_scalings)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "Cannot allocate space for rate scalers.");
+      return -INFINITY;
+    }
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      scale_minlh[i] = scale_factor;
+    }
+  }
 
   /* precompute a lookup table of four values per entry (one for each state),
      for all 16 states (including ambiguities) and for each rate category. */
@@ -510,6 +536,30 @@ double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
     cstate = (unsigned int) tipchars[n];
     unsigned int loffset = cstate*span;
 
+    if (per_rate_scaling)
+    {
+      /* compute minimum per-rate scaler -> common per-site scaler */
+      site_scalings = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < site_scalings)
+          site_scalings = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - site_scalings,
+                                   PLL_SCALE_RATE_MAXDIFF);
+      }
+    }
+    else
+    {
+      /* count number of scaling factors to account for */
+      site_scalings =  (parent_scaler) ? parent_scaler[n] : 0;
+    }
+
     for (i = 0; i < rate_cats; ++i)
     {
       xmm1 = _mm256_setzero_pd();
@@ -534,6 +584,12 @@ double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
       xmm0 = _mm256_hadd_pd(xmm1,xmm1);
       terma_r = ((double *)&xmm0)[0] + ((double *)&xmm0)[2];
 
+      /* apply per-rate scalers, if necessary */
+      if (rate_scalings && rate_scalings[i] > 0)
+      {
+        terma_r *= scale_minlh[rate_scalings[i]-1];
+      }
+
       /* account for invariant sites */
       prop_invar = invar_proportion ? invar_proportion[freqs_indices[i]] : 0;
       if (prop_invar > 0)
@@ -551,13 +607,11 @@ double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
 
       pmat -= displacement;
     }
-    /* count number of scaling factors to acount for */
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
 
     /* compute site log-likelihood and scale if necessary */
     site_lk = log(terma);
-    if (scale_factors)
-      site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+    if (site_scalings)
+      site_lk += site_scalings * log(PLL_SCALE_THRESHOLD);
 
     site_lk *= pattern_weights[n];
 
@@ -569,6 +623,8 @@ double pll_core_edge_loglikelihood_ti_20x20_avx(unsigned int sites,
   }
 
   pll_aligned_free(lookup);
+  if (rate_scalings)
+    free(rate_scalings);
 
   return logl;
 }
@@ -588,7 +644,8 @@ double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
                                           const double * invar_proportion,
                                           const int * invar_indices,
                                           const unsigned int * freqs_indices,
-                                          double * persite_lnl)
+                                          double * persite_lnl,
+                                          unsigned int attrib)
 {
   unsigned int n,i,j,k;
   double logl = 0;
@@ -602,7 +659,6 @@ double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
   double site_lk, inv_site_lk;
 
   unsigned int cstate;
-  unsigned int scale_factors;
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
 
   __m256d xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7;
@@ -610,12 +666,62 @@ double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
 
   size_t displacement = (states_padded - states) * (states_padded);
 
+  /* scaling stuff */
+  unsigned int site_scalings;
+  unsigned int * rate_scalings = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  /* powers of scale threshold for undoing the scaling */
+  double scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    if (!rate_scalings)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "Cannot allocate space for rate scalers.");
+      return -INFINITY;
+    }
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      scale_minlh[i] = scale_factor;
+    }
+  }
+
   for (n = 0; n < sites; ++n)
   {
     pmat = pmatrix;
     terma = 0;
 
     cstate = tipmap[tipchars[n]];
+
+    if (per_rate_scaling)
+    {
+      /* compute minimum per-rate scaler -> common per-site scaler */
+      site_scalings = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < site_scalings)
+          site_scalings = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - site_scalings,
+                                   PLL_SCALE_RATE_MAXDIFF);
+      }
+    }
+    else
+    {
+      /* count number of scaling factors to account for */
+      site_scalings =  (parent_scaler) ? parent_scaler[n] : 0;
+    }
 
     for (i = 0; i < rate_cats; ++i)
     {
@@ -706,6 +812,12 @@ double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
         clvp += 4;
       }
 
+      /* apply per-rate scalers, if necessary */
+      if (rate_scalings && rate_scalings[i] > 0)
+      {
+        terma_r *= scale_minlh[rate_scalings[i]-1];
+      }
+
       /* account for invariant sites */
       prop_invar = invar_proportion ? invar_proportion[freqs_indices[i]] : 0;
       if (prop_invar > 0)
@@ -723,13 +835,11 @@ double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
 
       pmat -= displacement;
     }
-    /* count number of scaling factors to acount for */
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
 
     /* compute site log-likelihood and scale if necessary */
     site_lk = log(terma);
-    if (scale_factors)
-      site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+    if (site_scalings)
+      site_lk += site_scalings * log(PLL_SCALE_THRESHOLD);
 
     site_lk *= pattern_weights[n];
 
@@ -739,6 +849,10 @@ double pll_core_edge_loglikelihood_ti_avx(unsigned int states,
 
     logl += site_lk;
   }
+
+  if (rate_scalings)
+    free(rate_scalings);
+
   return logl;
 }
 
@@ -757,7 +871,8 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
                                           const double * invar_proportion,
                                           const int * invar_indices,
                                           const unsigned int * freqs_indices,
-                                          double * persite_lnl)
+                                          double * persite_lnl,
+                                          unsigned int attrib)
 {
   unsigned int n,i,j,k;
   double logl = 0;
@@ -771,17 +886,69 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
   double terma, terma_r;
   double site_lk, inv_site_lk;
 
-  unsigned int scale_factors;
   unsigned int states_padded = (states+3) & 0xFFFFFFFC;
 
   __m256d xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7;
 
   size_t displacement = (states_padded - states) * (states_padded);
 
+  /* scaling stuff */
+  unsigned int site_scalings;
+  unsigned int * rate_scalings = NULL;
+  int per_rate_scaling = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 1 : 0;
+
+  /* powers of scale threshold for undoing the scaling */
+  double scale_minlh[PLL_SCALE_RATE_MAXDIFF];
+  if (per_rate_scaling)
+  {
+    rate_scalings = (unsigned int*) calloc(rate_cats, sizeof(unsigned int));
+
+    if (!rate_scalings)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "Cannot allocate space for precomputation.");
+      return -INFINITY;
+    }
+
+    double scale_factor = 1.0;
+    for (i = 0; i < PLL_SCALE_RATE_MAXDIFF; ++i)
+    {
+      scale_factor *= PLL_SCALE_THRESHOLD;
+      scale_minlh[i] = scale_factor;
+    }
+  }
+
   for (n = 0; n < sites; ++n)
   {
     pmat = pmatrix;
     terma = 0;
+
+    if (per_rate_scaling)
+    {
+      /* compute minimum per-rate scaler -> common per-site scaler */
+      site_scalings = UINT_MAX;
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = (parent_scaler) ? parent_scaler[n*rate_cats+i] : 0;
+        rate_scalings[i] += (child_scaler) ? child_scaler[n*rate_cats+i] : 0;
+        if (rate_scalings[i] < site_scalings)
+          site_scalings = rate_scalings[i];
+      }
+
+      /* compute relative capped per-rate scalers */
+      for (i = 0; i < rate_cats; ++i)
+      {
+        rate_scalings[i] = PLL_MIN(rate_scalings[i] - site_scalings,
+                                   PLL_SCALE_RATE_MAXDIFF);
+      }
+    }
+    else
+    {
+      /* count number of scaling factors to account for */
+      site_scalings =  (parent_scaler) ? parent_scaler[n] : 0;
+      site_scalings += (child_scaler) ? child_scaler[n] : 0;
+    }
+
     for (i = 0; i < rate_cats; ++i)
     {
       freqs = frequencies[freqs_indices[i]];
@@ -864,6 +1031,12 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
         clvp += 4;
       }
 
+      /* apply per-rate scalers, if necessary */
+      if (rate_scalings && rate_scalings[i] > 0)
+      {
+        terma_r *= scale_minlh[rate_scalings[i]-1];
+      }
+
       /* account for invariant sites */
       prop_invar = invar_proportion ? invar_proportion[freqs_indices[i]] : 0;
       if (prop_invar > 0)
@@ -882,14 +1055,11 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
       clvc += states_padded;
       pmat -= displacement;
     }
-    /* count number of scaling factors to acount for */
-    scale_factors = (parent_scaler) ? parent_scaler[n] : 0;
-    scale_factors += (child_scaler) ? child_scaler[n] : 0;
 
     /* compute site log-likelihood and scale if necessary */
     site_lk = log(terma);
-    if (scale_factors)
-      site_lk += scale_factors * log(PLL_SCALE_THRESHOLD);
+    if (site_scalings)
+      site_lk += site_scalings * log(PLL_SCALE_THRESHOLD);
 
     site_lk *= pattern_weights[n];
 
@@ -899,6 +1069,10 @@ double pll_core_edge_loglikelihood_ii_avx(unsigned int states,
 
     logl += site_lk;
   }
+
+  if (rate_scalings)
+    free(rate_scalings);
+
   return logl;
 }
 

@@ -412,8 +412,11 @@ PLL_EXPORT void pll_core_update_partial_tt_sse(unsigned int states,
     return;
   }
 
+  size_t scaler_size = (attrib & PLL_ATTRIB_RATE_SCALERS) ?
+                                                        sites*rate_cats : sites;
+
   if (parent_scaler)
-    memset(parent_scaler, 0, sizeof(unsigned int) * sites);
+    memset(parent_scaler, 0, sizeof(unsigned int) * scaler_size);
 
   for (n = 0; n < sites; ++n)
   {
@@ -702,7 +705,6 @@ PLL_EXPORT void pll_core_update_partial_ii_sse(unsigned int states,
                                                unsigned int attrib)
 {
   unsigned int i,j,k,n;
-  unsigned int scaling;
 
   const double * lmat;
   const double * rmat;
@@ -731,19 +733,39 @@ PLL_EXPORT void pll_core_update_partial_ii_sse(unsigned int states,
 
   __m128d xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6;
 
-  /* add up the scale vectors of the two children if available */
+  /* scaling stuff */
+  unsigned int scale_mode;  /* 0 = none, 1 = per-site, 2 = per-rate */
+  unsigned int scale_mask;
+  unsigned int init_mask;
+  __m128d v_scale_threshold = _mm_set1_pd(PLL_SCALE_THRESHOLD);
+  __m128d v_scale_factor = _mm_set1_pd(PLL_SCALE_FACTOR);
+
   if (parent_scaler)
-    fill_parent_scaler(sites, parent_scaler, left_scaler, right_scaler);
+  {
+    /* determine the scaling mode and init the vars accordingly */
+    scale_mode = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 2 : 1;
+    init_mask = (scale_mode == 1) ? 0x3 : 0;
+    const size_t scaler_size = (scale_mode == 2) ? sites * rate_cats : sites;
+    /* add up the scale vector of the two children if available */
+    fill_parent_scaler(scaler_size, parent_scaler, left_scaler, right_scaler);
+  }
+  else
+  {
+    /* scaling disabled / not required */
+    scale_mode = init_mask = 0;
+  }
 
   /* compute CLV */
   for (n = 0; n < sites; ++n)
   {
     lmat = left_matrix;
     rmat = right_matrix;
-    scaling = (parent_scaler) ? 1 : 0;
+    scale_mask = init_mask;
 
     for (k = 0; k < rate_cats; ++k)
     {
+      unsigned int rate_mask = 0x3;
+
       for (i = 0; i < states_padded; i += 2)
       {
         __m128d v_terma0 = _mm_setzero_pd();
@@ -794,6 +816,11 @@ PLL_EXPORT void pll_core_update_partial_ii_sse(unsigned int states,
         xmm4 = _mm_hadd_pd(v_terma0,v_terma1);
         xmm5 = _mm_hadd_pd(v_termb0,v_termb1);
         xmm6 = _mm_mul_pd(xmm4,xmm5);
+
+        /* check if scaling is needed for the current rate category */
+        __m128d v_cmp = _mm_cmplt_pd(xmm6, v_scale_threshold);
+        rate_mask = rate_mask & _mm_movemask_pd(v_cmp);
+
         _mm_store_pd(parent_clv+i,xmm6);
       }
 
@@ -803,20 +830,33 @@ PLL_EXPORT void pll_core_update_partial_ii_sse(unsigned int states,
       lmat -= displacement;
       rmat -= displacement;
 
-      for (j = 0; j < states; ++j)
-        scaling = scaling && (parent_clv[j] < PLL_SCALE_THRESHOLD);
+      if (scale_mode == 2)
+      {
+        /* PER-RATE SCALING: if *all* entries of the *rate* CLV were below
+         * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+        if (rate_mask == 0x3)
+        {
+          for (i = 0; i < states_padded; i += 2)
+          {
+            __m128d v_prod = _mm_load_pd(parent_clv + i);
+            v_prod = _mm_mul_pd(v_prod, v_scale_factor);
+            _mm_store_pd(parent_clv + i, v_prod);
+          }
+          parent_scaler[n*rate_cats + k] += 1;
+        }
+      }
+      else
+        scale_mask = scale_mask & rate_mask;
 
       parent_clv += states_padded;
       left_clv   += states_padded;
       right_clv  += states_padded;
     }
-    /* if *all* entries of the site CLV were below the threshold then scale
-       (all) entries by PLL_SCALE_FACTOR */
-    if (scaling)
-    {
-      __m128d v_scale_factor = _mm_set_pd(PLL_SCALE_FACTOR,
-                                          PLL_SCALE_FACTOR);
 
+    /* PER-SITE SCALING: if *all* entries of the *site* CLV were below
+     * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+    if (scale_mask == 0x3)
+    {
       parent_clv -= span_padded;
       for (i = 0; i < span_padded; i += 2)
       {
@@ -1098,7 +1138,6 @@ PLL_EXPORT void pll_core_update_partial_ti_sse(unsigned int states,
                                                unsigned int tipmap_size,
                                                unsigned int attrib)
 {
-  int scaling;
   unsigned int i,j,k,n;
   unsigned int states_padded = (states+1) & 0xFFFFFFFE;
   unsigned int span_padded = states_padded * rate_cats;
@@ -1124,26 +1163,46 @@ PLL_EXPORT void pll_core_update_partial_ti_sse(unsigned int states,
     return;
   }
 
-  if (parent_scaler)
-    fill_parent_scaler(sites, parent_scaler, NULL, right_scaler);
-
   size_t displacement = (states_padded - states) * (states_padded);
   __m128d xmm0,xmm1,xmm2,xmm3,xmm4,xmm5,xmm6,xmm7;
 
   xmm7 = _mm_setzero_pd();
+
+  /* scaling stuff */
+  unsigned int scale_mode;  /* 0 = none, 1 = per-site, 2 = per-rate */
+  unsigned int scale_mask;
+  unsigned int init_mask;
+  __m128d v_scale_threshold = _mm_set1_pd(PLL_SCALE_THRESHOLD);
+  __m128d v_scale_factor = _mm_set1_pd(PLL_SCALE_FACTOR);
+
+  if (parent_scaler)
+  {
+    /* determine the scaling mode and init the vars accordingly */
+    scale_mode = (attrib & PLL_ATTRIB_RATE_SCALERS) ? 2 : 1;
+    init_mask = (scale_mode == 1) ? 0x3 : 0;
+    const size_t scaler_size = (scale_mode == 2) ? sites * rate_cats : sites;
+    /* add up the scale vector of the two children if available */
+    fill_parent_scaler(scaler_size, parent_scaler, NULL, right_scaler);
+  }
+  else
+  {
+    /* scaling disabled / not required */
+    scale_mode = init_mask = 0;
+  }
 
   /* compute CLV */
   for (n = 0; n < sites; ++n)
   {
     lmat = left_matrix;
     rmat = right_matrix;
-
-    scaling = (parent_scaler) ? 1 : 0;
+    scale_mask = init_mask;
 
     lstate = tipmap[left_tipchars[n]];
 
     for (k = 0; k < rate_cats; ++k)
     {
+      unsigned int rate_mask = 0x3;
+
       /* iterate over quadruples of rows */
       for (i = 0; i < states_padded; i += 2)
       {
@@ -1204,6 +1263,11 @@ PLL_EXPORT void pll_core_update_partial_ti_sse(unsigned int states,
         xmm4 = _mm_hadd_pd(v_terma0,v_terma1);
         xmm5 = _mm_hadd_pd(v_termb0,v_termb1);
         xmm6 = _mm_mul_pd(xmm4,xmm5);
+
+        /* check if scaling is needed for the current rate category */
+        __m128d v_cmp = _mm_cmplt_pd(xmm6, v_scale_threshold);
+        rate_mask = rate_mask & _mm_movemask_pd(v_cmp);
+
         _mm_store_pd(parent_clv+i,xmm6);
       }
 
@@ -1213,19 +1277,32 @@ PLL_EXPORT void pll_core_update_partial_ti_sse(unsigned int states,
       lmat -= displacement;
       rmat -= displacement;
 
-      for (j = 0; j < states; ++j)
-        scaling = scaling && (parent_clv[j] < PLL_SCALE_THRESHOLD);
+      if (scale_mode == 2)
+      {
+        /* PER-RATE SCALING: if *all* entries of the *rate* CLV were below
+         * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+        if (rate_mask == 0x3)
+        {
+          for (i = 0; i < states_padded; i += 2)
+          {
+            __m128d v_prod = _mm_load_pd(parent_clv + i);
+            v_prod = _mm_mul_pd(v_prod, v_scale_factor);
+            _mm_store_pd(parent_clv + i, v_prod);
+          }
+          parent_scaler[n*rate_cats + k] += 1;
+        }
+      }
+      else
+        scale_mask = scale_mask & rate_mask;
 
       parent_clv += states_padded;
       right_clv  += states_padded;
     }
-    /* if *all* entries of the site CLV were below the threshold then scale
-       (all) entries by PLL_SCALE_FACTOR */
-    if (scaling)
-    {
-      __m128d v_scale_factor = _mm_set_pd(PLL_SCALE_FACTOR,
-                                          PLL_SCALE_FACTOR);
 
+    /* PER-SITE SCALING: if *all* entries of the *site* CLV were below
+     * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
+    if (scale_mask == 0x3)
+    {
       parent_clv -= span_padded;
       for (i = 0; i < span_padded; i += 2)
       {
