@@ -44,19 +44,6 @@ static unsigned int n_cat_gamma[NUM_CATS] = {1, 2, 4};
 unsigned int params_indices[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 static double testbranches[NUM_BRANCHES] = {0.1, 0.2, 0.5, 0.9, 1.5, 5, 10, 50, 90};
 
-const unsigned int odd_map[256] =
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1f, 0, 0, 0x1f, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1f, 0, 0x01, 0x02, 0x04,
-    0x08, 0x0c, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0x02, 0x04, 0x08, 0x0c, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
 int main(int argc, char * argv[])
 {
   unsigned int i,j, k, b, p;
@@ -151,11 +138,11 @@ int main(int argc, char * argv[])
     pll_set_subst_params(partition, 0, subst_params);
 
     if (!
-    (pll_set_tip_states(partition, 0, odd_map, "DAACBCECBA--ABBCBAAB") &&
-     pll_set_tip_states(partition, 1, odd_map, "CACCABECBA--ABBEBCBB") &&
-     pll_set_tip_states(partition, 2, odd_map, "AE-C-BECAE--CBBCBACB") &&
-     pll_set_tip_states(partition, 3, odd_map, "CEBCBBECAA--AB-C-AAE") &&
-     pll_set_tip_states(partition, 4, odd_map, "CEACBBECCA--AB-B-AAE")))
+    (pll_set_tip_states(partition, 0, odd5_map, "DAACBCECBA--ABBCBAAB") &&
+     pll_set_tip_states(partition, 1, odd5_map, "CACCABECBA--ABBEBCBB") &&
+     pll_set_tip_states(partition, 2, odd5_map, "AE-C-BECAE--CBBCBACB") &&
+     pll_set_tip_states(partition, 3, odd5_map, "CEBCBBECAA--AB-C-AAE") &&
+     pll_set_tip_states(partition, 4, odd5_map, "CEACBBECCA--AB-B-AAE")))
       return -1;
 
     for (i = 0; i < NUM_ALPHAS; ++i) {

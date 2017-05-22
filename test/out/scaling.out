@@ -1,4 +1,4 @@
-scaling = per-site, alpha = 0.050000, rates = [ 0.000000 0.000001 0.005299 3.994700 ]
+datatype = DNA, scaling = per-site, alpha = 0.050000, rates = [ 0.000000 0.000001 0.005299 3.994700 ]
 recompute P-matrices: 3997
 recompute CLVs: 1998
 scaler 1995: [ 8 6 21 21 4 ]
@@ -6,7 +6,7 @@ per-site logLH: [ -1565.4625 -1079.1468 -inf -inf -812.9101 ]
 logLH INNER-INNER at edge (3997-3995): -inf, LH derivatives: -nan, -nan
 logLH TIP-INNER at edge (3997-1999): -inf, LH derivatives: -nan, -nan
 
-scaling = per-rate, alpha = 0.050000, rates = [ 0.000000 0.000001 0.005299 3.994700 ]
+datatype = DNA, scaling = per-rate, alpha = 0.050000, rates = [ 0.000000 0.000001 0.005299 3.994700 ]
 recompute P-matrices: 3997
 recompute CLVs: 1998
 scaler 1995: [ 8+(50 22 7 0)  6+(50 25 9 0)  15+(48 16 0 5)  15+(47 16 0 5)  4+(50 27 11 0)  ]
@@ -14,7 +14,39 @@ per-site logLH: [ -1565.4625 -1079.1468 -2838.4636 -2813.7556 -812.9101 ]
 logLH INNER-INNER at edge (3997-3995): -9109.7386, LH derivatives: -2.7826, 2.9738
 logLH TIP-INNER at edge (3997-1999): -9109.7386, LH derivatives: -1.5936, 1.2950
 
-scaling = per-site, alpha = 0.200000, rates = [ 0.000531 0.033775 0.383658 3.582035 ]
+datatype = PROT, scaling = per-site, alpha = 0.050000, rates = [ 0.000000 0.000001 0.005299 3.994700 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 26 27 26 27 27 ]
+per-site logLH: [ -inf -inf -inf -inf -inf ]
+logLH INNER-INNER at edge (3997-3995): -inf, LH derivatives: -nan, -nan
+logLH TIP-INNER at edge (3997-1999): -inf, LH derivatives: -nan, -nan
+
+datatype = PROT, scaling = per-rate, alpha = 0.050000, rates = [ 0.000000 0.000001 0.005299 3.994700 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 22+(50 26 2 0)  24+(50 24 0 4)  22+(50 26 2 0)  24+(50 23 0 12)  24+(50 24 0 2)  ]
+per-site logLH: [ -4082.7793 -4417.3800 -4041.0983 -4356.9538 -4396.2292 ]
+logLH INNER-INNER at edge (3997-3995): -21294.4406, LH derivatives: -3.4943, 4.6390
+logLH TIP-INNER at edge (3997-1999): -21294.4406, LH derivatives: -2.2599, 1.7979
+
+datatype = ODD, scaling = per-site, alpha = 0.050000, rates = [ 0.000000 0.000001 0.005299 3.994700 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 21 21 21 21 21 ]
+per-site logLH: [ -inf -inf -inf -inf -inf ]
+logLH INNER-INNER at edge (3997-3995): -inf, LH derivatives: -nan, -nan
+logLH TIP-INNER at edge (3997-1999): -inf, LH derivatives: -nan, -nan
+
+datatype = ODD, scaling = per-rate, alpha = 0.050000, rates = [ 0.000000 0.000001 0.005299 3.994700 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 14+(50 18 1 0)  14+(50 18 0 1)  14+(50 17 0 9)  14+(50 17 0 3)  14+(50 16 0 0)  ]
+per-site logLH: [ -2532.1251 -2613.2293 -2665.1969 -2613.1833 -2529.7137 ]
+logLH INNER-INNER at edge (3997-3995): -12953.4482, LH derivatives: -2.8949, 2.6829
+logLH TIP-INNER at edge (3997-1999): -12953.4482, LH derivatives: -1.9224, 1.2544
+
+datatype = DNA, scaling = per-site, alpha = 0.200000, rates = [ 0.000531 0.033775 0.383658 3.582035 ]
 recompute P-matrices: 3997
 recompute CLVs: 1998
 scaler 1995: [ 8 6 21 21 4 ]
@@ -22,7 +54,7 @@ per-site logLH: [ -1567.6326 -1076.7894 -inf -inf -827.4514 ]
 logLH INNER-INNER at edge (3997-3995): -inf, LH derivatives: -nan, -nan
 logLH TIP-INNER at edge (3997-1999): -inf, LH derivatives: -nan, -nan
 
-scaling = per-rate, alpha = 0.200000, rates = [ 0.000531 0.033775 0.383658 3.582035 ]
+datatype = DNA, scaling = per-rate, alpha = 0.200000, rates = [ 0.000531 0.033775 0.383658 3.582035 ]
 recompute P-matrices: 3997
 recompute CLVs: 1998
 scaler 1995: [ 8+(11 3 1 0)  6+(14 6 1 0)  12+(8 0 2 8)  12+(7 0 2 8)  4+(15 7 3 0)  ]
@@ -30,7 +62,39 @@ per-site logLH: [ -1567.6326 -1076.7894 -2277.3326 -2279.8917 -827.4514 ]
 logLH INNER-INNER at edge (3997-3995): -8029.0976, LH derivatives: -2.9702, 3.0540
 logLH TIP-INNER at edge (3997-1999): -8029.0976, LH derivatives: -1.6910, 1.3293
 
-scaling = per-site, alpha = 2.000000, rates = [ 0.293275 0.655014 1.069990 1.981722 ]
+datatype = PROT, scaling = per-site, alpha = 0.200000, rates = [ 0.000531 0.033775 0.383658 3.582035 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 14 16 14 17 15 ]
+per-site logLH: [ -2528.0593 -2866.8759 -2665.6955 -3081.3228 -2694.0175 ]
+logLH INNER-INNER at edge (3997-3995): -13835.9710, LH derivatives: -4.5325, 5.3694
+logLH TIP-INNER at edge (3997-1999): -13835.9710, LH derivatives: -2.1557, 2.3015
+
+datatype = PROT, scaling = per-rate, alpha = 0.200000, rates = [ 0.000531 0.033775 0.383658 3.582035 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 14+(17 5 0 7)  16+(15 3 0 11)  14+(16 5 0 8)  17+(13 2 0 19)  15+(16 4 0 10)  ]
+per-site logLH: [ -2528.0593 -2866.8759 -2665.6955 -3081.3228 -2694.0175 ]
+logLH INNER-INNER at edge (3997-3995): -13835.9710, LH derivatives: -4.5325, 5.3694
+logLH TIP-INNER at edge (3997-1999): -13835.9710, LH derivatives: -2.1557, 2.3015
+
+datatype = ODD, scaling = per-site, alpha = 0.200000, rates = [ 0.000531 0.033775 0.383658 3.582035 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 8 9 10 8 8 ]
+per-site logLH: [ -1533.5163 -1648.5918 -1878.4217 -1484.7299 -1433.7941 ]
+logLH INNER-INNER at edge (3997-3995): -7979.0538, LH derivatives: -2.8405, 3.9234
+logLH TIP-INNER at edge (3997-1999): -7979.0538, LH derivatives: -0.8263, 0.9873
+
+datatype = ODD, scaling = per-rate, alpha = 0.200000, rates = [ 0.000531 0.033775 0.383658 3.582035 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 8+(12 3 0 6)  9+(10 1 0 6)  10+(9 1 0 13)  8+(11 2 0 8)  8+(10 2 0 6)  ]
+per-site logLH: [ -1533.5163 -1648.5918 -1878.4217 -1484.7299 -1433.7941 ]
+logLH INNER-INNER at edge (3997-3995): -7979.0538, LH derivatives: -2.8405, 3.9234
+logLH TIP-INNER at edge (3997-1999): -7979.0538, LH derivatives: -0.8263, 0.9873
+
+datatype = DNA, scaling = per-site, alpha = 2.000000, rates = [ 0.293275 0.655014 1.069990 1.981722 ]
 recompute P-matrices: 3997
 recompute CLVs: 1998
 scaler 1995: [ 9 6 13 13 5 ]
@@ -38,7 +102,7 @@ per-site logLH: [ -1603.6166 -1100.1947 -2388.7163 -2399.8925 -913.5515 ]
 logLH INNER-INNER at edge (3997-3995): -8405.9717, LH derivatives: -3.0736, 3.5362
 logLH TIP-INNER at edge (3997-1999): -8405.9717, LH derivatives: -1.4613, 1.3836
 
-scaling = per-rate, alpha = 2.000000, rates = [ 0.293275 0.655014 1.069990 1.981722 ]
+datatype = DNA, scaling = per-rate, alpha = 2.000000, rates = [ 0.293275 0.655014 1.069990 1.981722 ]
 recompute P-matrices: 3997
 recompute CLVs: 1998
 scaler 1995: [ 9+(0 0 0 0)  6+(2 1 0 0)  13+(0 4 6 7)  13+(0 4 6 7)  5+(2 1 0 0)  ]
@@ -46,7 +110,39 @@ per-site logLH: [ -1603.6166 -1100.1947 -2388.7163 -2399.8925 -913.5515 ]
 logLH INNER-INNER at edge (3997-3995): -8405.9717, LH derivatives: -3.0736, 3.5362
 logLH TIP-INNER at edge (3997-1999): -8405.9717, LH derivatives: -1.4613, 1.3836
 
-scaling = per-site, alpha = 99.000000, rates = [ 0.875297 0.964547 1.029683 1.130473 ]
+datatype = PROT, scaling = per-site, alpha = 2.000000, rates = [ 0.293275 0.655014 1.069990 1.981722 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 13 16 15 16 15 ]
+per-site logLH: [ -2486.5739 -2858.1120 -2696.7932 -3006.3205 -2719.0766 ]
+logLH INNER-INNER at edge (3997-3995): -13766.8761, LH derivatives: -4.6464, 5.5188
+logLH TIP-INNER at edge (3997-1999): -13766.8761, LH derivatives: -2.2361, 2.3365
+
+datatype = PROT, scaling = per-rate, alpha = 2.000000, rates = [ 0.293275 0.655014 1.069990 1.981722 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 13+(1 0 1 3)  16+(0 0 2 7)  15+(0 0 1 3)  16+(0 3 6 14)  15+(0 0 1 5)  ]
+per-site logLH: [ -2486.5739 -2858.1120 -2696.7932 -3006.3205 -2719.0766 ]
+logLH INNER-INNER at edge (3997-3995): -13766.8761, LH derivatives: -4.6464, 5.5188
+logLH TIP-INNER at edge (3997-1999): -13766.8761, LH derivatives: -2.2361, 2.3365
+
+datatype = ODD, scaling = per-site, alpha = 2.000000, rates = [ 0.293275 0.655014 1.069990 1.981722 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 8 8 9 8 7 ]
+per-site logLH: [ -1517.3278 -1593.6331 -1771.7801 -1464.2867 -1422.1250 ]
+logLH INNER-INNER at edge (3997-3995): -7769.1527, LH derivatives: -3.1023, 3.9605
+logLH TIP-INNER at edge (3997-1999): -7769.1527, LH derivatives: -1.0401, 1.0767
+
+datatype = ODD, scaling = per-rate, alpha = 2.000000, rates = [ 0.293275 0.655014 1.069990 1.981722 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 8+(0 1 2 4)  8+(0 2 4 6)  9+(0 3 7 12)  8+(0 1 2 6)  7+(0 1 3 5)  ]
+per-site logLH: [ -1517.3278 -1593.6331 -1771.7801 -1464.2867 -1422.1250 ]
+logLH INNER-INNER at edge (3997-3995): -7769.1527, LH derivatives: -3.1023, 3.9605
+logLH TIP-INNER at edge (3997-1999): -7769.1527, LH derivatives: -1.0401, 1.0767
+
+datatype = DNA, scaling = per-site, alpha = 99.000000, rates = [ 0.875297 0.964547 1.029683 1.130473 ]
 recompute P-matrices: 3997
 recompute CLVs: 1998
 scaler 1995: [ 9 6 18 18 5 ]
@@ -54,11 +150,43 @@ per-site logLH: [ -1658.3038 -1166.0014 -3313.6724 -3314.2351 -1008.3317 ]
 logLH INNER-INNER at edge (3997-3995): -10460.5445, LH derivatives: -2.4820, 3.3850
 logLH TIP-INNER at edge (3997-1999): -10460.5445, LH derivatives: -1.0708, 1.1693
 
-scaling = per-rate, alpha = 99.000000, rates = [ 0.875297 0.964547 1.029683 1.130473 ]
+datatype = DNA, scaling = per-rate, alpha = 99.000000, rates = [ 0.875297 0.964547 1.029683 1.130473 ]
 recompute P-matrices: 3997
 recompute CLVs: 1998
 scaler 1995: [ 9+(0 0 0 0)  6+(0 0 0 0)  18+(0 1 1 1)  18+(0 1 1 1)  5+(0 0 0 0)  ]
 per-site logLH: [ -1658.3038 -1166.0014 -3313.6724 -3314.2351 -1008.3317 ]
 logLH INNER-INNER at edge (3997-3995): -10460.5445, LH derivatives: -2.4820, 3.3850
 logLH TIP-INNER at edge (3997-1999): -10460.5445, LH derivatives: -1.0708, 1.1693
+
+datatype = PROT, scaling = per-site, alpha = 99.000000, rates = [ 0.875297 0.964547 1.029683 1.130473 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 14 17 15 21 16 ]
+per-site logLH: [ -2527.5669 -3201.6455 -2784.7409 -3775.4654 -2868.9575 ]
+logLH INNER-INNER at edge (3997-3995): -15158.3762, LH derivatives: -3.4163, 5.3681
+logLH TIP-INNER at edge (3997-1999): -15158.3762, LH derivatives: -0.9296, 1.6435
+
+datatype = PROT, scaling = per-rate, alpha = 99.000000, rates = [ 0.875297 0.964547 1.029683 1.130473 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 14+(0 0 0 0)  17+(0 1 1 2)  15+(0 0 1 1)  21+(0 1 1 2)  16+(0 0 0 1)  ]
+per-site logLH: [ -2527.5669 -3201.6455 -2784.7409 -3775.4654 -2868.9575 ]
+logLH INNER-INNER at edge (3997-3995): -15158.3762, LH derivatives: -3.4163, 5.3681
+logLH TIP-INNER at edge (3997-1999): -15158.3762, LH derivatives: -0.9296, 1.6435
+
+datatype = ODD, scaling = per-site, alpha = 99.000000, rates = [ 0.875297 0.964547 1.029683 1.130473 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 10 11 14 10 9 ]
+per-site logLH: [ -1787.1964 -2057.4882 -2603.1623 -1792.1680 -1681.9547 ]
+logLH INNER-INNER at edge (3997-3995): -9921.9695, LH derivatives: -1.6070, 3.4527
+logLH TIP-INNER at edge (3997-1999): -9921.9695, LH derivatives: -0.1253, 0.4368
+
+datatype = ODD, scaling = per-rate, alpha = 99.000000, rates = [ 0.875297 0.964547 1.029683 1.130473 ]
+recompute P-matrices: 3997
+recompute CLVs: 1998
+scaler 1995: [ 10+(0 0 0 0)  11+(0 0 1 1)  14+(0 1 1 2)  10+(0 0 0 1)  9+(0 0 0 1)  ]
+per-site logLH: [ -1787.1964 -2057.4882 -2603.1623 -1792.1680 -1681.9547 ]
+logLH INNER-INNER at edge (3997-3995): -9921.9695, LH derivatives: -1.6070, 3.4527
+logLH TIP-INNER at edge (3997-1999): -9921.9695, LH derivatives: -0.1253, 0.4368
 

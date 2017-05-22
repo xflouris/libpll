@@ -21,7 +21,8 @@
 #include "common.h"
 
 #define N_STATES_NT 4
-#define N_STATES_AA 4
+#define N_STATES_AA 20
+#define N_STATES_ODD 5
 #define N_CAT_GAMMA 4
 #define N_SITES 5
 #define FLOAT_PRECISION 4
@@ -30,17 +31,31 @@
 
 #define MIN(a,b) (a<b?a:b)
 
+#define DATATYPE_NT 0
+#define DATATYPE_AA  1
+#define DATATYPE_ODD 2
+
 static char nt_alphabet[] = "ACGT-";
+static char aa_alphabet[] = "GALMFWKQESPVICYHRNDT";
+static char odd_alphabet[] = "ABCDE";
+
 static double alphas[] = {0.05, 0.2, 2.0, 99.0 };
 static size_t alpha_count = sizeof(alphas) / sizeof(double);
 static unsigned int n_cat_gamma = N_CAT_GAMMA;
-unsigned int params_indices[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-static double frequencies[4] = { 0.4, 0.4, 0.1, 0.1 };
-static double subst_params[6] = {0.1, 10., 10., 0.1, 0.1, 1};
+static unsigned int params_indices[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+static double base_freqs_nt[4] = { 0.4, 0.4, 0.1, 0.1 };
+static double subst_params_nt[6] = {0.1, 10., 10., 0.1, 0.1, 1};
+
+static double base_freqs_odd[5] = { 0.3, 0.25, 0.1, 0.2, 0.15 };
+static double subst_params_odd[10] =
+    {1.452176, 0.937951, 0.462880, 0.617729, 1.745312,
+     0.937951, 0.462880, 0.617729, 1.745312, 1.000000};
 
 static pll_utree_t * tree;
 static pll_unode_t * root;
-static pll_partition_t *part_noscale, *part_sitescale, *part_ratescale;
+static pll_partition_t *part_noscale_nt, *part_sitescale_nt, *part_ratescale_nt;
+static pll_partition_t *part_noscale_aa, *part_sitescale_aa, *part_ratescale_aa;
+static pll_partition_t *part_noscale_odd, *part_sitescale_odd, *part_ratescale_odd;
 static unsigned int traversal_size, matrix_count, ops_count;
 static pll_unode_t ** travbuffer;
 static unsigned int * matrix_indices;
@@ -100,12 +115,46 @@ void show_clv(const pll_partition_t * p, unsigned int clv_idx, unsigned int site
 
 }
 
-pll_partition_t * init_partition(unsigned int attrs)
+pll_partition_t * init_partition(unsigned int attrs, int datatype)
 {
   unsigned int i,j;
+
+  unsigned int states = 0;
+  const unsigned int * map = NULL;
+  const char * alphabet = NULL;
+  const double * base_freqs = NULL;
+  const double * subst_rates = NULL;
+
+  switch(datatype)
+  {
+    case DATATYPE_NT:
+      states = N_STATES_NT;
+      map = pll_map_nt;
+      alphabet = nt_alphabet;
+      base_freqs = base_freqs_nt;
+      subst_rates = subst_params_nt;
+      break;
+    case DATATYPE_AA:
+      states = N_STATES_AA;
+      map = pll_map_aa;
+      alphabet = aa_alphabet;
+      base_freqs = pll_aa_freqs_lg;
+      subst_rates = pll_aa_rates_lg;
+      break;
+    case DATATYPE_ODD:
+      states = N_STATES_ODD;
+      map = odd5_map;
+      alphabet = odd_alphabet;
+      base_freqs = base_freqs_odd;
+      subst_rates = subst_params_odd;
+      break;
+    default:
+      assert(0);
+  }
+
   pll_partition_t * p = pll_partition_create(tree->tip_count,
                                              tree->inner_count,
-                                             N_STATES_NT,
+                                             states,
                                              N_SITES,
                                              1,        /* rate matrices */
                                              2*tree->tip_count - 3,
@@ -116,22 +165,22 @@ pll_partition_t * init_partition(unsigned int attrs)
   if (!p)
     fatal("ERROR creating partition: %s\n", pll_errmsg);
 
-  size_t len = strlen(nt_alphabet);
+  size_t len = strlen(alphabet);
   char * seq = (char *) calloc(N_SITES+1, sizeof(char));
   for (i = 0; i < tree->tip_count; ++i)
   {
     for (j = 0; j < N_SITES; ++j)
     {
-      seq[j] = (i < 1500) ? nt_alphabet[j % len] : nt_alphabet[(i + j) % len];
+      seq[j] = (i < 1500) ? alphabet[j % len] : alphabet[(i + j) % len];
     }
 
-    pll_set_tip_states(p, tree->nodes[i]->clv_index, pll_map_nt, seq);
+    pll_set_tip_states(p, tree->nodes[i]->clv_index, map, seq);
   }
 
   free(seq);
 
-  pll_set_frequencies(p, 0, frequencies);
-  pll_set_subst_params(p, 0, subst_params);
+  pll_set_frequencies(p, 0, base_freqs);
+  pll_set_subst_params(p, 0, subst_rates);
 
   return p;
 }
@@ -145,8 +194,14 @@ void init(unsigned int attrs)
   if (!tree)
     fatal("ERROR reading tree file: %s\n", pll_errmsg);
 
-  part_sitescale = init_partition(attrs);
-  part_ratescale = init_partition(attrs | PLL_ATTRIB_RATE_SCALERS);
+  part_sitescale_nt = init_partition(attrs, DATATYPE_NT);
+  part_ratescale_nt = init_partition(attrs | PLL_ATTRIB_RATE_SCALERS, DATATYPE_NT);
+
+  part_sitescale_aa = init_partition(attrs, DATATYPE_AA);
+  part_ratescale_aa = init_partition(attrs | PLL_ATTRIB_RATE_SCALERS, DATATYPE_AA);
+
+  part_sitescale_odd = init_partition(attrs, DATATYPE_ODD);
+  part_ratescale_odd = init_partition(attrs | PLL_ATTRIB_RATE_SCALERS, DATATYPE_ODD);
 
   /* build fixed structures */
   unsigned int nodes_count = tree->inner_count + tree->tip_count;
@@ -156,11 +211,11 @@ void init(unsigned int attrs)
   matrix_indices = (unsigned int *)malloc(branch_count * sizeof(unsigned int));
   operations = (pll_operation_t *)malloc(tree->inner_count *
                                                 sizeof(pll_operation_t));
-  persite_lnl = (double *)malloc(part_sitescale->sites * sizeof(double));
-  sumtable = pll_aligned_alloc(part_sitescale->sites *
-                               part_sitescale->rate_cats *
-                               part_sitescale->states_padded * sizeof(double),
-                               part_sitescale->alignment);
+  persite_lnl = (double *)malloc(part_sitescale_aa->sites * sizeof(double));
+  sumtable = pll_aligned_alloc(part_sitescale_aa->sites *
+                               part_sitescale_aa->rate_cats *
+                               part_sitescale_aa->states_padded * sizeof(double),
+                               part_sitescale_aa->alignment);
 
   root = tree->nodes[tree->tip_count+tree->inner_count-1];
 
@@ -214,7 +269,15 @@ int eval(pll_partition_t * partition, double alpha)
   pll_compute_gamma_cats(alpha, n_cat_gamma, rate_cats, PLL_GAMMA_RATES_MEAN);
   pll_set_category_rates(partition, rate_cats);
 
-  printf("scaling = ");
+  printf("datatype = ");
+  if (partition->states == 4)
+    printf("DNA");
+  else if (partition->states == 20)
+    printf("PROT");
+  else
+    printf("ODD");
+
+  printf(", scaling = ");
   if (partition->attributes & PLL_ATTRIB_RATE_SCALERS)
     printf("per-rate");
   else if (partition->scale_buffers > 0)
@@ -311,9 +374,15 @@ void cleanup()
   free(matrix_indices);
   free(persite_lnl);
   free(sumtable);
-  pll_partition_destroy(part_noscale);
-  pll_partition_destroy(part_sitescale);
-  pll_partition_destroy(part_ratescale);
+  pll_partition_destroy(part_noscale_nt);
+  pll_partition_destroy(part_sitescale_nt);
+  pll_partition_destroy(part_ratescale_nt);
+  pll_partition_destroy(part_noscale_aa);
+  pll_partition_destroy(part_sitescale_aa);
+  pll_partition_destroy(part_ratescale_aa);
+  pll_partition_destroy(part_noscale_odd);
+  pll_partition_destroy(part_sitescale_odd);
+  pll_partition_destroy(part_ratescale_odd);
   pll_utree_destroy(tree, NULL);
 }
 
@@ -328,8 +397,12 @@ int main(int argc, char * argv[])
   unsigned int i;
   for (i = 0; i < alpha_count; ++i)
   {
-    eval(part_sitescale, alphas[i]);
-    eval(part_ratescale, alphas[i]);
+    eval(part_sitescale_nt, alphas[i]);
+    eval(part_ratescale_nt, alphas[i]);
+    eval(part_sitescale_aa, alphas[i]);
+    eval(part_ratescale_aa, alphas[i]);
+    eval(part_sitescale_odd, alphas[i]);
+    eval(part_ratescale_odd, alphas[i]);
   }
 
   cleanup();
