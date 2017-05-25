@@ -99,6 +99,14 @@ Validate Nearest Neighbor Interchange moves.
 
 Validate CLV scaling on large trees (per-site and per-rate scaling modes)
 
+## pmatrix
+
+Validate pmatrix computation, and specifically check for negative values which could
+appear due to numerical issues
+
+NOTE: expected output file for this test is intentionally missing, since negative 
+values problem has not been fully fixed yet 
+
 ## treemove-spr
 
 Validate Subtree Prunning and Regrafting moves.
