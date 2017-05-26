@@ -78,6 +78,11 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
   ymm8 = _mm256_set1_pd(PLL_ONE_MIN);
   ymm9 = _mm256_set1_pd(PLL_ONE_MAX);
 
+  __m256d idm_row0 = _mm256_set_pd(0., 0., 0., 1.0);
+  __m256d idm_row1 = _mm256_set_pd(0., 0., 1.0, 0.);
+  __m256d idm_row2 = _mm256_set_pd(0., 1.0, 0., 0.);
+  __m256d idm_row3 = _mm256_set_pd(1.0, 0., 0., 0.);
+
   for (i = 0; i < count; ++i)
   {
     assert(branch_lengths[i] >= 0);
@@ -129,10 +134,17 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
 
         /* for now exponentiate non-vectorized */
         _mm256_store_pd(expd,xmm2);
-        xmm1 = _mm256_set_pd(exp(expd[3]),
-                             exp(expd[2]),
-                             exp(expd[1]),
-                             exp(expd[0]));
+
+        /* NOTE: in order to deal with numerical issues in cases when Qt -> 0, we
+         * use a trick suggested by Ben Redelings and explained here:
+         * https://github.com/xflouris/libpll/issues/129#issuecomment-304004005
+         * In short, we use expm1() to compute (exp(Qt) - I), and then correct
+         * for this by adding an identity matrix I in the very end */
+
+        xmm1 = _mm256_set_pd(expm1(expd[3]),
+                             expm1(expd[2]),
+                             expm1(expd[1]),
+                             expm1(expd[0]));
 
 
         /* check if all values of expd are approximately one */
@@ -147,7 +159,7 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
            (negative entries in the pmatrix) which can occur due to the
            different floating point representations of one in expd. Otherwise,
            proceed as normal and multiply eigenvector matrices with expd  */
-        if (_mm256_movemask_pd(xmm5) == 0xF)
+        if (_mm256_movemask_pd(xmm5) == 0xF && 0)
         {
           _mm256_store_pd(pmat+0,xmm0);
           _mm256_store_pd(pmat+4,xmm0);
@@ -207,6 +219,7 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
           ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
           ymm0 = _mm256_add_pd(ymm2,ymm3);
 
+          ymm0 = _mm256_add_pd(ymm0,idm_row0);
           _mm256_store_pd(pmat+0,ymm0);
 
           /* pmat row 1 */
@@ -230,6 +243,7 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
           ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
           ymm0 = _mm256_add_pd(ymm2,ymm3);
 
+          ymm0 = _mm256_add_pd(ymm0,idm_row1);
           _mm256_store_pd(pmat+4,ymm0);
 
           /* pmat row 2 */
@@ -253,6 +267,7 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
           ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
           ymm0 = _mm256_add_pd(ymm2,ymm3);
 
+          ymm0 = _mm256_add_pd(ymm0,idm_row2);
           _mm256_store_pd(pmat+8,ymm0);
 
           /* pmat row 3 */
@@ -276,6 +291,7 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_avx(double ** pmatrix,
           ymm3 = _mm256_blend_pd(ymm0,ymm1,12);
           ymm0 = _mm256_add_pd(ymm2,ymm3);
 
+          ymm0 = _mm256_add_pd(ymm0,idm_row3);
           _mm256_store_pd(pmat+12,ymm0);
         }
       }
@@ -382,8 +398,8 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
   __m256d ymm0,ymm1,ymm2,ymm3,ymm4,ymm5,ymm6,ymm7,ymm8,ymm9;
   __m256d zmm0,zmm1,zmm2,zmm3;
 
-  ymm8 = _mm256_set1_pd(PLL_ONE_MIN);
-  ymm9 = _mm256_set1_pd(PLL_ONE_MAX);
+//  ymm8 = _mm256_set1_pd(PLL_ONE_MIN);
+//  ymm9 = _mm256_set1_pd(PLL_ONE_MAX);
 
   double * tran = NULL;
   for (i = 0; i < count; ++i)
@@ -446,8 +462,14 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
         _mm256_store_pd(expd+k*4,xmm5);
       }
 
+      /* NOTE: in order to deal with numerical issues in cases when Qt -> 0, we
+       * use a trick suggested by Ben Redelings and explained here:
+       * https://github.com/xflouris/libpll/issues/129#issuecomment-304004005
+       * In short, we use expm1() to compute (exp(Qt) - I), and then correct
+       * for this by adding an identity matrix I in the very end */
+
       for (k = 0; k < 20; ++k)
-        expd[k] = exp(expd[k]);
+        expd[k] = expm1(expd[k]);
         
       /* load expd */
       xmm4 = _mm256_load_pd(expd+0);
@@ -456,50 +478,50 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
       xmm7 = _mm256_load_pd(expd+12);
       xmm8 = _mm256_load_pd(expd+16);
 
-      /* check if all values of expd are approximately one */
-      ymm0 = _mm256_cmp_pd(xmm4, ymm8, _CMP_GT_OS);
-      ymm1 = _mm256_cmp_pd(xmm4, ymm9, _CMP_LT_OS);
-      ymm2 = _mm256_and_pd(ymm0,ymm1);                 /* expd[0..3] */
-      ymm0 = _mm256_cmp_pd(xmm5, ymm8, _CMP_GT_OS);
-      ymm1 = _mm256_cmp_pd(xmm5, ymm9, _CMP_LT_OS);
-      ymm3 = _mm256_and_pd(ymm0,ymm1);                 /* expd[4..7] */
-      ymm0 = _mm256_cmp_pd(xmm6, ymm8, _CMP_GT_OS);
-      ymm1 = _mm256_cmp_pd(xmm6, ymm9, _CMP_LT_OS);
-      ymm4 = _mm256_and_pd(ymm0,ymm1);                 /* expd[8..11] */
-      ymm0 = _mm256_cmp_pd(xmm7, ymm8, _CMP_GT_OS);
-      ymm1 = _mm256_cmp_pd(xmm7, ymm9, _CMP_LT_OS);
-      ymm5 = _mm256_and_pd(ymm0,ymm1);                 /* expd[12..15] */
-      ymm0 = _mm256_cmp_pd(xmm8, ymm8, _CMP_GT_OS);
-      ymm1 = _mm256_cmp_pd(xmm8, ymm9, _CMP_LT_OS);
-      ymm6 = _mm256_and_pd(ymm0,ymm1);                 /* expd[12..15] */
-
-      /* AND the results of comnparisons and check the mask to see if all
-         values of expd are approximately one. If they are, it means we are
-         multiplying the inverse eigenvectors matrix by the eigenvectors
-         matrix, and essentially the resulting pmatrix is the identity matrix.
-         This is done to prevent having numerical issues (negative entries in
-         the pmatrix) which can occur due to the different floating point
-         representations of one in expd. Otherwise, proceed as normal and
-         multiply eigenvector matrices with expd  */
-      ymm0 = _mm256_and_pd(ymm2,ymm3);
-      ymm1 = _mm256_and_pd(ymm0,ymm4);
-      ymm0 = _mm256_and_pd(ymm1,ymm5);
-      ymm1 = _mm256_and_pd(ymm0,ymm6);
-      if (_mm256_movemask_pd(ymm1) == 0xF)
-      {
-        xmm0 = _mm256_setzero_pd();
-        for (j = 0; j < 20; ++j)
-        {
-          _mm256_store_pd(pmat+0,xmm0);
-          _mm256_store_pd(pmat+4,xmm0);
-          _mm256_store_pd(pmat+8,xmm0);
-          _mm256_store_pd(pmat+12,xmm0);
-          _mm256_store_pd(pmat+16,xmm0);
-          pmat[j] = 1;
-          pmat += 20;
-        }
-        continue;
-      }
+//      /* check if all values of expd are approximately one */
+//      ymm0 = _mm256_cmp_pd(xmm4, ymm8, _CMP_GT_OS);
+//      ymm1 = _mm256_cmp_pd(xmm4, ymm9, _CMP_LT_OS);
+//      ymm2 = _mm256_and_pd(ymm0,ymm1);                 /* expd[0..3] */
+//      ymm0 = _mm256_cmp_pd(xmm5, ymm8, _CMP_GT_OS);
+//      ymm1 = _mm256_cmp_pd(xmm5, ymm9, _CMP_LT_OS);
+//      ymm3 = _mm256_and_pd(ymm0,ymm1);                 /* expd[4..7] */
+//      ymm0 = _mm256_cmp_pd(xmm6, ymm8, _CMP_GT_OS);
+//      ymm1 = _mm256_cmp_pd(xmm6, ymm9, _CMP_LT_OS);
+//      ymm4 = _mm256_and_pd(ymm0,ymm1);                 /* expd[8..11] */
+//      ymm0 = _mm256_cmp_pd(xmm7, ymm8, _CMP_GT_OS);
+//      ymm1 = _mm256_cmp_pd(xmm7, ymm9, _CMP_LT_OS);
+//      ymm5 = _mm256_and_pd(ymm0,ymm1);                 /* expd[12..15] */
+//      ymm0 = _mm256_cmp_pd(xmm8, ymm8, _CMP_GT_OS);
+//      ymm1 = _mm256_cmp_pd(xmm8, ymm9, _CMP_LT_OS);
+//      ymm6 = _mm256_and_pd(ymm0,ymm1);                 /* expd[12..15] */
+//
+//      /* AND the results of comnparisons and check the mask to see if all
+//         values of expd are approximately one. If they are, it means we are
+//         multiplying the inverse eigenvectors matrix by the eigenvectors
+//         matrix, and essentially the resulting pmatrix is the identity matrix.
+//         This is done to prevent having numerical issues (negative entries in
+//         the pmatrix) which can occur due to the different floating point
+//         representations of one in expd. Otherwise, proceed as normal and
+//         multiply eigenvector matrices with expd  */
+//      ymm0 = _mm256_and_pd(ymm2,ymm3);
+//      ymm1 = _mm256_and_pd(ymm0,ymm4);
+//      ymm0 = _mm256_and_pd(ymm1,ymm5);
+//      ymm1 = _mm256_and_pd(ymm0,ymm6);
+//      if (_mm256_movemask_pd(ymm1) == 0xF)
+//      {
+//        xmm0 = _mm256_setzero_pd();
+//        for (j = 0; j < 20; ++j)
+//        {
+//          _mm256_store_pd(pmat+0,xmm0);
+//          _mm256_store_pd(pmat+4,xmm0);
+//          _mm256_store_pd(pmat+8,xmm0);
+//          _mm256_store_pd(pmat+12,xmm0);
+//          _mm256_store_pd(pmat+16,xmm0);
+//          pmat[j] = 1;
+//          pmat += 20;
+//        }
+//        continue;
+//      }
 
       /* compute temp matrix */
       for (k = 0; k < 400; k += 20)
@@ -565,6 +587,15 @@ PLL_EXPORT int pll_core_update_pmatrix_20x20_avx(double ** pmatrix,
           pmat += 4;
         }
       }
+
+      /* add identity matrix */
+      pmat -= 400;
+      for (j = 0; j < 20; ++j)
+      {
+        pmat[j] += 1.0;
+        pmat += 20;
+      }
+
       #ifdef DEBUG
       for (j = 0; j < 20; ++j)
         for (k = 0; k < 20; ++k)

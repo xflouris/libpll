@@ -220,10 +220,12 @@ int main(int argc, char * argv[])
 {
   unsigned int i, j, k;
 
-//  skip_test();
-
   /* check attributes */
   unsigned int attributes = get_attributes(argc, argv);
+
+  /* pattern tip is not relevant for pmatrix computation */
+  if (attributes & PLL_ATTRIB_PATTERN_TIP)
+    skip_test();
 
   init(attributes);
 

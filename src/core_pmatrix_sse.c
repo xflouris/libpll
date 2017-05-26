@@ -67,7 +67,7 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
                                                double * const * inv_eigenvecs,
                                                unsigned int count)
 {
-  unsigned int i,n;
+  unsigned int i,j,n;
   double * expd;
 
   double pinvar;
@@ -89,11 +89,12 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
 
   __m128d xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8, xmm9;
   __m128d xmm10, xmm11, xmm12, xmm13, xmm14, xmm15, xmm16;
-  __m128d v_onemin, v_onemax;
 
   xmm0 = _mm_setzero_pd();
-  v_onemin = _mm_set1_pd(PLL_ONE_MIN);
-  v_onemax = _mm_set1_pd(PLL_ONE_MAX);
+
+//  __m128d v_onemin, v_onemax;
+//  v_onemin = _mm_set1_pd(PLL_ONE_MIN);
+//  v_onemax = _mm_set1_pd(PLL_ONE_MAX);
 
   for (i = 0; i < count; ++i)
   {
@@ -156,30 +157,36 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
         _mm_store_pd(expd+0,xmm7);
         _mm_store_pd(expd+2,xmm8);
 
+        /* NOTE: in order to deal with numerical issues in cases when Qt -> 0, we
+         * use a trick suggested by Ben Redelings and explained here:
+         * https://github.com/xflouris/libpll/issues/129#issuecomment-304004005
+         * In short, we use expm1() to compute (exp(Qt) - I), and then correct
+         * for this by adding an identity matrix I in the very end */
+
         /* check if all values of expd are approximately one */
-        xmm12 = _mm_set_pd(exp(expd[1]), exp(expd[0]));
-        xmm13 = _mm_set_pd(exp(expd[3]), exp(expd[2]));
+        xmm12 = _mm_set_pd(expm1(expd[1]), expm1(expd[0]));
+        xmm13 = _mm_set_pd(expm1(expd[3]), expm1(expd[2]));
 
-        /* */
-        xmm1 = _mm_cmpgt_pd(xmm12,v_onemin);
-        xmm2 = _mm_cmplt_pd(xmm13,v_onemax);
-        xmm4 = _mm_and_pd(xmm1,xmm2);
+//        /* */
+//        xmm1 = _mm_cmpgt_pd(xmm12,v_onemin);
+//        xmm2 = _mm_cmplt_pd(xmm13,v_onemax);
+//        xmm4 = _mm_and_pd(xmm1,xmm2);
 
-        if (_mm_movemask_pd(xmm4) == 0x3)
-        {
-          _mm_store_pd(pmat+0, xmm0);
-          _mm_store_pd(pmat+2, xmm0);
-          _mm_store_pd(pmat+4, xmm0);
-          _mm_store_pd(pmat+6, xmm0);
-          _mm_store_pd(pmat+8, xmm0);
-          _mm_store_pd(pmat+10,xmm0);
-          _mm_store_pd(pmat+12,xmm0);
-          _mm_store_pd(pmat+14,xmm0);
-
-          pmat[0] = pmat[5] = pmat[10] = pmat[15] = 1;
-        }
-        else
-        {
+//        if (_mm_movemask_pd(xmm4) == 0x3 && 0)
+//        {
+//          _mm_store_pd(pmat+0, xmm0);
+//          _mm_store_pd(pmat+2, xmm0);
+//          _mm_store_pd(pmat+4, xmm0);
+//          _mm_store_pd(pmat+6, xmm0);
+//          _mm_store_pd(pmat+8, xmm0);
+//          _mm_store_pd(pmat+10,xmm0);
+//          _mm_store_pd(pmat+12,xmm0);
+//          _mm_store_pd(pmat+14,xmm0);
+//
+//          pmat[0] = pmat[5] = pmat[10] = pmat[15] = 1;
+//        }
+//        else
+//        {
           /* transpose eigenvector */
 
           xmm1 = _mm_load_pd(evecs+0);
@@ -217,7 +224,15 @@ PLL_EXPORT int pll_core_update_pmatrix_4x4_sse(double ** pmatrix,
           ONESTEP(4);
           ONESTEP(8);
           ONESTEP(12);
+//        }
+
+        /* add identity matrix */
+        for (j = 0; j < 4; ++j)
+        {
+          pmat[j] += 1.0;
+          pmat += 4;
         }
+        pmat -= 16;
       }
       #ifdef DEBUG
       unsigned int j,k;

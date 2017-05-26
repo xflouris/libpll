@@ -179,38 +179,44 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
       }
       else
       {
+        /* NOTE: in order to deal with numerical issues in cases when Qt -> 0, we
+         * use a trick suggested by Ben Redelings and explained here:
+         * https://github.com/xflouris/libpll/issues/129#issuecomment-304004005
+         * In short, we use expm1() to compute (exp(Qt) - I), and then correct
+         * for this by adding an identity matrix I in the very end */
+
         /* exponentiate eigenvalues */
         if (pinvar > PLL_MISC_EPSILON)
         {
           for (j = 0; j < states; ++j)
-            expd[j] = exp(evals[j] * rates[n] * branch_lengths[i]
+            expd[j] = expm1(evals[j] * rates[n] * branch_lengths[i]
                                        / (1.0 - pinvar));
         }
         else
         {
           for (j = 0; j < states; ++j)
-            expd[j] = exp(evals[j] * rates[n] * branch_lengths[i]);
+           expd[j] = expm1(evals[j] * rates[n] * branch_lengths[i]);
         }
 
-        /* check if all values of expd are approximately one */
-        for (k=0, j=0; j < states; ++j)
-          if ((expd[j] > PLL_ONE_MIN) && (expd[j] < PLL_ONE_MAX))
-            ++k;
-
-        /* if yes, it means we are multiplying the inverse eigenvectors matrix
-           by the eigenvectors matrix, and essentially the resulting pmatrix is
-           the identity matrix. This is done to prevent having numerical issues
-           (negative entries in the pmatrix) which can occur due to the
-           different floating point representations of one in expd */
-        if (k == states)
-        {
-          /* set identity matrix */
-          for (j = 0; j < states; ++j)
-            for (k = 0; k < states; ++k)
-              pmat[j*states_padded + k] = (j == k) ? 1 : 0;
-
-          continue;
-        }
+//        /* check if all values of expd are approximately one */
+//        for (k=0, j=0; j < states; ++j)
+//          if ((expd[j] > PLL_ONE_MIN) && (expd[j] < PLL_ONE_MAX))
+//            ++k;
+//
+//        /* if yes, it means we are multiplying the inverse eigenvectors matrix
+//           by the eigenvectors matrix, and essentially the resulting pmatrix is
+//           the identity matrix. This is done to prevent having numerical issues
+//           (negative entries in the pmatrix) which can occur due to the
+//           different floating point representations of one in expd */
+//        if (k == states && 0)
+//        {
+//          /* set identity matrix */
+//          for (j = 0; j < states; ++j)
+//            for (k = 0; k < states; ++k)
+//              pmat[j*states_padded + k] = (j == k) ? 1 : 0;
+//
+//          continue;
+//        }
 
         for (j = 0; j < states; ++j)
           for (k = 0; k < states; ++k)
@@ -220,7 +226,8 @@ PLL_EXPORT int pll_core_update_pmatrix(double ** pmatrix,
         {
           for (k = 0; k < states; ++k)
           {
-            pmat[j*states_padded+k] = 0;
+//            pmat[j*states_padded+k] = 0;
+            pmat[j*states_padded+k] = (j==k) ? 1.0 : 0;
             for (m = 0; m < states; ++m)
             {
               pmat[j*states_padded+k] +=

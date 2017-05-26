@@ -181,8 +181,14 @@ int pll_core_update_pmatrix_20x20_avx2(double ** pmatrix,
         _mm256_store_pd(expd+k*4,xmm5);
       }
 
+      /* NOTE: in order to deal with numerical issues in cases when Qt -> 0, we
+       * use a trick suggested by Ben Redelings and explained here:
+       * https://github.com/xflouris/libpll/issues/129#issuecomment-304004005
+       * In short, we use expm1() to compute (exp(Qt) - I), and then correct
+       * for this by adding an identity matrix I in the very end */
+
       for (k = 0; k < 20; ++k)
-        expd[k] = exp(expd[k]);
+        expd[k] = expm1(expd[k]);
 
       /* load expd */
       xmm4 = _mm256_load_pd(expd+0);
@@ -255,6 +261,15 @@ int pll_core_update_pmatrix_20x20_avx2(double ** pmatrix,
           pmat += 4;
         }
       }
+
+      /* add identity matrix */
+      pmat -= 400;
+      for (j = 0; j < 20; ++j)
+      {
+        pmat[j] += 1.0;
+        pmat += 20;
+      }
+
     }
   }
 
