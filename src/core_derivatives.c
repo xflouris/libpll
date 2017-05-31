@@ -695,6 +695,8 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 
       switch(asc_bias_type)
       {
+        /* NOTE: since we compute derivatives of -logL, the signs below are flipped
+         * compared to RAxML ("+" for LEWIS and "-" for FELSENSTEIN) */
         case PLL_ATTRIB_AB_LEWIS:
         {
           // TODO: pattern_weight_sum should be stored somewhere!
@@ -703,16 +705,16 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
             pattern_weight_sum += pattern_weights[n];
 
           /* derivatives of log(1.0 - (sum Li(s) over states 's')) */
-          *d_f  -= pattern_weight_sum * (asc_Lk[1] / (asc_Lk[0] - 1.0));
-          *dd_f -= pattern_weight_sum *
+          *d_f  += pattern_weight_sum * (asc_Lk[1] / (asc_Lk[0] - 1.0));
+          *dd_f += pattern_weight_sum *
                (((asc_Lk[0] - 1.0) * asc_Lk[2] - asc_Lk[1] * asc_Lk[1]) /
                ((asc_Lk[0] - 1.0) * (asc_Lk[0] - 1.0)));
         }
         break;
         case PLL_ATTRIB_AB_FELSENSTEIN:
           /* derivatives of log(sum Li(s) over states 's') */
-          *d_f  += sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
-          *dd_f += sum_w_inv *
+          *d_f  -= sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
+          *dd_f -= sum_w_inv *
                (((asc_Lk[2] * asc_Lk[0]) - asc_Lk[1] * asc_Lk[1]) /
                (asc_Lk[0] * asc_Lk[0]));
         break;
