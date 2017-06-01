@@ -866,6 +866,7 @@ static int set_tipchars(pll_partition_t * partition,
 {
   unsigned int c;
   unsigned int i;
+  unsigned char * tipchars = partition->tipchars[tip_index];
 
   /* iterate through sites */
   for (i = 0; i < partition->sites; ++i)
@@ -878,22 +879,24 @@ static int set_tipchars(pll_partition_t * partition,
     }
 
     /* store states as the remapped characters from charmap */
-    partition->tipchars[tip_index][i] = partition->charmap[(int)(sequence[i])];
+    tipchars[i] = partition->charmap[(int)(sequence[i])];
   }
 
   /* if asc_bias is set, we initialize the additional positions */
   if (partition->asc_bias_alloc)
   {
-    /* this part needs to be fixed */
+    tipchars += partition->sites;
+    memset(tipchars, 0, partition->states);
+
     /* tip chars should go in the same order as expected, or the pattern
        weights for the invariant sites would not match the correct character.
        For example, the expected order of amino acids is A,R,N,..., and the
        tipchars order is 1,16,13,... (i.e., not sequential)  */
-    assert(0);
-    for (i = 0; i < partition->states; ++i)
+    for (i = 0; i < PLL_ASCII_SIZE; ++i)
     {
-      partition->tipchars[tip_index][partition->sites + i] =
-        (unsigned char)i+1;
+      unsigned int state = partition->charmap[i];
+      if (state < partition->states && !tipchars[state])
+        tipchars[state] = (unsigned char)i;
     }
   }
   return PLL_SUCCESS;
