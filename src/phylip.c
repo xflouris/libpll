@@ -175,12 +175,13 @@ static int args_getint(const char * arg, int * len)
   return temp;
 }
 
-static int whitechar(char c)
+static int whitespace(char c)
 {
-  if (c == ' ' || c == '\t') return 1;
-
+  if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
+    return 1;
   return 0;
 }
+
 
 static int parse_header(const char * line,
                         int * seq_count,
@@ -210,7 +211,7 @@ static int parse_header(const char * line,
   line += len;
 
   /* go through all white spaces */
-  while (*line && whitechar(*line)) ++line;
+  while (*line && whitespace(*line)) ++line;
 
   /* if end of line then return successfully */
   if (!*line)
@@ -224,19 +225,12 @@ static int parse_header(const char * line,
     return 0;
 
   /* go through all white spaces */
-  while (*line && whitechar(*line)) ++line;
+  while (*line && whitespace(*line)) ++line;
 
   /* if end of line then return successfully */
   if (!*line)
     return 1;
 
-  return 0;
-}
-
-static int whitespace(char c)
-{
-  if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
-    return 1;
   return 0;
 }
 
