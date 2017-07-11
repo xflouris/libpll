@@ -212,8 +212,6 @@ typedef struct pll_partition
   unsigned int scale_buffers;
   unsigned int attributes;
 
-  const unsigned int * map;
-
   /* vectorization options */
   size_t alignment;
   unsigned int states_padded;
