@@ -1,6 +1,6 @@
 # libpll
 
-[![Build Status](https://travis-ci.org/xflouris/libpll.svg?branch=dev)](https://magnum.travis-ci.com/xflouris/libpll)
+[![Build Status](https://travis-ci.org/xflouris/libpll.svg?branch=dev)](https://travis-ci.org/xflouris/libpll)
 [![License](https://img.shields.io/badge/license-AGPL-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html)
 
 ## Introduction
