@@ -2,6 +2,17 @@
 All notable changes to `libpll` will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.3.2] - 2017-07-12
+### Added
+ - Optional per-rate category scalers for protein and generic kernels
+ - Hardware detection for APPLE builds defaults to assembly code
+### Fixed
+ - Improved fix for negative p-matrix values.
+ - Derivatives computation for Lewis/Felsenstein ascertainment bias correction
+ - set_tipchars() for ascertainment bias correction with non-DNA sequences
+ - Excessive memory allocation when compressing site patterns
+ - Issue with PHYLIP parsing when header ends with CRLF
+
 ## [0.3.1] - 2017-05-17
 ### Added
  - Checks for older versions of clang and gcc to use assembly instructions

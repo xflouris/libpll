@@ -1,6 +1,6 @@
 .\" -*- coding: utf-8 -*-
 .\" ============================================================================
-.TH libpll 3 "May 17, 2017" "libpll 0.3.1" "Library Functions Manual"
+.TH libpll 3 "July 12, 2017" "libpll 0.3.2" "Library Functions Manual"
 .\" ============================================================================
 .SH NAME
 libpll \(em Phylogenetic Likelihood Library
@@ -544,7 +544,7 @@ Source code and binaries are available at
 <https://github.com/xflouris/libpll>.
 .\" ============================================================================
 .SH COPYRIGHT
-Copyright (C) 2015-2016, Tomas Flouri, Diego Darriba
+Copyright (C) 2015-2017, Tomas Flouri, Diego Darriba
 .PP
 All rights reserved.
 .PP
@@ -581,7 +581,7 @@ First public release.
 Added faster vectorizations for 20-state and arbitrary-state models, unweighted
 parsimony functions, randomized stepwise addition, portable functions for
 parsing trees from C-strings, per-rate category scalers for preventing
-numberical underflows. Modified newick exporting function to accept callbacks
+numerical underflows. Modified newick exporting function to accept callbacks
 for custom printing. Fixed derivatives computation, parsing of branch lengths,
 invariant sites computation, log-likelihood computation for cases where we have
 scaling and patterns, ascertainment bias computation, per-site log-likelihood
@@ -591,5 +591,12 @@ computation, memory leaks. Added run-time detection of hardware.
 Correct updating of paddded eigen-decomposition arrays for models with a number
 of states not being a power of two. Added portable hardware detection for clang
 and GCC. 
+.TP
+.BR v0.3.2\~ "released July 12th, 2017"
+Added optional per-rate category scalers for protein and generic kernels.
+Improved fix for negative transition probability matrices caused by numerics.
+Fixed initialization of tip CLVs when using ascertainment bias correction with
+non-DNA sequences. Fixed excessive memory allocation when compressing site
+patterns and issue with PHYLIP parsing when header ends with CRLF.
 .RE
 .LP
