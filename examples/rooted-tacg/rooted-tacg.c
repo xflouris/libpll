@@ -228,23 +228,23 @@ int main(int argc, char * argv[])
   /* set the 5 tip CLVs, and use the pll_map_nt map for converting
      the sequences to CLVs */
   double * enc = encode_tacg("WAAAAB");
-  assert(pll_set_tip_clv(partition, 0, enc));
+  assert(pll_set_tip_clv(partition, 0, enc, PLL_FALSE));
   free(enc);
 
   enc = encode_tacg("CACACD");
-  assert(pll_set_tip_clv(partition, 1, enc));
+  assert(pll_set_tip_clv(partition, 1, enc, PLL_FALSE));
   free(enc);
 
   enc = encode_tacg("AGGACA");
-  assert(pll_set_tip_clv(partition, 2, enc));
+  assert(pll_set_tip_clv(partition, 2, enc, PLL_FALSE));
   free(enc);
 
   enc = encode_tacg("CGTAGT");
-  assert(pll_set_tip_clv(partition, 3, enc));
+  assert(pll_set_tip_clv(partition, 3, enc, PLL_FALSE));
   free(enc);
 
   enc = encode_tacg("CGAATT");
-  assert(pll_set_tip_clv(partition, 4, enc));
+  assert(pll_set_tip_clv(partition, 4, enc, PLL_FALSE));
   free(enc);
 
   /* update two probability matrices for the corresponding branch lengths */
