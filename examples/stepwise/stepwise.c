@@ -212,11 +212,11 @@ int main(int argc, char * argv[])
   printf("%s\n", newick);
   free(newick);
 
-  /* uncomment the following code to output an SVG file 
+  /* uncomment the following code to output an SVG file
 
   pll_svg_attrib_t * attr = pll_svg_attrib_create();
   attr->width = 1920;
-  pll_utree_export_svg(tree,tip_nodes_count,attr,"parsimony.svg");
+  pll_utree_export_svg(tree,root,attr,"parsimony.svg");
   pll_svg_attrib_destroy(attr);
 
   */

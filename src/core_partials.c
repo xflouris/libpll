@@ -427,19 +427,19 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
 #ifdef HAVE_AVX2
   if (attrib & PLL_ATTRIB_ARCH_AVX2 && PLL_STAT(avx2_present))
   {
-    pll_core_update_partial_ti_avx(states,
-                                   sites,
-                                   rate_cats,
-                                   parent_clv,
-                                   parent_scaler,
-                                   left_tipchars,
-                                   right_clv,
-                                   left_matrix,
-                                   right_matrix,
-                                   right_scaler,
-                                   tipmap,
-                                   tipmap_size,
-                                   attrib);
+    pll_core_update_partial_ti_avx2(states,
+                                    sites,
+                                    rate_cats,
+                                    parent_clv,
+                                    parent_scaler,
+                                    left_tipchars,
+                                    right_clv,
+                                    left_matrix,
+                                    right_matrix,
+                                    right_scaler,
+                                    tipmap,
+                                    tipmap_size,
+                                    attrib);
     return;
   }
 #endif

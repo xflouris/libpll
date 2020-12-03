@@ -178,10 +178,11 @@ int main(int argc, char * argv[])
      node. The code will also write (and print on screen) the newick format
      of the tree.
 
-  pll_utree_show_ascii(tree, PLL_UTREE_SHOW_LABEL |
-                             PLL_UTREE_SHOW_BRANCH_LENGTH |
-                             PLL_UTREE_SHOW_CLV_INDEX);
-  char * newick = pll_utree_export_newick(tree,NULL);
+  pll_utree_show_ascii(tree->nodes[nodes_count-1],
+                       PLL_UTREE_SHOW_LABEL |
+                       PLL_UTREE_SHOW_BRANCH_LENGTH |
+                       PLL_UTREE_SHOW_CLV_INDEX);
+  char * newick = pll_utree_export_newick(tree->nodes[nodes_count-1],NULL);
   printf("%s\n", newick);
   free(newick);
 
@@ -436,7 +437,10 @@ int main(int argc, char * argv[])
     for (i = 0; i < nodes_count; ++i)
     {
       printf ("CLV %d: ", i);
-      pll_show_clv(partition,i,17);
+      pll_show_clv(partition,
+                   tree->nodes[i]->clv_index,
+                   tree->nodes[i]->scaler_index,
+                   17);
     }
 
     */
